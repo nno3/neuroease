@@ -1,11 +1,14 @@
 const express = require('express');
 const cors = require('cors');
+const morgan = require('morgan');
 require('dotenv').config();
 
 const { sequelize, User } = require('./src/models');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
+// API request logging
+app.use(morgan('combined'));
 
 // Middleware
 app.use(cors());
@@ -21,6 +24,8 @@ app.get('/api/health', (req, res) => {
     });
 });
 
+// API request logging
+app.use(morgan('combined'));
 // Initialize database and start server
 const startServer = async () => {
     try {
@@ -40,6 +45,7 @@ const startServer = async () => {
             console.log(`NeuroEase Backend running on port ${PORT}`);
             console.log(`Health check: http://localhost:${PORT}/api/health`);
             console.log(`Database: ${process.env.DB_NAME}@${process.env.DB_HOST}`);
+            console.log('API request logging: ENABLED');
         });
     } catch (error) {
         console.error('Failed to start server:', error.message);
