@@ -1,6 +1,5 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const User = require('./User');
 
 const Reminder = sequelize.define('Reminder', {
     id: {
@@ -10,11 +9,7 @@ const Reminder = sequelize.define('Reminder', {
     },
     patientId: {
         type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-            model: User,
-            key: 'id'
-        }
+        allowNull: false
     },
     title: {
         type: DataTypes.STRING,
@@ -42,22 +37,11 @@ const Reminder = sequelize.define('Reminder', {
         defaultValue: 'once'
     }
 }, {
-    tableName: 'reminders',
-    indexes: [
-        {
-            fields: ['patientId']
-        },
-        {
-            fields: ['scheduledTime']
-        },
-        {
-            fields: ['patientId', 'scheduledTime']
-        }
-    ]
+    tableName: 'reminders'
 });
 
-// Relationships
-Reminder.belongsTo(User, { foreignKey: 'patientId', as: 'patient' });
-User.hasMany(Reminder, { foreignKey: 'patientId', as: 'reminders' });
+Reminder.associate = function(models) {
+    Reminder.belongsTo(models.User, { foreignKey: 'patientId', as: 'patient' });
+};
 
 module.exports = Reminder;

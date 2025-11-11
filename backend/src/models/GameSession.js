@@ -1,6 +1,5 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const User = require('./User');
 
 const GameSession = sequelize.define('GameSession', {
     id: {
@@ -10,11 +9,7 @@ const GameSession = sequelize.define('GameSession', {
     },
     patientId: {
         type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-            model: User,
-            key: 'id'
-        }
+        allowNull: false
     },
     gameType: {
         type: DataTypes.ENUM('memory', 'math', 'sequencing'),
@@ -25,11 +20,11 @@ const GameSession = sequelize.define('GameSession', {
         allowNull: false
     },
     duration: {
-        type: DataTypes.INTEGER, // in seconds
+        type: DataTypes.INTEGER,
         allowNull: false
     },
     accuracy: {
-        type: DataTypes.FLOAT, // percentage
+        type: DataTypes.FLOAT,
         allowNull: true
     },
     playedAt: {
@@ -37,22 +32,11 @@ const GameSession = sequelize.define('GameSession', {
         defaultValue: DataTypes.NOW
     }
 }, {
-    tableName: 'game_sessions',
-    indexes: [
-        {
-            fields: ['patientId']
-        },
-        {
-            fields: ['gameType']
-        },
-        {
-            fields: ['playedAt']
-        }
-    ]
+    tableName: 'game_sessions'
 });
 
-// Relationships
-GameSession.belongsTo(User, { foreignKey: 'patientId', as: 'patient' });
-User.hasMany(GameSession, { foreignKey: 'patientId', as: 'gameSessions' });
+GameSession.associate = function(models) {
+    GameSession.belongsTo(models.User, { foreignKey: 'patientId', as: 'patient' });
+};
 
 module.exports = GameSession;

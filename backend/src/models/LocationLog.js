@@ -1,6 +1,5 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const User = require('./User');
 
 const LocationLog = sequelize.define('LocationLog', {
     id: {
@@ -10,11 +9,7 @@ const LocationLog = sequelize.define('LocationLog', {
     },
     patientId: {
         type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-            model: User,
-            key: 'id'
-        }
+        allowNull: false
     },
     latitude: {
         type: DataTypes.FLOAT,
@@ -25,7 +20,7 @@ const LocationLog = sequelize.define('LocationLog', {
         allowNull: false
     },
     accuracy: {
-        type: DataTypes.FLOAT, // GPS accuracy in meters
+        type: DataTypes.FLOAT,
         allowNull: true
     },
     timestamp: {
@@ -33,22 +28,11 @@ const LocationLog = sequelize.define('LocationLog', {
         defaultValue: DataTypes.NOW
     }
 }, {
-    tableName: 'location_logs',
-    indexes: [
-        {
-            fields: ['patientId']
-        },
-        {
-            fields: ['timestamp']
-        },
-        {
-            fields: ['patientId', 'timestamp']
-        }
-    ]
+    tableName: 'location_logs'
 });
 
-// Relationships
-LocationLog.belongsTo(User, { foreignKey: 'patientId', as: 'patient' });
-User.hasMany(LocationLog, { foreignKey: 'patientId', as: 'locationLogs' });
+LocationLog.associate = function(models) {
+    LocationLog.belongsTo(models.User, { foreignKey: 'patientId', as: 'patient' });
+};
 
 module.exports = LocationLog;

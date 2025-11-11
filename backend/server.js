@@ -2,8 +2,7 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
-const sequelize = require('./src/config/database');
-const User = require('./src/models/User');
+const { sequelize, User } = require('./src/models');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -16,7 +15,7 @@ app.use(express.json());
 app.get('/api/health', (req, res) => {
     res.json({
         success: true,
-        message: 'NeuroEase Backend is running!',
+        message: 'NeuroEase Backend is running',
         timestamp: new Date().toISOString(),
         database: 'PostgreSQL'
     });
@@ -25,26 +24,27 @@ app.get('/api/health', (req, res) => {
 // Initialize database and start server
 const startServer = async () => {
     try {
+        console.log('Testing database connection...');
+
         // Test database connection
         await sequelize.authenticate();
-        console.log(' PostgreSQL connection established successfully.');
+        console.log('PostgreSQL connection established successfully');
 
-        // Sync database tables
-        await User.syncTable();
+        // Sync database tables (creates missing tables)
+        console.log('Syncing database tables...');
+        await sequelize.sync({ force: false }); // Use { force: true } only in development to reset DB
+        console.log('Database tables synchronized');
 
         // Start server
         app.listen(PORT, () => {
-            console.log(` NeuroEase Backend running on port ${PORT}`);
-            console.log(` Health check: http://localhost:${PORT}/api/health`);
-            console.log(`  Database: ${process.env.DB_NAME}@${process.env.DB_HOST}`);
+            console.log(`NeuroEase Backend running on port ${PORT}`);
+            console.log(`Health check: http://localhost:${PORT}/api/health`);
+            console.log(`Database: ${process.env.DB_NAME}@${process.env.DB_HOST}`);
         });
     } catch (error) {
-        console.error(' Failed to start server:', error);
+        console.error('Failed to start server:', error.message);
         process.exit(1);
     }
 };
 
 startServer();
-
-// Routes
-app.use('/api/auth', require('./src/routes/authRoutes'));

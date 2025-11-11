@@ -86,3 +86,11 @@ module.exports = User;
 
 
 module.exports = User;
+
+User.associate = function(models) {
+    User.hasOne(models.Patient, { foreignKey: 'userId' });
+    User.hasMany(models.Reminder, { foreignKey: 'patientId', as: 'reminders' });
+    User.hasMany(models.GameSession, { foreignKey: 'patientId', as: 'gameSessions' });
+    User.hasMany(models.LocationLog, { foreignKey: 'patientId', as: 'locationLogs' });
+    User.hasMany(models.SafeZone, { foreignKey: 'patientId', as: 'safeZones' });
+};

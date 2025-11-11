@@ -1,6 +1,5 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const User = require('./User');
 
 const SafeZone = sequelize.define('SafeZone', {
     id: {
@@ -10,11 +9,7 @@ const SafeZone = sequelize.define('SafeZone', {
     },
     patientId: {
         type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-            model: User,
-            key: 'id'
-        }
+        allowNull: false
     },
     name: {
         type: DataTypes.STRING,
@@ -30,7 +25,7 @@ const SafeZone = sequelize.define('SafeZone', {
         allowNull: false
     },
     radius: {
-        type: DataTypes.INTEGER, // in meters
+        type: DataTypes.INTEGER,
         allowNull: false,
         defaultValue: 100
     },
@@ -39,19 +34,11 @@ const SafeZone = sequelize.define('SafeZone', {
         defaultValue: true
     }
 }, {
-    tableName: 'safe_zones',
-    indexes: [
-        {
-            fields: ['patientId']
-        },
-        {
-            fields: ['isActive']
-        }
-    ]
+    tableName: 'safe_zones'
 });
 
-// Relationships
-SafeZone.belongsTo(User, { foreignKey: 'patientId', as: 'patient' });
-User.hasMany(SafeZone, { foreignKey: 'patientId', as: 'safeZones' });
+SafeZone.associate = function(models) {
+    SafeZone.belongsTo(models.User, { foreignKey: 'patientId', as: 'patient' });
+};
 
 module.exports = SafeZone;

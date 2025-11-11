@@ -1,6 +1,5 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const User = require('./User');
 
 const Patient = sequelize.define('Patient', {
     id: {
@@ -10,11 +9,7 @@ const Patient = sequelize.define('Patient', {
     },
     userId: {
         type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-            model: User,
-            key: 'id'
-        }
+        allowNull: false
     },
     dateOfBirth: {
         type: DataTypes.DATE,
@@ -32,8 +27,8 @@ const Patient = sequelize.define('Patient', {
     tableName: 'patients'
 });
 
-// Define relationships
-Patient.belongsTo(User, { foreignKey: 'userId' });
-User.hasOne(Patient, { foreignKey: 'userId' });
+Patient.associate = function(models) {
+    Patient.belongsTo(models.User, { foreignKey: 'userId' });
+};
 
 module.exports = Patient;
