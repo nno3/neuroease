@@ -60,4 +60,29 @@ User.syncTable = async function() {
     }
 };
 
+const Patient = require('./Patient');
+const Reminder = require('./Reminder');
+const GameSession = require('./GameSession');
+const LocationLog = require('./LocationLog');
+const SafeZone = require('./SafeZone');
+
+// Caregiver-Patient relationship (Many-to-Many through a join table)
+User.belongsToMany(User, {
+    through: 'caregiver_patients',
+    as: 'patients',
+    foreignKey: 'caregiverId',
+    otherKey: 'patientId'
+});
+
+User.belongsToMany(User, {
+    through: 'caregiver_patients',
+    as: 'caregivers',
+    foreignKey: 'patientId',
+    otherKey: 'caregiverId'
+});
+
+module.exports = User;
+
+
+
 module.exports = User;
