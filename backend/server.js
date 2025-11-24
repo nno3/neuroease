@@ -13,6 +13,11 @@ app.use(morgan('combined'));
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
+
+// Routes
+const authRoutes = require('./src/routes/authRoutes.js')
+app.use('/api/auth', authRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
@@ -20,10 +25,26 @@ app.get('/api/health', (req, res) => {
         success: true,
         message: 'NeuroEase Backend is running',
         timestamp: new Date().toISOString(),
-        database: 'PostgreSQL'
+        database: 'PostgreSQL',
+        environment: process.env.NODE_ENV
+    });
+});
+// Handle 404
+app.use('*', (req, res) => {
+    res.status(404).json({
+        success: false,
+        message: 'API endpoint not found'
     });
 });
 
+// Error handling middleware
+app.use((error, req, res, next) => {
+    console.error('Unhandled error:', error);
+    res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+    });
+});
 // API request logging
 app.use(morgan('combined'));
 // Initialize database and start server

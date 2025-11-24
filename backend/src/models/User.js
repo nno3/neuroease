@@ -81,12 +81,6 @@ User.belongsToMany(User, {
     otherKey: 'caregiverId'
 });
 
-module.exports = User;
-
-
-
-module.exports = User;
-
 User.associate = function(models) {
     User.hasOne(models.Patient, { foreignKey: 'userId' });
     User.hasMany(models.Reminder, { foreignKey: 'patientId', as: 'reminders' });
@@ -94,3 +88,5 @@ User.associate = function(models) {
     User.hasMany(models.LocationLog, { foreignKey: 'patientId', as: 'locationLogs' });
     User.hasMany(models.SafeZone, { foreignKey: 'patientId', as: 'safeZones' });
 };
+
+module.exports = User;
