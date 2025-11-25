@@ -9,53 +9,98 @@ Regarding the use of this repository, once a feature (or part of it) is develope
 
 Please choose the structure of the contents of this repository that suits the needs of your project but do indicate in this file where the main software artefacts are located.
 
+## Quick Navigation
+
+### Main Software Artifacts
+- **Backend API**: [`/backend`](./backend) - Node.js/Express server, PostgreSQL database
+- **Caregiver Dashboard**: [`/caregiver-dashboard`](./caregiver-dashboard) - React web application
+- **Patient Application**: [`/patient-app`](./patient-app) - React PWA for elderly users
+- **Documentation**: [`/docs`](./docs) - Architecture diagrams, API docs, testing plans
+
+### Key Files
+- [`DoD.md`](./DoD.md) - Definition of Done criteria
+- [`PROJECTLOG.md`](./PROJECTLOG.md) - Weekly development log
+- [`FAQ.md`](./FAQ.md) - Frequently asked questions
+- [`README.md`](./README.md) - Quick Project overview and navigation
 
 
+### Getting Started
+1. **Backend Setup**: See [`docs/BackendSetUp.md`](./docs/BackendSetUp.md)
+2. **Caregiver Dashboard**: See [`docs/caregiverDashboard.md`](./docs/caregiverDashboard.md)
+3. **Patient App**: See [`docs/PatientApp.md`](./docs/PatientApp.md)
+
+---
 
 ## 1. Project Overview
-
 NeuroEase is a dementia care platform designed to support elderly users with cognitive impairment and their caregivers. The system provides:
 
-- A **backend API** built with Node.js, Express.js, PostgreSQL, and Sequelize ORM.
-- A **caregiver dashboard** (React web app) for managing patients and reminders.
-- A **patient-facing PWA** (React) focusing on accessibility and cognitive support.
-
+- A **backend API** built with Node.js, Express.js, PostgreSQL, and Sequelize ORM
+- A **caregiver dashboard** (React web app) for managing patients and reminders
+- A **patient-facing PWA** (React) focusing on accessibility and cognitive support
 
 ---
 
-## 2. Technology Stack
+## 2. Repository Structure
 
-### 2.1 Backend
+```
+/
+│
+├── backend/                    # Express.js API Server
+│   ├── src/
+│   │   ├── controllers/        # Business logic
+│   │   ├── models/            # Database schemas (Sequelize)
+│   │   ├── routes/            # API endpoints
+│   │   ├── middleware/        # Auth & validation
+│   │   └── config/            # Database configuration
+│   └── package.json
+│
+├── caregiver-dashboard/        # Caregiver Web App
+│   ├── src/
+│   │   ├── components/        # Reusable UI components
+│   │   ├── pages/            # Dashboard, Patients, Reminders
+│   │   ├── services/         # API calls
+│   │   └── hooks/            # Custom React hooks
+│   └── package.json
+│
+├── patient-app/               # Patient PWA
+│   ├── src/
+│   │   ├── components/       # Accessible UI components
+│   │   ├── pages/           # Home, Reminders, Profile
+│   │   ├── games/           # Cognitive exercises
+│   │   └── services/        # API communication
+│   └── package.json
+│
+└── docs/                      # Project Documentation
+    
+```
 
-- **Runtime:** Node.js
-- **Framework:** Express.js
-- **Database:** PostgreSQL
-- **ORM:** Sequelize
-- **Authentication:** JWT + bcrypt
-- **Configuration:** dotenv for environment variables
+---
 
-### 2.2 Frontend
+## 3. Technology Stack
 
+### Backend
+- **Runtime:** Node.js | **Framework:** Express.js
+- **Database:** PostgreSQL | **ORM:** Sequelize
+- **Auth:** JWT + bcrypt | **Config:** dotenv
+
+### Frontend
 - **Caregiver Dashboard:** React.js web application
-- **Patient Application:** React-based PWA (Progressive Web App)
+- **Patient App:** React PWA (Progressive Web App)
 - **State Management:** React Context API / Hooks
-- **Styling:** CSS / component library (TBC)
 
-### 2.3 Development Tools
-
-- **Version Control:** Git with GitFlow-style branching
-- **Package Management:** npm
-- **API Testing:** curl / Postman
+### Tools
+- **Version Control:** Git (GitFlow branching)
+- **Package Manager:** npm
+- **Testing:** curl / Postman
 - **Database GUI:** pgAdmin
-- **IDE:** Intellij IDEA
+- **IDE:** IntelliJ IDEA
+
 
 ---
 
-## 3. System Architecture
+## 4. System Architecture
 
-### 3.1 High-Level Architecture
-NeuroEase follows a **three-tier architecture**:
-
+### High-Level Overview
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │   Caregiver     │    │   Backend API    │    │   PostgreSQL    │
@@ -64,127 +109,28 @@ NeuroEase follows a **three-tier architecture**:
 └─────────────────┘    └──────────────────┘    └─────────────────┘
                               ▲
 ┌─────────────────┐           │
-│   Patient PWA   │           │
+│   Patient App   │           │
 │   (React PWA)   │───────────┘
 └─────────────────┘
 ```
 
-1. #### Presentation Layer
-- **Caregiver Dashboard**: React for patient management
-- **Patient PWA**: Mobile-optimized progressive web app
-- **Communication**: RESTful JSON APIs over HTTPS
+### Architecture Layers
+1. **Presentation Layer**: React dashboards and PWA with RESTful JSON APIs
+2. **Application Layer**: Express.js server with JWT auth, validation, and business logic
+3. **Data Layer**: PostgreSQL with Sequelize ORM, connection pooling, and ACID compliance
 
-2. #### Application Layer
-- **Express.js Server**: Handles business logic and API routing
-- **Authentication Middleware**: JWT validation and role-based access
-- **Data Validation**: Request payload validation and sanitization
-- **Error Handling**: Structured error responses and logging
-- **Implements** authentication, authorization, and business logic.
-
-3. #### Data Layer
-- **PostgreSQL**: Relational database with ACID compliance
-- **Sequelize ORM**: Database abstraction and migration management
-- **Connection Pooling**: Optimized database connections
-- **Data Integrity**: Foreign key constraints and transactions
-
-
-
-### 3.2 Key Architectural Decisions
-
-#### Security-First Design
-- **JWT-based authentication** with 7-day expiration
-- **Password hashing** using bcrypt with salt rounds = 10
-- **Role-based access control** (caregiver vs patient)
-- **CORS configuration** for controlled cross-origin requests
-
-#### Scalability Considerations
-- **Stateless API design** for horizontal scaling
-- **Database connection pooling** with configurable limits
-- **Environment-based configuration** for different deployments
-- **Modular service architecture** for maintainability
+### Key Design Decisions
+- **Security**: JWT authentication (7-day expiration), bcrypt password hashing, role-based access
+- **Scalability**: Stateless API design, database connection pooling, modular services
+- **Separation**: Three independent apps for different user needs and security isolation
 
 ---
 
-## 4. Project Structure Justification
+## 5. Development Workflow
 
-
-The project is divided into three distinct applications to enforce **separation of concerns** and provide **optimised user experiences**:
-
+### Branching Strategy (GitFlow)
 ```
-neuroease-project/
-├── backend/              #  Shared API Server
-├── caregiver-dashboard/  #  Management Interface  
-└── patient-app/          #  Simplified User Interface
-```
-
-1. **Different User Needs**: Caregivers need comprehensive management tools, while patients need simple, accessible interfaces
-2. **Security Isolation**: Prevents patients from accidentally accessing caregiver functionality
-3. **Performance Optimisation**: Each frontend can be optimised for its specific use case
-4. **Development Efficiency**: Teams can work on different components simultaneously
-
-### **Backend Structure (`/backend`)**
-
-```
-backend/
-├── src/
-│   ├── controllers/   #  Request handlers (business logic)
-│   ├── models/        #  Database models & schemas
-│   ├── routes/        #  API endpoint definitions
-│   ├── middleware/    #  Authentication & validation
-│   ├── services/      #  Business logic services
-│   └── config/        #  Configuration files
-```
-
-**Design Decisions:**
-- **MVC Architecture**: Follows Model-View-Controller pattern for maintainability
-- **Separation of Concerns**: Business logic (controllers) separated from data models
-- **Security First**: Middleware layer handles all authentication and validation
-- **Scalability**: Service layer allows for complex business logic without bloating controllers
-
-### **Caregiver Dashboard Structure (`/caregiver-dashboard`)**
-
-```
-caregiver-dashboard/
-├── src/
-│   ├── components/    #  Reusable UI components*
-│   ├── pages/         #  Full page components
-│   ├── services/      #  API communication layer
-│   └── hooks/         #  Custom React hooks
-```
-
-**Design Decisions:**
-- **Component-Based Architecture**: Reusable components reduce code duplication
-- **Page-Based Routing**: Clear navigation structure matching user workflows
-- **Service Abstraction**: Isolate API calls for easier testing and maintenance
-- **Custom Hooks**: Share stateful logic across components
-
-### **Patient App Structure (`/patient-app`)**
-
-```
-patient-app/
-├── src/
-│   ├── components/
-│   ├── pages/ 
-│   ├── games/         #  Cognitive games (specialised folder)
-│   └── services/
-```
-
-**Design Decisions:**
-- **Accessibility Focus**: Structure supports large touch targets and simple navigation
-- **Games Isolation**: Separate folder for cognitive games to emphasise their importance
-- **Progressive Web App (PWA)**: Enables mobile app-like experience without app store deployment
-- **Offline Capability**: Service workers for reminder viewing and games
-
-
----
-## 5. Branching Strategy Documentation
-
-
-
-The Git branching strategy follows **GitFlow** methodology:
-
-```
-main (production-ready)
+main (production)
 └── develop (integration)
     ├── feature/authentication
     ├── feature/backend-database
@@ -192,77 +138,58 @@ main (production-ready)
     └── feature/patient-reminder-interface
 ```
 
-### **Branch Purposes & Rationale**
+**Branch Usage:**
+- `main`: Production-ready code only (final submission)
+- `develop`: Integration branch for completed features
+- `feature/*`: Individual feature development in isolation
 
-#### **1. `main` Branch**
-- **Purpose**: Always contains deployable, production-ready code
-- **Rationale**: Represents the final submission state; only merged when features are complete and tested
-- **Usage**: Final project submission and demonstration
-
-#### **2. `develop` Branch**
-- **Purpose**: Integration branch for completed features
-- **Rationale**:
-  - Allows testing how different features work together
-  - Maintains a always-working version of the complete system
-  - Serves as the foundation for new feature branches
-- **Usage**: Regular merging from feature branches; pre-submission testing
-
-#### **3. Feature Branches**
-
-**`feature/authentication`**
-- **Scope**: All 3 components (backend + both frontends)
-- **Rationale**: Authentication is a cross-cutting concern affecting entire system
-- **Features**: User registration, login, JWT tokens, role-based access
-
-**`feature/backend-database`**
-- **Scope**: Backend only
-- **Rationale**: Database foundation must be established before building UI features
-- **Features**: PostgreSQL schema, data models, relationships
-
-**`feature/caregiver-patient-management`**
-- **Scope**: Backend + Caregiver Dashboard
-- **Rationale**: Caregiver-specific functionality doesn't affect patient experience
-- **Features**: Patient CRUD operations, caregiver-patient relationships
-
-**`feature/patient-reminder-interface`**
-- **Scope**: Backend + Patient App
-- **Rationale**: Patient-specific features can be developed independently
-- **Features**: Reminder display, completion tracking, patient UI
-
-### **Development Workflow Explanation**
-
-1. **Start with Foundation**: Authentication → Database → Then parallel development
-2. **Isolated Development**: Each feature branch is a safe workspace
-3. **Integration Testing**: Regular merging to `develop` ensures components work together
-4. **Quality Assurance**: Only tested, complete code reaches `main`
 
 ---
-## 6. Technical Decisions & Trade-offs
 
-### **Why PostgreSQL?**
-- **Structured Data**: Relational data (users, reminders, relationships) fits SQL better
-- **ACID Compliance**: Important for medication reminders and patient data
-- **University Experience**: Leverages database module knowledge
-- **Complex Queries**: Easier to implement reports and analytics
+## 6. Technical Justifications
 
-### **Why React for Both Frontends?**
-- **Skill Leverage**: Utilises existing React knowledge
-- **Code Reuse**: Shared components and patterns between applications
-- **Ecosystem**: Rich library support for accessibility and UI components
-- **Performance**: Virtual DOM efficient for both complex dashboards and simple interfaces
+**PostgreSQL**: Structured relational data, ACID compliance for medical data, complex query support
 
-### **Why Progressive Web App (PWA) for Patients?**
-- **Accessibility**: Works on any device with a browser
-- **Offline Functionality**: Critical for reliability with elderly users
-- **No App Store Barrier**: Easier deployment and updates
-- **Cost Effective**: No developer accounts or review processes
+**React (Both Frontends)**: Code reuse, rich accessibility libraries, efficient Virtual DOM
 
-### **Why Not Monolithic Structure?**
-- **Separation of Concerns**: Clear boundaries between system parts
-- **Independent Deployment**: Frontends can be updated independently
-- **Focused Development**: Work on one component without affecting others
-- **Testing Isolation**: Easier to test APIs and UIs separately
+**PWA for Patients**: Works on any device, offline functionality, no app store requirements
+
+**Separate Applications**: Clear boundaries between system parts, independent deployment, focused development, easier API and UI testing
 
 
+---
 
+## 7. Getting Started
+
+### Prerequisites
+- Node.js (v14+)
+- PostgreSQL (v12+)
+- npm
+
+### Quick Setup
+```bash
+# Clone repository
+git clone <repository-url>
+cd na429
+
+# Backend setup
+cd backend
+npm install
+# Configure .env file (see docs/BackendSetUp.md)
+npm start
+
+# Caregiver dashboard (new terminal)
+cd ../caregiver-dashboard
+npm install
+npm start
+
+# Patient app (new terminal)
+cd ../patient-app
+npm install
+npm start
+```
+
+**Detailed instructions**: See individual documentation files in `docs/` which I will implement once done with each part of this project
+
+---
 

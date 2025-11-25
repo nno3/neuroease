@@ -22,7 +22,6 @@
 ## Week 5 [w/c 27/10/2025]
 - Produced a Software Requirements Specification (SRS) taking supervisor's feedback into account, including Functional and Non-Functional Requirements using the MoSCoW method.
 - Defined user roles (Caregiver, Patient) and key use cases (reminder management, geofencing, activity monitoring, cognitive games).
-  
 - Added NeuroEase project folder structure supported by commit `dfb5986d` : 
   - Backend API with organised src folders
   - Caregiver Dashboard React application structure
@@ -32,7 +31,7 @@
 
 
 ## Week 6 [w/c 03/11/2025]
--  Set up the Git branching strategy for upcoming development:
+- Set up the Git branching strategy for upcoming development:
 - Created `develop` branch for integrated work.
 - Created feature branches: `feature/backend-database`, `feature/authentication`, `feature/caregiver-patient-management`, and `feature/patient-reminder-interface`. 
 - Finalised the database schema for NeuroEase and implemented all entity relationships in PostgreSQL/Sequelize. (Commits: `76fc857b`, `96321ad8` on branch `feature/authentication`.)
@@ -54,3 +53,12 @@
 ## Week 8 [w/c 17/11/2025] 
 - Produced and worked on interim report, asked for feedback from supervisor and made changes accordingly.
 - Completed and submitted interim report.
+- Started Developing user Authentication & JWT in `Authentication` branch
+
+## Week 9 [w/c 24/11/2025]
+- Set up the first Scrum board in GitLab in line with the interim report: created workflow labels (`To Do`, `In Progress`, `Testing`, `Review`, `Done`) and configured a single board using these as status columns.
+- Created the milestone **“Sprint 1 – Auth Backend (Phase 1)”** and added auth-related issues under it (`Develop User Authentication & JWT`, `Implement user registration/login`, `Add auth middleware & roles`), using the board to track their progress.
+- Implemented and thoroughly tested the user registration and login endpoints (`POST /api/auth/register`, `POST /api/auth/login`), including email validation, password complexity rules, email uniqueness checks, bcrypt password hashing, and JWT token generation. Verified behaviour using `curl` for successful logins, duplicate emails, invalid credentials, and confirmed hashed passwords are stored in the database.
+- Created a dedicated `DoD.md` file defining a global Definition of Done, and a more specific one for backend and frontend tasks and how issues should move across the Scrum board.
+- Contacted supervisor for any recommendations regarding the scrum board and adopted the suggested approach of keeping high-level user stories per feature (e.g. authentication) with technical GitLab issues underneath, while keeping the board and workflow simple.
+
