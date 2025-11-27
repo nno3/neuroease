@@ -73,9 +73,9 @@ const authController = {
 
     login: async (req, res) => {
         try {
-            const { email, password } = req.body;
+            const {email, password} = req.body;
 
-            const user = await User.findOne({ where: { email } });
+            const user = await User.findOne({where: {email}});
             if (!user) {
                 return res.status(401).json({
                     success: false,
@@ -92,9 +92,9 @@ const authController = {
             }
 
             const token = jwt.sign(
-                { userId: user.id, userType: user.userType },
+                {userId: user.id, userType: user.userType},
                 process.env.JWT_SECRET,
-                { expiresIn: '7d' }
+                {expiresIn: '7d'}
             );
 
             res.json({
@@ -118,7 +118,47 @@ const authController = {
                 error: process.env.NODE_ENV === 'development' ? error.message : undefined
             });
         }
+    },
+
+    getProfile: async (req, res) => {
+        try {
+            const user = await User.findByPk(req.user.userId, {
+                attributes: { exclude: ['password'] }
+            });
+
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'User not found'
+                });
+            }
+
+            res.json({
+                success: true,
+                data: { user }
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: 'Error fetching profile'
+            });
+        }
+    },
+
+    logout: async (req, res) => {
+        try {
+            res.json({
+                success: true,
+                message: 'Logout successful'
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: 'Logout failed'
+            });
+        }
     }
 };
+
 
 module.exports = authController;

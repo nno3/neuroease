@@ -16,7 +16,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 
 // Routes
-const authRoutes = require('./src/routes/authRoutes.js')
+const authRoutes = require('./src/routes/authRoutes')
 app.use('/api/auth', authRoutes);
 
 // Health check route
@@ -45,8 +45,7 @@ app.use((error, req, res, next) => {
         message: 'Internal server error'
     });
 });
-// API request logging
-app.use(morgan('combined'));
+
 // Initialize database and start server
 const startServer = async () => {
     try {
