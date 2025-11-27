@@ -1,6 +1,11 @@
-
-const yup = require('yup'); //
-
+// Import Yup for schema-based validation of request bodies
+/**Yup was adopted as a schema-based validation library to enforce consistent and robust
+ * input validation on the backend. Instead of scattering manual if checks throughout*/
+const yup = require('yup');
+/**
+ * Validation schema for user registration.
+ * Ensures email, password, name and userType all meet the expected format.
+ */
 const registerSchema = yup.object({
     email: yup.string().email('Please enter a valid email address').required('Email is required'),
     password: yup.string()
@@ -19,15 +24,26 @@ const registerSchema = yup.object({
         .required('User type is required')
 });
 
+/**
+ * Validation schema for user login.
+ * Only checks presence/format of email and password.
+ */
 const loginSchema = yup.object({
     email: yup.string().email().required(),
     password: yup.string().required()
 });
 
+/**
+ * Generic validation middleware factory.
+ * Takes a Yup schema and returns an Express middleware that:
+ *  - Validates req.body against the schema
+ *  - If valid, calls next()
+ *  - If invalid, returns 400 with a list of error messages
+ */
 const validate = (schema) => {
     return async (req, res, next) => {
         try {
-            await schema.validate(req.body, { abortEarly: false });
+            await schema.validate(req.body, { abortEarly: false });    // abortEarly: false => collect all validation errors, not just the first one
             next();
         } catch (error) {
             return res.status(400).json({
@@ -39,6 +55,7 @@ const validate = (schema) => {
     };
 };
 
+// Export concrete middlewares for registration and login routes
 module.exports = {
     validateRegister: validate(registerSchema),
     validateLogin: validate(loginSchema)
