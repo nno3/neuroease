@@ -58,7 +58,15 @@
 ## Week 9 [w/c 24/11/2025]
 - Set up the first Scrum board in GitLab in line with the interim report: created workflow labels (`To Do`, `In Progress`, `Testing`, `Review`, `Done`) and configured a single board using these as status columns.
 - Created the milestone **“Sprint 1 – Auth Backend (Phase 1)”** and added auth-related issues under it (`Develop User Authentication & JWT`, `Implement user registration/login`, `Add auth middleware & roles`), using the board to track their progress.
-- Implemented and thoroughly tested the user registration and login endpoints (`POST /api/auth/register`, `POST /api/auth/login`), including email validation, password complexity rules, email uniqueness checks, bcrypt password hashing, and JWT token generation. Verified behaviour using `curl` for successful logins, duplicate emails, invalid credentials, and confirmed hashed passwords are stored in the database.
+- Implemented and thoroughly tested the user registration and login endpoints (`POST /api/auth/register`, `POST /api/auth/login`), including email validation, password complexity rules, email uniqueness checks, bcrypt password hashing, and JWT token generation.
+Verified behaviour using `curl` for successful logins, duplicate emails, invalid credentials, and confirmed hashed passwords are stored in the database (Commit: `ceb14c8f`).
 - Created a dedicated `DoD.md` file defining a global Definition of Done, and a more specific one for backend and frontend tasks and how issues should move across the Scrum board.
 - Contacted supervisor for any recommendations regarding the scrum board and adopted the suggested approach of keeping high-level user stories per feature (e.g. authentication) with technical GitLab issues underneath, while keeping the board and workflow simple.
+- Extended authentication system with comprehensive middleware including JWT verification, role-based authorization, and Yup schema validation (Commit: `1bd3fc78`).
+- Implemented complete data ownership and access control (Commit: `b822c477`), Patients can ONLY access their own data, Caregivers can ONLY access assigned patients
+- Created patient assignment endpoint (POST /api/patients/assign)
+- Added protected patient details endpoint with ownership checks
+- Thoroughly tested complete auth system with curl commands verifying proper 403/404/409 error handling and access control enforcement.
+- Actively used GitLab issues for tracking, regularly updated progress with commit references and moved issues through workflow stages.
+- Completed Sprint 1 Auth Backend milestone with all authentication issues moved to "Done" after comprehensive testing.
 
