@@ -19,6 +19,9 @@ app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 const authRoutes = require('./src/routes/authRoutes')
 app.use('/api/auth', authRoutes);
 
+const patientRoutes = require('./src/routes/patientRoutes');
+app.use('/api/patients', patientRoutes);
+
 // Health check route
 app.get('/api/health', (req, res) => {
     res.json({
