@@ -28,23 +28,57 @@ const User = sequelize.define('User', {
         type: DataTypes.ENUM('caregiver', 'patient'),
         allowNull: false,
         field: 'user_type' // Maps to user_type column in database
+    },
+    isArchived: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+        field: 'isArchived'
+    },
+    archivedAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: 'archivedAt'
+    },
+    archiveReason: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    archiveNotes: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    archivedBy: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    unarchivedAt: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    unarchivedBy: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    unarchiveNotes: {
+        type: DataTypes.TEXT,
+        allowNull: true
     }
+
 }, {
     tableName: 'users',
-    hooks: {
+        hooks: {
         beforeCreate: async (user) => {
             if (user.password) {
                 user.password = await bcrypt.hash(user.password, 10);
             }
         },
-        beforeUpdate: async (user) => {
+            beforeUpdate: async (user) => {
             if (user.changed('password')) {
                 user.password = await bcrypt.hash(user.password, 10);
             }
         }
-    }
+    },
 });
-
 // Instance method to check password
 User.prototype.validatePassword = async function(password) {
     return await bcrypt.compare(password, this.password);
@@ -53,7 +87,7 @@ User.prototype.validatePassword = async function(password) {
 // Class method to sync table
 User.syncTable = async function() {
     try {
-        await this.sync({ force: false }); // Use { force: true } to drop and recreate
+        await sequelize.sync(); // Use { force: true } to drop and recreate
         console.log(' Users table synced successfully');
     } catch (error) {
         console.error(' Error syncing users table:', error);

@@ -61,7 +61,7 @@ const startServer = async () => {
 
         // Sync database tables (creates missing tables)
         console.log('Syncing database tables...');
-        await sequelize.sync({ force: false }); // Use { force: true } only in development to reset DB
+        await sequelize.sync({ alter: true }); // Updates schema without losing data
         console.log('Database tables synchronized');
 
         // Start server

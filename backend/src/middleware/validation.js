@@ -55,8 +55,29 @@ const validate = (schema) => {
     };
 };
 
+const patientRegistrationSchema = yup.object({
+    email: yup.string().email('Please enter a valid email address').required('Email is required'),
+    password: yup.string()
+        .min(8, 'Password must be at least 8 characters long')
+        .matches(
+            /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+            'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+        )
+        .required('Password is required'),
+    name: yup.string()
+        .min(2, 'Name must be at least 2 characters')
+        .max(50, 'Name cannot exceed 50 characters')
+        .required('Name is required'),
+    dateOfBirth: yup.date().nullable(),
+    emergencyContact: yup.string().max(20, 'Emergency contact too long'),
+    medicalConditions: yup.string().max(500, 'Medical conditions description too long')
+});
+
+const validatePatientRegistration = validate(patientRegistrationSchema);
+
 // Export concrete middlewares for registration and login routes
 module.exports = {
     validateRegister: validate(registerSchema),
-    validateLogin: validate(loginSchema)
+    validateLogin: validate(loginSchema),
+    validatePatientRegistration: validate(patientRegistrationSchema)
 };
