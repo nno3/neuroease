@@ -70,3 +70,40 @@ Verified behaviour using `curl` for successful logins, duplicate emails, invalid
 - Actively used GitLab issues for tracking, regularly updated progress with commit references and moved issues through workflow stages.
 - Completed Sprint 1 Auth Backend milestone with all authentication issues moved to "Done" after comprehensive testing.
 
+## Week 10 [w/c 01/12/2025]
+- Continued backend development in the `feature/patient-management` branch, focusing on implementing the full caregiver–patient workflow.
+- Implemented the complete **Patient Management API**, including:
+  - `POST /api/patients` – register new patients and create their profiles.
+  - `GET /api/patients` – list all active patients assigned to the caregiver.
+  - `GET /api/patients/:id` – view individual patient profiles with ownership checks.
+  - `PUT /api/patients/:id` – update patient details.
+  - `POST /api/patients/:id/archive` – soft-delete/archive patients with audit trail.
+  - `POST /api/patients/:id/unarchive` – restore archived patients.
+  - `GET /api/patients/archived` – filterable archived patient list.
+  - `GET /api/patients/archive-audit` – caregiver audit history of patient lifecycle events.
+- Added new database fields to support audit logging:
+  `archiveReason`, `archiveNotes`, `archivedBy`, `unarchivedAt`, `unarchivedBy`, `unarchiveNotes`.
+- Implemented strict **caregiver ownership enforcement** to ensure:
+  - Caregivers only access their assigned patients.
+  - Patients cannot access other patients’ data.
+  - Archived patients do not appear in active lists.
+- Added improved API error messages for empty states (e.g., “No active patients assigned”).
+- Completed extensive manual cURL testing for all patient management endpoints, including edge cases and error handling.
+- Discussed key architectural questions with supervisor and worked on the feedback provided
+
+## Week 11 [w/c 08/12/2025]
+- Updated API behaviour to display meaningful messages when patient lists are empty (active or archived).
+- Added additional sanitisation and safety checks to prevent malformed requests from causing internal errors.
+- Performed deep debugging and refinement of the archive/unarchive lifecycle to ensure:
+  - Archived patients disappear from active lists.
+  - Unarchived patients correctly reappear.
+  - Audit timestamps and metadata are consistently updated.
+- Cleaned up outdated database field references and fully aligned models/controllers with the new schema (`isArchived`, `archivedAt`, etc.).
+- Conducted comprehensive manual cURL tests covering:
+  - Registration, updates, archive, unarchive
+  - Ownership validation
+  - Audit log integrity
+  - Error formatting and state consistency
+- Finalised and stabilised the entire Patient Management API.
+- All major changes were captured in commit **`3a669f54`**
+
