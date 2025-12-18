@@ -92,18 +92,86 @@ Verified behaviour using `curl` for successful logins, duplicate emails, invalid
 - Discussed key architectural questions with supervisor and worked on the feedback provided
 
 ## Week 11 [w/c 08/12/2025]
-- Updated API behaviour to display meaningful messages when patient lists are empty (active or archived).
-- Added additional sanitisation and safety checks to prevent malformed requests from causing internal errors.
-- Performed deep debugging and refinement of the archive/unarchive lifecycle to ensure:
+Updated API behaviour to display meaningful messages when patient lists are empty (active or archived).
+Added additional sanitisation and safety checks to prevent malformed requests from causing internal errors.
+Performed deep debugging and refinement of the archive/unarchive lifecycle to ensure:
   - Archived patients disappear from active lists.
   - Unarchived patients correctly reappear.
   - Audit timestamps and metadata are consistently updated.
-- Cleaned up outdated database field references and fully aligned models/controllers with the new schema (`isArchived`, `archivedAt`, etc.).
-- Conducted comprehensive manual cURL tests covering:
+Cleaned up outdated database field references and fully aligned models/controllers with the new schema (`isArchived`, `archivedAt`, etc.).
+Conducted comprehensive manual cURL tests covering:
   - Registration, updates, archive, unarchive
   - Ownership validation
   - Audit log integrity
   - Error formatting and state consistency
-- Finalised and stabilised the entire Patient Management API.
-- All major changes were captured in commit **`3a669f54`**
+Finalised and stabilised the entire Patient Management API.
+All major changes were captured in commit **`3a669f54`**
+**Extensive Manual cURL Testing & Debugging Process**
+
+  - During the testing stage of the _Patient Management API_, I carried out extensive manual cURL tests to validate the behaviour of all endpoints, with a major focus on ensuring that the archive workflow (soft-delete) worked consistently across:
+
+  * `/api/patients/:id/archive`
+  * `/api/patients`
+  * `/api/patients/archived`
+  * `/api/patients/:id/unarchive`
+
+  **Initial Problem Identified**
+  
+  During early testing, archiving a patient produced a _success message_, but the patient still appeared in the active list:
+  
+  ```sh
+  curl -X POST http://localhost:5001/api/patients/2/archive \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "archiveReason": "discharged",
+      "notes": "Patient discharged after recovery"
+    }'
+  ```
+
+  Output:
+  ```
+  {"success":true,"message":"Patient archived successfully","data":{"patientId":2}}
+  ```
+  
+  However, immediately after:
+  
+  ```sh
+  curl -X GET http://localhost:5001/api/patients \
+    -H "Authorization: Bearer $TOKEN"
+  ```
+  The archived patient still appeared in the active patients list, showing:
+  
+  ```
+  "isArchived": false
+  ```
+  
+  Accessing the archived patients list also produced inconsistent errors such as:
+  
+  ```
+  {"success":false,"message":"Access denied. Patient not assigned to you."}
+  ```
+  
+  and later:
+  
+  ```
+  {"success":false,"message":"Error fetching archived patients"}
+  ```
+  
+  **Root Causes Identified Over Several Days of Debugging**
+  
+  Through iterative testing and console logging, the following bugs were identified and fixed:
+  
+  * Missing `archiveReason`, `archivedBy`, and related audit fields in the database schema
+    * Sequelize model not including archive-related fields correctly
+    * Incorrect validation behaviour when no archived patients existed
+    * Incorrect logic in fetching archived vs active patient lists
+    * Caregiver ownership checks firing incorrectly and blocking access
+    * Archived patients not being excluded properly in the "active" `/api/patients` query
+    * Error responses too generic when lists were empty (now improved)
+  
+  **Final Working Behaviour**
+  
+  After multiple revisions, the archiving system now works reliably and consistently.
+  Output now correctly displays archived patients or shows a meaningful message
 
