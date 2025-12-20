@@ -175,3 +175,40 @@ All major changes were captured in commit **`3a669f54`**
   After multiple revisions, the archiving system now works reliably and consistently.
   Output now correctly displays archived patients or shows a meaningful message
 
+
+Here is your **Week 12 project log entry**, written professionally and matching the style of your previous weeks.
+You can copy/paste directly into your `PROJECTLOG.md`.
+
+---
+
+## Week 12 [w/c 16/12/2025] – Reminder Management API Completed
+
+- Began development of the **Reminder Management API** on the dedicated branch `feature/reminder-management-api`, following the same architecture and coding practices used for the patient management system.
+
+- Implemented all core backend reminder features (Commit: `ac38f419`), including:
+  - `POST /api/reminders` – Create a reminder
+  - `GET /api/reminders/patient/:patientId` – Retrieve all reminders for a specific patient
+  - `PUT /api/reminders/:id` – Update reminder attributes
+  - `DELETE /api/reminders/:id` – Delete an existing reminder
+- Added full Yup validation schemas to ensure strict input validation for reminder creation and updates (title, message, reminderType, scheduledTime, recurrence).
+- Integrated ownership enforcement into all endpoints:
+- Caregivers may only manage reminders for patients assigned to them.
+- Patients can only access or modify their own reminders.
+- Unauthorized access produces correct 403 responses.
+- Updated Sequelize models and associations to incorporate reminder relationships.
+- Debugged and resolved critical errors related to:
+  - Validation middleware export/import issues
+  - Route-level middleware setup
+  - Sequelize association conflicts caused by duplicate `.hasMany()` declarations
+  - Environment variable issues after recloning the repository
+- Carried out extensive end-to-end manual cURL testing for all reminder routes:
+  - Successful authentication and token extraction
+  - Reminder creation for valid assigned patients
+  - Correct rejection of unauthorized attempts
+  - Retrieval of patient reminders with accurate filtering
+  - Full update and delete flows
+  - Multiple reminder creation scenarios (medication, appointment, general)
+  - Validation of recurrence and scheduled time handling
+- Confirmed all endpoints function correctly with proper validation, persistence, and security meeting the API requirements defined in the initial system architecture.
+- merged the branch into developed as it was fully functioning and passed all necessary requirements supported by commit `ac38f419`.
+
