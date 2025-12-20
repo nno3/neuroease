@@ -23,6 +23,9 @@ app.use('/api/auth', authRoutes);
 const patientRoutes = require('./src/routes/patientRoutes');
 app.use('/api/patients', patientRoutes);
 
+const reminderRoutes = require('./src/routes/reminderRoutes');
+app.use('/api/reminders', reminderRoutes);
+
 // Health check route
 app.get('/api/health', (req, res) => {
     res.json({

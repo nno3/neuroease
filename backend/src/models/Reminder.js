@@ -40,8 +40,4 @@ const Reminder = sequelize.define('Reminder', {
     tableName: 'reminders'
 });
 
-Reminder.associate = function(models) {
-    Reminder.belongsTo(models.User, { foreignKey: 'patientId', as: 'patient' });
-};
-
 module.exports = Reminder;

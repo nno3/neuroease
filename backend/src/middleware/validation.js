@@ -73,11 +73,22 @@ const patientRegistrationSchema = yup.object({
     medicalConditions: yup.string().max(500, 'Medical conditions description too long')
 });
 
-const validatePatientRegistration = validate(patientRegistrationSchema);
+// Reminder Validation
+const reminderSchema = yup.object({
+    patientId: yup.number().required('Patient ID is required'),
+    title: yup.string().required('Title is required'),
+    message: yup.string().required('Message is required'),
+    reminderType: yup.string().oneOf(['medication', 'appointment', 'general']).required('Reminder type is required'),
+    scheduledTime: yup.date().required('Scheduled time is required'),
+    recurrence: yup.string().oneOf(['once', 'daily', 'weekly']).default('once')
+});
+
 
 // Export concrete middlewares for registration and login routes
 module.exports = {
     validateRegister: validate(registerSchema),
     validateLogin: validate(loginSchema),
-    validatePatientRegistration: validate(patientRegistrationSchema)
+    validatePatientRegistration: validate(patientRegistrationSchema),
+    validateReminder: validate(reminderSchema)
+
 };
