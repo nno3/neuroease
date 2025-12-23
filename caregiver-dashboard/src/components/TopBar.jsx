@@ -1,6 +1,18 @@
 import './TopBar.css';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const TopBar = ({ title = 'Dashboard Overview', onPrimaryAction }) => {
+    const { user, logout } = useAuth();
+    const navigate = useNavigate();
+
+    const handleLogout = () => {
+        if (window.confirm('Are you sure you want to logout?')) {
+            logout();
+            navigate('/login');
+        }
+    };
+
     return (
         <header className="topbar">
             <div className="topbar-left">
@@ -8,13 +20,11 @@ const TopBar = ({ title = 'Dashboard Overview', onPrimaryAction }) => {
             </div>
 
             <div className="topbar-right">
-                <button className="primary-btn" onClick={onPrimaryAction}>
-                    + Add Patient
-                </button>
 
-                <div className="user-info">
+
+                <div className="user-info" style={{ cursor: 'pointer' }} onClick={handleLogout}>
                     <div className="avatar">SJ</div>
-                    <span className="username">Dr. Sarah Johnson</span>
+                    <span className="username">{user?.name || 'Dr. Sarah Johnson'}</span>
                 </div>
             </div>
         </header>

@@ -1,16 +1,54 @@
-const API_BASE = 'http://localhost:5001/api';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001/api';
 
 export async function apiRequest(endpoint, options = {}) {
     const token = localStorage.getItem('token');
 
-    const res = await fetch(`${API_BASE}${endpoint}`, {
+    // For development - add mock token if none exists
+    let authToken = token;
+    if (!authToken && process.env.NODE_ENV === 'development') {
+        console.warn('No token found, using mock token for development');
+        // You might want to add a mock token here for development
+        // authToken = 'mock-token-for-dev';
+    }
+
+    const response = await fetch(`${API_BASE}${endpoint}`, {
         ...options,
         headers: {
             'Content-Type': 'application/json',
-            ...(token && { Authorization: `Bearer ${token}` }),
+            ...(authToken && { Authorization: `Bearer ${authToken}` }),
             ...options.headers
         }
     });
 
-    return res.json();
+    // Check if response is OK
+    if (!response.ok) {
+        const errorText = await response.text();
+        let errorData;
+        try {
+            errorData = JSON.parse(errorText);
+        } catch {
+            errorData = { message: errorText || 'Request failed' };
+        }
+
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    // Try to parse JSON, but handle non-JSON responses
+    try {
+        return await response.json();
+    } catch (error) {
+        console.error('Failed to parse JSON response:', error);
+        throw new Error('Invalid JSON response from server');
+    }
 }
+
+// Helper for different HTTP methods
+export const api = {
+    get: (endpoint, options = {}) => apiRequest(endpoint, { ...options, method: 'GET' }),
+    post: (endpoint, data, options = {}) =>
+        apiRequest(endpoint, { ...options, method: 'POST', body: JSON.stringify(data) }),
+    put: (endpoint, data, options = {}) =>
+        apiRequest(endpoint, { ...options, method: 'PUT', body: JSON.stringify(data) }),
+    delete: (endpoint, options = {}) =>
+        apiRequest(endpoint, { ...options, method: 'DELETE' }),
+};
