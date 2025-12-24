@@ -16,21 +16,9 @@ const Register = () => {
     const handleRegister = async (e) => {
         e.preventDefault();
 
-        // Validation
+        // Only basic UX validation - backend is the source of truth
         if (password !== confirmPassword) {
             setError('Passwords do not match');
-            return;
-        }
-
-        if (password.length < 8) {
-            setError('Password must be at least 8 characters');
-            return;
-        }
-
-        // Password strength validation (uppercase, lowercase, number)
-        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
-        if (!passwordRegex.test(password)) {
-            setError('Password must contain at least one uppercase letter, one lowercase letter, and one number');
             return;
         }
 
@@ -69,7 +57,11 @@ const Register = () => {
                     navigate('/login');
                 }, 2000);
             } else {
-                setError(data.message || data.errors?.[0] || 'Registration failed. Please try again.');
+                // Display backend validation errors
+                const errorMessage = data.errors
+                    ? data.errors.join(', ')  // Join all validation errors
+                    : data.message || 'Registration failed. Please try again.';
+                setError(errorMessage);
             }
         } catch (error) {
             console.error('Registration error:', error);
@@ -90,8 +82,8 @@ const Register = () => {
             <div style={{
                 background: 'white',
                 padding: '40px',
-                marginTop: '40px',
-                marginBotton: '40px',
+                marginTop: '15px',
+                marginBottom: '15px',
                 borderRadius: '12px',
                 boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
                 width: '100%',
@@ -157,7 +149,6 @@ const Register = () => {
                             }}
                         />
                     </div>
-
                     <div style={{ marginBottom: '16px' }}>
                         <label style={{
                             display: 'block',
@@ -208,23 +199,15 @@ const Register = () => {
                                 borderRadius: '6px',
                                 fontSize: '14px',
                                 transition: 'border 0.2s'
-                            }}
-                        />
+                            }} />
+                            {/* Helpful hints (not validation) */}
                         <div style={{
                             marginTop: '6px',
                             fontSize: '12px',
                             color: '#64748b',
-                            padding: '8px',
-                            background: '#f8fafc',
-                            borderRadius: '4px'
-                        }}>
-                            <p style={{ margin: '0 0 4px 0' }}>Password must:</p>
-                            <ul style={{ margin: 0, paddingLeft: '16px' }}>
-                                <li>Be at least 8 characters long</li>
-                                <li>Contain at least one uppercase letter</li>
-                                <li>Contain at least one lowercase letter</li>
-                                <li>Contain at least one number</li>
-                            </ul>
+                            fontStyle: 'italic'
+                        }} >
+                            Hint: Password should be at least 8 characters with uppercase, lowercase, and a number
                         </div>
                     </div>
 
@@ -307,13 +290,7 @@ const Register = () => {
                             cursor: loading ? 'not-allowed' : 'pointer',
                             opacity: loading ? 0.7 : 1,
                             transition: 'all 0.2s',
-                            marginBottom: '16px'
-                        }}
-                        onMouseOver={(e) => {
-                            if (!loading) e.target.style.opacity = '0.9';
-                        }}
-                        onMouseOut={(e) => {
-                            if (!loading) e.target.style.opacity = '1';
+
                         }}
                     >
                         {loading ? 'Registering...' : 'Register as Caregiver'}
@@ -332,7 +309,7 @@ const Register = () => {
                         to="/login"
                         style={{
                             display: 'inline-block',
-                            padding: '10px 24px',
+                            padding: '10px 14px',
                             background: '#f1f5f9',
                             color: '#475569',
                             border: '1px solid #e2e8f0',
@@ -343,32 +320,9 @@ const Register = () => {
                             cursor: 'pointer',
                             transition: 'all 0.2s'
                         }}
-                        onMouseOver={(e) => {
-                            e.target.style.background = '#e2e8f0';
-                        }}
-                        onMouseOut={(e) => {
-                            e.target.style.background = '#f1f5f9';
-                        }}
                     >
                         Back to Login
                     </Link>
-                </div>
-
-                <div style={{
-                    marginTop: '24px',
-                    padding: '12px',
-                    background: '#fffbeb',
-                    borderRadius: '6px',
-                    border: '1px solid #fde68a'
-                }}>
-                    <p style={{
-                        margin: 0,
-                        fontSize: '12px',
-                        color: '#92400e',
-                        lineHeight: '1.4'
-                    }}>
-                        <strong>Note:</strong> This registration uses actual backend API. Make sure backend is running on http://localhost:5001
-                    </p>
                 </div>
             </div>
         </div>
