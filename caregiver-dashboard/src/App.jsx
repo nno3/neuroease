@@ -1,34 +1,37 @@
-import { Routes, Route } from 'react-router-dom';
+import {Routes, Route, Navigate} from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Patients from './pages/Patients';
 import Reminders from './pages/Reminders';
-import PatientDetail from './pages/PatientDetail';
 
 function App() {
     return (
-        <Routes>
-            <Route path="/login" element={<Login />} />
+        <AuthProvider>
+            <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
 
-            <Route
-                path="/"
-                element={
+                {/* Protected routes */}
+                <Route path="/" element={
                     <ProtectedRoute>
                         <Layout />
                     </ProtectedRoute>
-                }
-            >
-                <Route index element={<Dashboard />} />
-                <Route path="patients" element={<Patients />} />
-                <Route path="patients/:id" element={<PatientDetail />} />
-                <Route path="reminders" element={<Reminders />} />
-                <Route path="activity" element={<div>Activity</div>} />
-                <Route path="location" element={<div>Location</div>} />
-            </Route>
-        </Routes>
+                }>
+                    <Route index element={<Dashboard />} />
+                    <Route path="patients" element={<Patients />} />
+                    <Route path="reminders" element={<Reminders />} />
+                    <Route path="activity" element={<div>Activity Page</div>} />
+                    <Route path="location" element={<div>Location Page</div>} />
+                </Route>
+
+                {/* Catch all - redirect to home */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+        </AuthProvider>
     );
 }
-
 export default App;

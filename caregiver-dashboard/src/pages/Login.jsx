@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Login = () => {
     const { login } = useAuth();
     const navigate = useNavigate();
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -16,12 +17,11 @@ const Login = () => {
         setError('');
 
         try {
-            // Pass email and password to login function
             const result = await login(email, password);
             if (result && result.success) {
                 navigate('/');
             } else {
-                setError('Login failed. Please check your credentials.');
+                setError(result?.error || 'Login failed. Please check your credentials.');
             }
         } catch (error) {
             console.error('Login failed:', error);
@@ -36,8 +36,8 @@ const Login = () => {
         setError('');
 
         try {
-            // Use mock credentials for quick login
-            const result = await login('caregiver@neuroease.com', 'password123');
+            // Call login without credentials for quick login
+            const result = await login();
             if (result && result.success) {
                 navigate('/');
             } else {
@@ -66,7 +66,12 @@ const Login = () => {
                 width: '100%',
                 maxWidth: '400px'
             }}>
-                <h1 style={{ marginBottom: '24px', color: '#1e293b' }}>NeuroEase Login</h1>
+                <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                    <h1 style={{ marginBottom: '8px', color: '#1e293b' }}>NeuroEase</h1>
+                    <p style={{ color: '#64748b', fontSize: '14px' }}>
+                        Caregiver Dashboard Login
+                    </p>
+                </div>
 
                 {error && (
                     <div style={{
@@ -87,7 +92,8 @@ const Login = () => {
                             display: 'block',
                             marginBottom: '8px',
                             color: '#475569',
-                            fontWeight: '500'
+                            fontWeight: '500',
+                            fontSize: '14px'
                         }}>
                             Email
                         </label>
@@ -112,7 +118,8 @@ const Login = () => {
                             display: 'block',
                             marginBottom: '8px',
                             color: '#475569',
-                            fontWeight: '500'
+                            fontWeight: '500',
+                            fontSize: '14px'
                         }}>
                             Password
                         </label>
@@ -145,15 +152,19 @@ const Login = () => {
                             fontSize: '16px',
                             fontWeight: '500',
                             cursor: loading ? 'not-allowed' : 'pointer',
-                            opacity: loading ? 0.7 : 1
+                            opacity: loading ? 0.7 : 1,
+                            transition: 'all 0.2s',
+                            marginBottom: '16px'
                         }}
                     >
                         {loading ? 'Logging in...' : 'Login'}
                     </button>
                 </form>
 
-                <div style={{ textAlign: 'center' }}>
-                    <p style={{ color: '#64748b', marginBottom: '12px' }}>For development testing:</p>
+                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                    <p style={{ color: '#64748b', marginBottom: '12px', fontSize: '14px' }}>
+                        For development testing:
+                    </p>
                     <button
                         onClick={handleQuickLogin}
                         disabled={loading}
@@ -164,11 +175,47 @@ const Login = () => {
                             border: '1px solid #e2e8f0',
                             borderRadius: '6px',
                             cursor: loading ? 'not-allowed' : 'pointer',
-                            opacity: loading ? 0.7 : 1
+                            opacity: loading ? 0.7 : 1,
+                            fontSize: '14px',
+                            transition: 'all 0.2s'
                         }}
                     >
                         {loading ? 'Logging in...' : 'Quick Login as Caregiver'}
                     </button>
+                </div>
+
+                <div style={{
+                    textAlign: 'center',
+                    paddingTop: '24px',
+                    borderTop: '1px solid #e2e8f0'
+                }}>
+                    <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '8px' }}>
+                        Don't have an account?
+                    </p>
+                    <Link
+                        to="/register"
+                        style={{
+                            display: 'inline-block',
+                            padding: '10px 24px',
+                            background: '#f1f5f9',
+                            color: '#475569',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            textDecoration: 'none',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                        }}
+                        onMouseOver={(e) => {
+                            e.target.style.background = '#e2e8f0';
+                        }}
+                        onMouseOut={(e) => {
+                            e.target.style.background = '#f1f5f9';
+                        }}
+                    >
+                        Register as Caregiver
+                    </Link>
                 </div>
             </div>
         </div>
