@@ -181,7 +181,7 @@ You can copy/paste directly into your `PROJECTLOG.md`.
 
 ---
 
-## Week 12 [w/c 16/12/2025] – Reminder Management API Completed
+## Week 12 [w/c 15/12/2025] 
 
 - Began development of the **Reminder Management API** on the dedicated branch `feature/reminder-management-api`, following the same architecture and coding practices used for the patient management system.
 
@@ -212,3 +212,41 @@ You can copy/paste directly into your `PROJECTLOG.md`.
 - Confirmed all endpoints function correctly with proper validation, persistence, and security meeting the API requirements defined in the initial system architecture.
 - merged the branch into developed as it was fully functioning and passed all necessary requirements supported by commit `ac38f419`.
 
+## Week 13 [w/c 22/12/2025] 
+
+Due to delays carried over from previous weeks, Sprint 3 required more extensive work during this period to meet the project schedule and bring development back on track. In particular, the backend archiving/retention functionality took longer than expected, which slowed overall progress and reduced the time available for the caregiver dashboard sprint. To recover the timeline, additional development effort was allocated this week to complete Sprint 3 deliverables and ensure alignment with the planned schedule.
+
+- Sprint recovery and completion approach
+  - Reviewed outstanding Sprint 3 issues to identify incomplete tasks and areas requiring refinement before review.
+  - Prioritised delivery of a functional caregiver dashboard skeleton and authentication flow to ensure the system remains implementation-ready for the next phase.
+
+- Caregiver dashboard skeleton finalisation (Issue #6)
+  - Completed the remaining tasks required to finalise the caregiver dashboard React application foundation.
+  - Ensured authentication state handling and protected routing were stable and suitable for continued feature development.
+  - Finalised Sprint 3 foundation work:
+    - `f5e68105` added and completed the missing tasks of Sprint 3 (Issue #6)
+  - Performed manual UI verification testing, documented that testing passed, and progressed the issue towards review.
+
+- Dashboard KPI / overview section delivery and sign-off (Issue #7)
+  - Implemented and validated the dashboard KPI/overview section, ensuring design-system consistency and reliable rendering.
+  - Confirmed no visible UI issues or major errors after testing; posted evidence and moved the issue to review.
+  - Supporting implementation commit:
+    - `e7dbe8cd` added dashboard mock stats in dashboard page
+
+- Caregiver login and registration UI with backend integration (Issue #8)
+  - Implemented dedicated authentication pages with backend integration to support realistic user onboarding and login behaviour:
+    - Created a dedicated **Register** page with form validation aligned to backend requirements.
+    - Created a **Login** page with error handling and a quick login fallback to support development testing.
+    - Added/extended `AuthContext` to support both real API authentication and a development mock login flow.
+    - Implemented password strength validation (minimum 8 characters, uppercase, lowercase, and number).
+    - Added clear success and error feedback based on backend responses.
+    - Ensured UI styling remains consistent with the established design system.
+  - Delivered through the feature branch implementation commit:
+    - `cabc728f` implemented separate login and registration pages with backend integration
+
+- Added backend documentation updates to support maintainability and academic reporting:
+  - `90289569` added backend documentations to main branch
+- Merged the completed Sprint 3 feature branch into `develop` to consolidate work and establish a stable baseline for the next sprint:
+   - `18c23376` merge branch `feature/caregiver-dashboard-skeleton` into `develop`
+  - This merge ensured the `develop` branch contains the completed dashboard skeleton, KPI overview section, authentication UI, and the supporting context/routing logic required for subsequent development.
+- Sprint 3 is complete, has passed manual UI-level testing, and has been merged into `develop`. Following the earlier slowdown caused by the longer-than-expected archiving/retention implementation, progress is now back on track and aligned with the intended schedule.

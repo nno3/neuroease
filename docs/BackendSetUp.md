@@ -321,7 +321,7 @@ Deletes a reminder by reminder ID (ownership enforced).
 
 ### 9.1 Why archiving is used instead of deletion
 
-In UK health and care contexts, patient information often needs to be retained for governance, clinical accountability, and continuity. At the same time, the UK GDPR storage limitation principle requires that personal data is kept **no longer than necessary** for its purpose, while allowing longer storage where justified (e.g., for archiving purposes) under appropriate safeguards [1]. NHS guidance also indicates that many health and care records are generally retained for extended periods (commonly around eight years after last treatment, depending on record type and context) [2].
+In UK health and care contexts, patient information often needs to be retained for governance, clinical accountability, and continuity [3]. At the same time, the UK GDPR storage limitation principle requires that personal data is kept **no longer than necessary** for its purpose, while allowing longer storage where justified (e.g., for archiving purposes) under appropriate safeguards [1]. NHS guidance also indicates that many health and care records are generally retained for extended periods (commonly around eight years after last treatment, depending on record type and context) [2].
 
 For NeuroEase, these constraints shaped the backend design: instead of deleting patient accounts and losing traceability, the system supports a controlled archive lifecycle.
 
