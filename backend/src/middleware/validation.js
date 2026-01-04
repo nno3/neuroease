@@ -1,18 +1,23 @@
-// Import Yup for schema-based validation of request bodies
-/**Yup was adopted as a schema-based validation library to enforce consistent and robust
- * input validation on the backend. Instead of scattering manual if checks throughout*/
 const yup = require('yup');
 /**
  * Validation schema for user registration.
  * Ensures email, password, name and userType all meet the expected format.
  */
+const customEmailValidator = yup.string()
+    .test('is-email', 'Please enter a valid email address', (value) => {
+        if (!value) return false;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(value);
+    })
+    .required('Email is required');
+
 const registerSchema = yup.object({
-    email: yup.string().email('Please enter a valid email address').required('Email is required'),
+    email: customEmailValidator,
     password: yup.string()
         .min(8, 'Password must be at least 8 characters long')
         .matches(
-            /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-            'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+            /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
+            'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)'
         )
         .required('Password is required'),
     name: yup.string()
@@ -24,44 +29,67 @@ const registerSchema = yup.object({
         .required('User type is required')
 });
 
-/**
- * Validation schema for user login.
- * Only checks presence/format of email and password.
- */
 const loginSchema = yup.object({
-    email: yup.string().email().required(),
-    password: yup.string().required()
+    email: customEmailValidator,
+    password: yup.string().required('Password is required')
 });
 
-/**
- * Generic validation middleware factory.
- * Takes a Yup schema and returns an Express middleware that:
- *  - Validates req.body against the schema
- *  - If valid, calls next()
- *  - If invalid, returns 400 with a list of error messages
- */
 const validate = (schema) => {
     return async (req, res, next) => {
         try {
-            await schema.validate(req.body, { abortEarly: false });    // abortEarly: false => collect all validation errors, not just the first one
+            await schema.validate(req.body, {
+                abortEarly: false,
+                stripUnknown: true
+            });
             next();
         } catch (error) {
+            console.log('Yup validation error details:', {
+                message: error.message,
+                errors: error.errors,
+                inner: error.inner
+            });
+
+            let errorMessages = [];
+
+            // Check if error has inner errors (Yup's structure)
+            if (error.inner && error.inner.length > 0) {
+                errorMessages = error.inner.map(err => {
+                    // Extract the custom message if available
+                    return err.message || err.errors?.[0] || 'Validation failed';
+                });
+            } else if (error.errors) {
+                errorMessages = error.errors;
+            } else {
+                errorMessages = [error.message];
+            }
+
+            // Clean up any remaining Yup default messages
+            const cleanedErrors = errorMessages.map(msg => {
+                if (msg.includes('isEmail') || msg.includes('email must be a valid email')) {
+                    return 'Please enter a valid email address';
+                }
+                if (msg.includes('password must match')) {
+                    return 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)';
+                }
+                return msg;
+            });
+
             return res.status(400).json({
                 success: false,
                 message: 'Validation failed',
-                errors: error.errors
+                errors: cleanedErrors
             });
         }
     };
 };
 
 const patientRegistrationSchema = yup.object({
-    email: yup.string().email('Please enter a valid email address').required('Email is required'),
+    email: customEmailValidator,
     password: yup.string()
         .min(8, 'Password must be at least 8 characters long')
         .matches(
-            /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-            'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+            /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
+            'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)'
         )
         .required('Password is required'),
     name: yup.string()
@@ -73,22 +101,22 @@ const patientRegistrationSchema = yup.object({
     medicalConditions: yup.string().max(500, 'Medical conditions description too long')
 });
 
-// Reminder Validation
 const reminderSchema = yup.object({
     patientId: yup.number().required('Patient ID is required'),
     title: yup.string().required('Title is required'),
     message: yup.string().required('Message is required'),
-    reminderType: yup.string().oneOf(['medication', 'appointment', 'general']).required('Reminder type is required'),
+    reminderType: yup.string()
+        .oneOf(['medication', 'appointment', 'general'], 'Reminder type must be medication, appointment, or general')
+        .required('Reminder type is required'),
     scheduledTime: yup.date().required('Scheduled time is required'),
-    recurrence: yup.string().oneOf(['once', 'daily', 'weekly']).default('once')
+    recurrence: yup.string()
+        .oneOf(['once', 'daily', 'weekly'], 'Recurrence must be once, daily, or weekly')
+        .default('once')
 });
 
-
-// Export concrete middlewares for registration and login routes
 module.exports = {
     validateRegister: validate(registerSchema),
     validateLogin: validate(loginSchema),
     validatePatientRegistration: validate(patientRegistrationSchema),
     validateReminder: validate(reminderSchema)
-
 };

@@ -29,13 +29,14 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (email, password) => {
         try {
-            // Check if we're using quick login (no credentials provided)
+            // Check if we're using quick login
             if (!email && !password) {
-                // Quick login for development
                 return quickLogin();
             }
 
-            // Real API login
+            console.log('Attempting login with:', { email: email.substring(0, 10) + '...' });
+
+            // API login
             const response = await fetch('http://localhost:5001/api/auth/login', {
                 method: 'POST',
                 headers: {
@@ -48,6 +49,11 @@ export const AuthProvider = ({ children }) => {
             });
 
             const data = await response.json();
+            console.log('Login response:', {
+                status: response.status,
+                ok: response.ok,
+                data: data
+            });
 
             if (response.ok && data.success) {
                 // Store user data and token
@@ -60,9 +66,16 @@ export const AuthProvider = ({ children }) => {
 
                 return { success: true };
             } else {
+                console.log('Login failed data:', {
+                    message: data.message,
+                    errors: data.errors,
+                    fullData: data
+                });
+                // Pass through backend errors
                 return {
                     success: false,
-                    error: data.message || 'Login failed'
+                    error: data.errors?.[0] || data.message || 'Login failed. Please check your credentials.',
+                    errors: data.errors || []
                 };
             }
         } catch (error) {

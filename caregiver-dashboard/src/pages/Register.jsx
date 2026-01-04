@@ -16,7 +16,7 @@ const Register = () => {
     const handleRegister = async (e) => {
         e.preventDefault();
 
-        // Only basic UX validation - backend is the source of truth
+        // Only basic UX validation - backend is the source
         if (password !== confirmPassword) {
             setError('Passwords do not match');
             return;
@@ -58,8 +58,8 @@ const Register = () => {
                 }, 2000);
             } else {
                 // Display backend validation errors
-                const errorMessage = data.errors
-                    ? data.errors.join(', ')  // Join all validation errors
+                const errorMessage = data.errors && data.errors.length > 0
+                    ? data.errors[0]  // Show first specific error
                     : data.message || 'Registration failed. Please try again.';
                 setError(errorMessage);
             }
@@ -207,7 +207,7 @@ const Register = () => {
                             color: '#64748b',
                             fontStyle: 'italic'
                         }} >
-                            Hint: Password should be at least 8 characters with uppercase, lowercase, and a number
+                            Hint: Password should be at least 8 characters with uppercase, lowercase, a number, and a special character (@$!%*?&)
                         </div>
                     </div>
 
