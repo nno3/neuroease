@@ -18,26 +18,27 @@ const Login = () => {
 
         try {
             const result = await login(email, password);
+            console.log('Login result:', result);
             if (result && result.success) {
                 navigate('/');
             } else {
-                setError(result?.error || 'Login failed. Please check your credentials.');
+                // Check if result has specific errors
+                setError(result?.error || 'Login failed. Please make sure your Email and Password are correct.');
             }
         } catch (error) {
             console.error('Login failed:', error);
-            setError('Login failed. Please check your credentials.');
+            setError('Login failed. Please make sure your Email and Password are correct.');
         } finally {
             setLoading(false);
         }
     };
-
     const handleQuickLogin = async () => {
         setLoading(true);
         setError('');
 
         try {
             // Call login without credentials for quick login
-            const result = await login();
+            const result = await login('test@example.com', 'Test123!');
             if (result && result.success) {
                 navigate('/');
             } else {
