@@ -30,8 +30,16 @@ const patientController = {
       }
 
       // Fetch patient details
+      // Fetch patient details (include Patient profile)
       const patient = await User.findByPk(patientId, {
-        attributes: { exclude: ['password'] }
+        attributes: { exclude: ['password'] },
+        include: [
+          {
+            model: Patient,
+            attributes: ['dateOfBirth', 'emergencyContact', 'medicalConditions', 'createdAt', 'updatedAt'],
+            required: false
+          }
+        ]
       });
 
       if (!patient) {
@@ -40,6 +48,7 @@ const patientController = {
           message: 'Patient not found'
         });
       }
+
 
       if (patient.isArchived && req.user.userType === 'caregiver') {
         return res.status(403).json({

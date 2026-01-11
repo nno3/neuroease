@@ -22,7 +22,7 @@ const Dashboard = () => {
             }}>
                 <h1 style={{
                     margin: 0,
-                    fontSize: '28px',
+                    fontSize: '30px',
                     fontWeight: '600',
                     color: '#2c3e50'
                 }}>
@@ -77,7 +77,7 @@ const Dashboard = () => {
             {/* Stats */}
             <DashboardStats stats={stats} />
 
-            {/* Patients Section - From wireframe */}
+            {/* Patients Section */}
             <div style={{
                 background: 'white',
                 padding: '24px',
@@ -106,7 +106,7 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {/* Recent Activity - From wireframe */}
+            {/* Recent Activity */}
             <div style={{
                 background: 'white',
                 padding: '24px',
@@ -127,7 +127,7 @@ const Dashboard = () => {
                     flexDirection: 'column',
                     gap: '12px'
                 }}>
-                    {/* Activity items would go here */}
+                    {}
                     <p style={{ color: '#64748b', fontSize: '14px' }}>
                         Recent activity will be displayed here.
                     </p>

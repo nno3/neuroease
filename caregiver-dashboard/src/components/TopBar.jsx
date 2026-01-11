@@ -16,7 +16,7 @@ const TopBar = ({ title = 'Dashboard Overview', onPrimaryAction }) => {
     return (
         <header className="topbar">
             <div className="topbar-left">
-                <h1>{title}</h1>
+                <h1></h1>
             </div>
 
             <div className="topbar-right">

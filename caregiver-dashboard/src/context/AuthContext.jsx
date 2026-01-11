@@ -112,10 +112,12 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('user');
         return { success: true };
     };
+    const token = localStorage.getItem("token");
 
     return (
         <AuthContext.Provider value={{
             user,
+            token,
             login,
             logout,
             loading,

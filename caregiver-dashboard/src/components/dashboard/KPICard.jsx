@@ -1,4 +1,4 @@
-const KPICard = ({ title, value, icon, description, color, iconBg }) => {
+const KPICard = ({ title, value, icon, description, color, valueColor, iconBg }) => {
     return (
         <div style={{
             background: 'white',
@@ -23,7 +23,8 @@ const KPICard = ({ title, value, icon, description, color, iconBg }) => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '28px'
+                    fontSize: '0px',
+                    color: color || '#4A90E2'
                 }}>
                     {icon}
                 </div>
@@ -40,9 +41,9 @@ const KPICard = ({ title, value, icon, description, color, iconBg }) => {
 
             <div style={{
                 margin: '16px 0 8px 0',
-                fontSize: '32px',
+                fontSize: '25px',
                 fontWeight: 'bold',
-                color: color || '#4A90E2',
+                color: valueColor || '#111827',
                 lineHeight: '1.2'
             }}>
                 {value}
