@@ -22,16 +22,20 @@ export async function apiRequest(endpoint, options = {}) {
 
     // Check if response is OK
     if (!response.ok) {
-        const errorText = await response.text();
-        let errorData;
-        try {
-            errorData = JSON.parse(errorText);
-        } catch {
-            errorData = { message: errorText || 'Request failed' };
-        }
+        const text = await response.text();
 
-        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+        let errorData = { message: text || "Request failed" };
+        try {
+            errorData = JSON.parse(text);
+        } catch (_) {}
+
+        const err = new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+        err.status = response.status;
+        err.errors = errorData.errors || [];
+        err.data = errorData;
+        throw err;
     }
+
 
     // Try to parse JSON, but handle non-JSON responses
     try {

@@ -45,16 +45,18 @@ const IconAlert = (
 );
 
 const DashboardStats = ({ stats }) => {
+    const activePatients =
+        stats?.active ??
+        stats?.activePatients ??
+        stats?.data?.active ??
+        stats?.data?.activePatients ??
+        0;
+
     return (
-        <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '20px',
-            marginBottom: '30px'
-        }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 20, marginBottom: 30 }}>
             <KPICard
                 title="Active Patients"
-                value={stats.activePatients}
+                value={activePatients}
                 icon={IconUsers}
                 description="Currently under your care"
                 color="#4A90E2"

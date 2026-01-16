@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
-import { getPatients, getArchivedPatients, unarchivePatient } from "../services/patients";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { getPatients, getArchivedPatients, archivePatient, unarchivePatient } from "../services/patients";
 import "./Patients.css";
+import PatientFormModal from "../components/PatientFormModal";
 
 /* helpers */
 function calcAge(dateOfBirth) {
@@ -116,7 +117,7 @@ export default function Patients() {
     const [errorList, setErrorList] = useState("");
 
     const [searchQuery, setSearchQuery] = useState("");
-    const [filterStatus, setFilterStatus] = useState("active"); // active | archived | all
+    const [filterStatus, setFilterStatus] = useState("active"); // active or archived or all
 
     // Modal
     const [detailsOpen, setDetailsOpen] = useState(false);
@@ -126,6 +127,32 @@ export default function Patients() {
     const [restoreNotes, setRestoreNotes] = useState("");
     const [actionLoading, setActionLoading] = useState(false);
     const [actionError, setActionError] = useState("");
+
+    const [formOpen, setFormOpen] = useState(false);
+    const [formMode, setFormMode] = useState("create"); // create or edit
+    const [formPatient, setFormPatient] = useState(null);
+
+    const [archiveReason, setArchiveReason] = useState("discharged");
+    const [archiveNotes, setArchiveNotes] = useState("");
+
+
+    const [toast, setToast] = useState(null); // { type: "success" | "error", text: string }
+    const toastTimerRef = useRef(null);
+
+    const showToast = (type, text) => {
+        if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+        setToast({ type, text });
+
+        toastTimerRef.current = setTimeout(() => {
+            setToast(null);
+        }, 3000);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+        };
+    }, []);
 
     const refreshAll = async () => {
         setLoadingList(true);
@@ -180,6 +207,9 @@ export default function Patients() {
         setRestoreNotes("");
         setActionError("");
         setDetailsOpen(true);
+        setArchiveReason("discharged");
+        setArchiveNotes("");
+
     };
 
     const closeDetails = () => {
@@ -188,6 +218,49 @@ export default function Patients() {
         setRestoreNotes("");
         setActionError("");
         setActionLoading(false);
+        setArchiveReason("discharged");
+        setArchiveNotes("");
+
+    };
+
+    const handleArchive = async () => {
+        if (!selectedPatient?.id) return;
+
+        if (!archiveReason) {
+            setActionError("Please select an archive reason.");
+            return;
+        }
+
+        // If reason is "other", make notes required (so they can explain)
+        if (archiveReason === "other" && !archiveNotes?.trim()) {
+            setActionError("Please add notes when selecting 'Other'.");
+            return;
+        }
+
+        const ok = window.confirm(
+            `Archive ${selectedPatient?.name ?? "this patient"} for "${archiveReason}"?\n\nYou can restore them later.`
+        );
+        if (!ok) return;
+
+        setActionLoading(true);
+        setActionError("");
+
+        try {
+            const res = await archivePatient(selectedPatient.id, {
+                archiveReason,
+                notes: archiveNotes?.trim() ? archiveNotes.trim() : null,
+            });
+
+            showToast("success", res?.message || "Patient archived successfully.");
+            await refreshAll();
+            closeDetails();
+        } catch (e) {
+            const msg = e?.message || "Unable to archive patient.";
+            showToast("error", msg);
+            setActionError(msg);
+        } finally {
+            setActionLoading(false);
+        }
     };
 
     const handleUnarchive = async () => {
@@ -197,18 +270,39 @@ export default function Patients() {
         setActionError("");
 
         try {
-            await unarchivePatient(selectedPatient.id, {
+            const res = await unarchivePatient(selectedPatient.id, {
                 notes: restoreNotes?.trim() ? restoreNotes.trim() : "Reactivated by caregiver",
             });
 
+            showToast("success", res?.message || "Patient restored successfully.");
             await refreshAll();
             closeDetails();
         } catch (e) {
+            showToast("error", e?.message || "Unable to restore patient.");
             setActionError(e?.message || "Unable to restore patient.");
         } finally {
             setActionLoading(false);
         }
     };
+
+    const openAdd = () => {
+        setFormMode("create");
+        setFormPatient(null);
+        setFormOpen(true);
+    };
+
+    const openEdit = (patient) => {
+        setFormMode("edit");
+        setFormPatient(patient);
+        setFormOpen(true);
+    };
+
+    const handleSaved = async ({ patient, message }) => {
+        setToast(message);
+        await refreshAll();
+        window.setTimeout(() => setToast(""), 3000);
+    };
+
 
     return (
         <div className="pm-page">
@@ -220,10 +314,16 @@ export default function Patients() {
                     </p>
                 </div>
 
-                <button className="pm-btn pm-btn-primary" type="button" onClick={() => alert("Issue 2: Add Patient")}>
+                <button className="pm-btn pm-btn-primary" type="button" onClick={openAdd}>
                     + Add Patient
                 </button>
             </div>
+
+            {toast && (
+                <div className={`pm-toast ${toast.type}`}>
+                    {toast.text}
+                </div>
+            )}
 
             {/* KPI Cards */}
             <div className="pm-kpi-grid">
@@ -338,7 +438,7 @@ export default function Patients() {
                                     </div>
                                 </div>
 
-                                {/* AGE + CONDITIONS always visible */}
+                                {/* AGE and CONDITIONS always visible */}
                                 <div className="pm-metrics">
                                     <div className="pm-metric">
                                         <div className="pm-metric-label">Age</div>
@@ -359,7 +459,7 @@ export default function Patients() {
                                         View Details
                                     </button>
                                     <button className="pm-btn pm-btn-ghost" type="button"
-                                            onClick={() => alert("Issue 2/3: Edit Profile")}>
+                                            onClick={() =>  openEdit(p)}>
                                         Edit
                                     </button>
 
@@ -395,6 +495,12 @@ export default function Patients() {
                             {selectedPatient.isArchived ? (
                                 <>
                                     <div className="pm-section">
+                                        <div className="pm-row">
+                                            <div className="pm-row-label">Added to your care</div>
+                                            <div className="pm-row-value">
+                                                {formatDate(selectedPatient?.caregiver_patients?.createdAt)}
+                                            </div>
+                                        </div>
                                         <div className="pm-section-title">Archive Information</div>
 
                                         <div className="pm-row">
@@ -452,6 +558,12 @@ export default function Patients() {
                                     return (
                                         <>
                                             <div className="pm-section">
+                                                <div className="pm-row">
+                                                    <div className="pm-row-label">Added to your care</div>
+                                                    <div className="pm-row-value">
+                                                        {formatDate(selectedPatient?.caregiver_patients?.createdAt)}
+                                                    </div>
+                                                </div>
                                                 <div className="pm-section-title">Contact Information</div>
                                                 <div className="pm-row">
                                                     <div className="pm-row-label">Email</div>
@@ -486,7 +598,59 @@ export default function Patients() {
                                                 </div>
                                             </div>
 
+                                            <div className="pm-section">
+                                                <div className="pm-section-title">Archive Patient</div>
 
+                                                <div className="pm-row" style={{alignItems: "center"}}>
+                                                    <div className="pm-row-label">Reason</div>
+
+                                                    <div className="pm-row-value" style={{textAlign: "right"}}>
+                                                        <select
+                                                            className="pm-select"
+                                                            value={archiveReason}
+                                                            onChange={(e) => setArchiveReason(e.target.value)}
+                                                            disabled={actionLoading}
+                                                        >
+                                                            <option value="discharged">Discharged</option>
+                                                            <option value="transferred">Transferred</option>
+                                                            <option value="deceased">Deceased</option>
+                                                            <option value="inactive">Inactive</option>
+                                                            <option value="other">Other</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+
+                                                <label className="pm-input-label" htmlFor="archiveNotes">
+                                                    Notes {archiveReason === "other" ? "*" : "(optional)"}
+                                                </label>
+
+                                                <textarea
+                                                    id="archiveNotes"
+                                                    className="pm-textarea"
+                                                    rows={3}
+                                                    value={archiveNotes}
+                                                    onChange={(e) => {
+                                                        setArchiveNotes(e.target.value);
+                                                        setActionError("");
+                                                    }}
+                                                    placeholder={archiveReason === "other" ? "Please specify the reason..." : "e.g., Completed care programme"}
+                                                    disabled={actionLoading}
+                                                />
+
+                                                {archiveReason === "other" && actionError && (
+                                                    <div className="pm-inline-error">{actionError}</div>
+                                                )}
+                                                <div className="pm-modal-footer">
+                                                    <button
+                                                        className="pm-btn pm-btn-danger"
+                                                        type="button"
+                                                        onClick={handleArchive}
+                                                        disabled={actionLoading}
+                                                    >
+                                                        {actionLoading ? "Archiving…" : "Archive patient"}
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </>
                                     );
                                 })()
@@ -495,6 +659,17 @@ export default function Patients() {
                     </div>
                 </div>
             )}
+            <PatientFormModal
+                open={formOpen}
+                mode={formMode}
+                patient={formPatient}
+                onClose={() => setFormOpen(false)}
+                onSaved={({ message }) => {
+                    showToast("success", message);
+                    refreshAll();
+                    setFormOpen(false);
+                }}
+            />
         </div>
     );
 }

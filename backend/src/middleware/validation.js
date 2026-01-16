@@ -3,7 +3,9 @@ const yup = require('yup');
  * Validation schema for user registration.
  * Ensures email, password, name and userType all meet the expected format.
  */
-const customEmailValidator = yup.string()
+const customEmailValidator = yup
+    .string()
+    .transform((value) => (value ? value.trim().toLowerCase() : value))
     .test('is-email', 'Please enter a valid email address', (value) => {
         if (!value) return false;
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -97,7 +99,13 @@ const patientRegistrationSchema = yup.object({
         .max(50, 'Name cannot exceed 50 characters')
         .required('Name is required'),
     dateOfBirth: yup.date().nullable(),
-    emergencyContact: yup.string().max(20, 'Emergency contact too long'),
+    emergencyContact: yup
+        .string()
+        .trim()
+        .min(6, 'Emergency contact is too short')
+        .max(30, 'Emergency contact is too long (max 30 characters)')
+        .matches(/[0-9]/, 'Emergency contact must include a phone number')
+        .required('Emergency contact is required'),
     medicalConditions: yup.string().max(500, 'Medical conditions description too long')
 });
 

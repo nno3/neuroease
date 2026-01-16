@@ -30,7 +30,6 @@ const patientController = {
       }
 
       // Fetch patient details
-      // Fetch patient details (include Patient profile)
       const patient = await User.findByPk(patientId, {
         attributes: { exclude: ['password'] },
         include: [
@@ -75,11 +74,14 @@ const patientController = {
   createPatient: async (req, res) => {
     try {
       console.log('CREATE PATIENT REQUEST:', req.body);
-      const { email, password, name, dateOfBirth, emergencyContact, medicalConditions } = req.body;
 
-      // Check if patient already exists
-      const existingPatient = await User.findOne({ where: { email } });
-      console.log('Existing patient check:', existingPatient);
+      let { email, password, name, dateOfBirth, emergencyContact, medicalConditions } = req.body;
+
+      //  normalise email (fixes duplicate email case issues)
+      const normalizedEmail = String(email || "").trim().toLowerCase();
+
+      // Check if patient already exists (case-insensitive once normalised)
+      const existingPatient = await User.findOne({ where: { email: normalizedEmail } });
 
       if (existingPatient) {
         return res.status(409).json({
@@ -89,32 +91,26 @@ const patientController = {
       }
 
       // Create patient user account
-      console.log('Creating patient user...');
       const patientUser = await User.create({
-        email,
+        email: normalizedEmail,
         password,
         name,
         userType: 'patient'
       });
-      console.log('Patient user created:', patientUser.id);
 
-      // Create patient profile with medical details
-      console.log('Creating patient profile...');
+      // Create patient profile
       const patientProfile = await Patient.create({
         userId: patientUser.id,
-        dateOfBirth,
-        emergencyContact,
-        medicalConditions
+        dateOfBirth: dateOfBirth || null,
+        emergencyContact: emergencyContact ?? null,
+        medicalConditions: medicalConditions ?? null
       });
-      console.log('Patient profile created:', patientProfile.id);
 
       // Auto-assign to the creating caregiver
-      console.log('Auto-assigning to caregiver:', req.user.userId);
       const caregiver = await User.findByPk(req.user.userId);
       await caregiver.addPatient(patientUser);
-      console.log('Assignment complete');
 
-      res.status(201).json({
+      return res.status(201).json({
         success: true,
         message: 'Patient registered and assigned successfully',
         data: {
@@ -129,13 +125,9 @@ const patientController = {
       });
     } catch (error) {
       console.error('CREATE PATIENT ERROR DETAILS:', error);
-      console.error('Error name:', error.name);
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
 
       if (error.name === 'SequelizeValidationError') {
         const validationErrors = error.errors.map(err => err.message);
-        console.error('Validation errors:', validationErrors);
         return res.status(400).json({
           success: false,
           message: 'Validation failed',
@@ -150,7 +142,7 @@ const patientController = {
         });
       }
 
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: 'Error creating patient profile',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -422,8 +414,8 @@ const patientController = {
   },
       archivePatient: async (req, res) => {
         try {
-          console.log('🔍 ARCHIVE REQUEST - Patient ID:', req.params.id);
-          console.log('🔍 Request body:', req.body);
+          console.log(' ARCHIVE REQUEST - Patient ID:', req.params.id);
+          console.log(' Request body:', req.body);
 
           const patientId = parseInt(req.params.id);
           const { archiveReason, notes } = req.body; // New fields
@@ -438,7 +430,7 @@ const patientController = {
             });
           }
 
-          console.log('🔍 Patient found - Current is_archived:', patient.isArchived);
+          console.log(' Patient found - Current is_archived:', patient.isArchived);
 
           // Check if already archived
           if (patient.isArchived) {
@@ -462,7 +454,7 @@ const patientController = {
           const assignedPatients = await caregiver.getPatients();
           const patientIds = assignedPatients.map(p => p.id);
 
-          console.log('🔍 Caregiver assigned patients:', patientIds);
+          console.log(' Caregiver assigned patients:', patientIds);
 
           if (!patientIds.includes(patientId)) {
             console.log(' Patient not assigned to caregiver');
@@ -483,7 +475,7 @@ const patientController = {
           }
 
           // Archive the patient with enhanced data
-          console.log('🔄 Archiving patient with reason:', archiveReason);
+          console.log(' Archiving patient with reason:', archiveReason);
 
           const updateData = {
             isArchived: true,
@@ -494,7 +486,7 @@ const patientController = {
             updatedAt: new Date()
           };
 
-          console.log('🔄 Update data:', updateData);
+          console.log(' Update data:', updateData);
 
           const updatedPatient = await patient.update(updateData);
 

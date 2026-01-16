@@ -1,24 +1,26 @@
-import { api } from './apiClient';
+import { api } from "./apiClient";
+
+const MOCK_STATS = {
+    reminderCompliance: 87,
+    activeAlerts: 2,
+    gamesPlayedToday: 0,
+};
 
 export const getDashboardStats = async () => {
     try {
-        // For now, return mock stats
+        const res = await api.get("/dashboard/stats");
+
+        // apiClient likely returns { success, data, message } (not axios response)
+        const payload = res?.data ?? res;
+        const stats = payload?.data?.stats ?? payload?.data ?? payload;
 
         return {
-            activePatients: 5,
-            reminderCompliance: 87,
-            activeAlerts: 2
+            reminderCompliance: stats?.reminderCompliance ?? 0,
+            activeAlerts: stats?.activeAlerts ?? 0,
+            gamesPlayedToday: stats?.gamesPlayedToday ?? 0,
         };
-
-        // When you have a dashboard endpoint:
-        // const response = await api.get('/dashboard/stats');
-        // if (response.success) {
-        //     return response.data;
-        // } else {
-        //     throw new Error(response.message);
-        // }
     } catch (error) {
-        console.error('Error fetching dashboard stats:', error);
-        throw error;
+        console.error("Dashboard stats failed (fallback to mock):", error);
+        return MOCK_STATS;
     }
 };

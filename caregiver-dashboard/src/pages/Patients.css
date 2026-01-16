@@ -338,6 +338,7 @@
     font-weight: 700;
     color: #1a1a1a;
     margin: 0 0 14px 0;
+    padding-top: 14px;
     padding-bottom: 10px;
     border-bottom: 2px solid #e9ecef;
 }
@@ -407,42 +408,6 @@
 .pm-status.is-archived .pm-status-dot {
     background: #c62828;
 }
-/* Status pill next to ID */
-.pm-status {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 5px 12px;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 600;
-    border: 1px solid transparent;
-}
-
-.pm-status-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 999px;
-}
-
-.pm-status.is-active {
-    background: #e8f5e9;
-    color: #2e7d32;
-    border-color: #c8e6c9;
-}
-.pm-status.is-active .pm-status-dot {
-    background: #2e7d32;
-}
-
-.pm-status.is-archived {
-    background: #ffebee;
-    color: #c62828;
-    border-color: #ef9a9a;
-}
-.pm-status.is-archived .pm-status-dot {
-    background: #c62828;
-}
-
 /* Restore form */
 .pm-input-label {
     display: block;
@@ -553,3 +518,58 @@
     font-weight: 500;
     color: #6c757d;
 }
+
+.pm-select {
+    padding: 10px 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: white;
+    font-size: 12px;
+    font-family: Arial;
+    font-weight: 600;
+    color: #1a1a1a;
+    outline: none;
+}
+
+.pm-select:focus {
+    border-color: #ef9a9a;
+    box-shadow: 0 0 0 3px rgba(198, 40, 40, 0.12);
+}
+
+.pm-btn-danger {
+    background: #c62828;
+    color: white;
+    border: none;
+}
+
+.pm-btn-danger:hover {
+    filter: brightness(0.95);
+}
+
+
+.pm-toast {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    z-index: 2000;
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    border: 1px solid;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+    max-width: 360px;
+}
+
+.pm-toast.success {
+    background: #e8f5e9;
+    border-color: #c8e6c9;
+    color: #2e7d32;
+}
+
+.pm-toast.error {
+    background: #ffebee;
+    border-color: #ef9a9a;
+    color: #c62828;
+}
+
