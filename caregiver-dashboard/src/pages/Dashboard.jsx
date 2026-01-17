@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import DashboardStats from "../components/Dashboard/DashboardStats";
 import { getDashboardStats } from "../services/dashboardService";
 import { getPatients } from "../services/patients";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import "./Dashboard.css";
 
 const Dashboard = () => {

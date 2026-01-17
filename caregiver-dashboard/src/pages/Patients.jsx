@@ -3,6 +3,7 @@ import { getPatients, getArchivedPatients, archivePatient, unarchivePatient } fr
 import "./Patients.css";
 import PatientFormModal from "../components/PatientFormModal";
 import { useSearchParams } from "react-router-dom";
+import { ArchiveIcon, UsersIcon, CheckIcon} from "lucide-react";
 
 /* helpers */
 function calcAge(dateOfBirth) {
@@ -55,60 +56,7 @@ function getAvatarColor(id) {
     const idx = Number.isFinite(n) ? n % AVATAR_COLORS.length : 0;
     return AVATAR_COLORS[idx];
 }
-function UsersIcon(props) {
-    return (
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
-            <path
-                d="M16 11c1.66 0 3-1.57 3-3.5S17.66 4 16 4s-3 1.57-3 3.5S14.34 11 16 11ZM8 11c1.66 0 3-1.57 3-3.5S9.66 4 8 4 5 5.57 5 7.5 6.34 11 8 11Z"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-            <path
-                d="M3.5 20c0-2.6 2.7-4.7 6-4.7s6 2.1 6 4.7M13.5 20c0-1.8 1.5-3.3 3.8-4.1 1.8-.6 3.2.1 3.2 4.1"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-        </svg>
-    );
-}
 
-function CheckIcon(props) {
-    return (
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
-            <path
-                d="M20 7 10 17l-5-5"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-        </svg>
-    );
-}
-
-function ArchiveIcon(props) {
-    return (
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
-            <path
-                d="M4 7h16M6 7l1-2h10l1 2M6 7v13h12V7"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-            <path
-                d="M10 11h4"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-            />
-        </svg>
-    );
-}
 export default function Patients() {
     // keep lists separate so stats
     const [activePatients, setActivePatients] = useState([]);
@@ -354,7 +302,7 @@ export default function Patients() {
 
                 <div className="pm-kpi-card">
                     <div className="pm-kpi-icon pm-kpi-icon-green">
-                        <CheckIcon className="pm-kpi-svg"/>
+                        <CheckIcon className="pm-kpi-svg"></CheckIcon>
                     </div>
                     <div className="pm-kpi-text">
                         <div className="pm-kpi-value">{stats.active}</div>

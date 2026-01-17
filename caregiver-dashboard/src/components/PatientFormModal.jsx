@@ -3,18 +3,7 @@ import "./PatientFormModal.css";
 import { createPatient, updatePatient } from "../services/patients";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-const CalendarIcon = () => (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-        <path d="M7 3v2M17 3v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        <path d="M4 8h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        <path
-            d="M6 5h12a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinejoin="round"
-        />
-    </svg>
-);
+import { Calendar } from "lucide-react";
 
 const DateInputWithButton = forwardRef(
     ({ value, onClick, onChange, placeholder, className, disabled }, ref) => (
@@ -36,7 +25,7 @@ const DateInputWithButton = forwardRef(
                 aria-label="Open calendar"
                 title="Open calendar"
             >
-                <CalendarIcon />
+                <Calendar size={18} />
             </button>
         </div>
     )
