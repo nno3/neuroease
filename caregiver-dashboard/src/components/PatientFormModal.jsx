@@ -1,25 +1,65 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, forwardRef } from "react";
 import "./PatientFormModal.css";
 import { createPatient, updatePatient } from "../services/patients";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+const CalendarIcon = () => (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
+        <path d="M7 3v2M17 3v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M4 8h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path
+            d="M6 5h12a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinejoin="round"
+        />
+    </svg>
+);
 
+const DateInputWithButton = forwardRef(
+    ({ value, onClick, onChange, placeholder, className, disabled }, ref) => (
+        <div className={`pfm-datewrap ${disabled ? "is-disabled" : ""}`}>
+            <input
+                ref={ref}
+                className={className}
+                value={value || ""}
+                onChange={onChange}     // allows typing
+                onClick={onClick}       // opens calendar when clicking input
+                placeholder={placeholder}
+                disabled={disabled}
+            />
+            <button
+                type="button"
+                className="pfm-calbtn"
+                onClick={onClick}
+                disabled={disabled}
+                aria-label="Open calendar"
+                title="Open calendar"
+            >
+                <CalendarIcon />
+            </button>
+        </div>
+    )
+);
+DateInputWithButton.displayName = "DateInputWithButton";
+
+/* ---------- validators ---------- */
 function isValidEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
 }
 
 function isValidName(name) {
-    const v = String(name || "").trim();
-    return v.length >= 2;
+    return String(name || "").trim().length >= 2;
 }
 
-function passwordRules(password) {
+function passwordError(password) {
     const p = String(password || "");
-    return {
-        minLen: p.length >= 8,
-        upper: /[A-Z]/.test(p),
-        lower: /[a-z]/.test(p),
-        number: /[0-9]/.test(p),
-        special: /[^A-Za-z0-9]/.test(p),
-    };
+    if (p.length < 8) return "Password must be at least 8 characters.";
+    if (!/[A-Z]/.test(p)) return "Password must include at least 1 uppercase letter.";
+    if (!/[a-z]/.test(p)) return "Password must include at least 1 lowercase letter.";
+    if (!/[0-9]/.test(p)) return "Password must include at least 1 number.";
+    if (!/[^A-Za-z0-9]/.test(p)) return "Password must include at least 1 special character.";
+    return "";
 }
 
 function emergencyContactError(value) {
@@ -27,19 +67,27 @@ function emergencyContactError(value) {
     if (!v) return "Emergency contact is required.";
     if (v.length < 6) return "Emergency contact is too short.";
     if (v.length > 30) return "Emergency contact is too long (max 30 characters).";
-    if (!/[0-9]/.test(v)) return "Emergency contact must be a phone number.";
+    // simple "phone-ish" check: allows +, spaces, dashes, parentheses
+    if (!/^[0-9+\-\s()]+$/.test(v)) return "Emergency contact must be a phone number.";
+    // must include at least 7 digits
+    const digits = v.replace(/\D/g, "");
+    if (digits.length < 7) return "Emergency contact must contain at least 7 digits.";
     return "";
 }
 
+function parseISODate(iso) {
+    if (!iso) return null;
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? null : d;
+}
 
-function passwordError(password) {
-    const r = passwordRules(password);
-    if (!r.minLen) return "Password must be at least 8 characters.";
-    if (!r.upper) return "Password must include at least 1 uppercase letter.";
-    if (!r.lower) return "Password must include at least 1 lowercase letter.";
-    if (!r.number) return "Password must include at least 1 number.";
-    if (!r.special) return "Password must include at least 1 special character.";
-    return "";
+function formatISODate(d) {
+    if (!d) return "";
+    // keep YYYY-MM-DD
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
 }
 
 export default function PatientFormModal({ open, mode, patient, onClose, onSaved }) {
@@ -48,28 +96,27 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
     const initial = useMemo(() => {
         const profile = patient?.Patient ?? patient?.profile ?? null;
 
+        const dobISO = profile?.dateOfBirth ? String(profile.dateOfBirth).slice(0, 10) : "";
         return {
             name: patient?.name || "",
             email: patient?.email || "",
             password: "",
-            dateOfBirth: profile?.dateOfBirth ? String(profile.dateOfBirth).slice(0, 10) : "",
+            dateOfBirth: dobISO,
             emergencyContact: profile?.emergencyContact || "",
             medicalConditions: profile?.medicalConditions || "",
         };
     }, [patient]);
 
     const [form, setForm] = useState(initial);
+    const [dobDate, setDobDate] = useState(parseISODate(initial.dateOfBirth));
     const [saving, setSaving] = useState(false);
-
-    // top error banner (server errors OR "fix fields")
     const [error, setError] = useState("");
-
-    // per-field errors
     const [fieldErrors, setFieldErrors] = useState({});
 
     useEffect(() => {
         if (open) {
             setForm(initial);
+            setDobDate(parseISODate(initial.dateOfBirth));
             setSaving(false);
             setError("");
             setFieldErrors({});
@@ -80,14 +127,18 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
 
     const setField = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
+    const handleDobChange = (date) => {
+        setDobDate(date);
+        setField("dateOfBirth", date ? formatISODate(date) : "");
+        setFieldErrors((e) => ({ ...e, dateOfBirth: undefined }));
+    };
+
     const validate = () => {
         const errs = {};
 
-        // Name
         if (!form.name.trim()) errs.name = "Name is required.";
         else if (!isValidName(form.name)) errs.name = "Name must be at least 2 characters.";
 
-        // Create mode only: email + password
         if (!isEdit) {
             if (!form.email.trim()) errs.email = "Email is required.";
             else if (!isValidEmail(form.email)) errs.email = "Enter a valid email address.";
@@ -98,9 +149,18 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                 if (msg) errs.password = msg;
             }
         }
+
         const ecMsg = emergencyContactError(form.emergencyContact);
         if (ecMsg) errs.emergencyContact = ecMsg;
+
         if (!form.medicalConditions.trim()) errs.medicalConditions = "Medical conditions is required.";
+
+        if (form.dateOfBirth) {
+            const d = parseISODate(form.dateOfBirth);
+            if (!d) errs.dateOfBirth = "Enter a valid date of birth.";
+            else if (d > new Date()) errs.dateOfBirth = "Date of birth cannot be in the future.";
+            else if (d < new Date("1900-01-01")) errs.dateOfBirth = "Date of birth must be after 01/01/1900.";
+        }
 
         return errs;
     };
@@ -116,7 +176,6 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
         }
 
         setSaving(true);
-
         try {
             let res;
 
@@ -126,34 +185,34 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                     email: form.email.trim(),
                     password: form.password,
                     dateOfBirth: form.dateOfBirth || null,
-                    emergencyContact: form.emergencyContact?.trim() || null,
-                    medicalConditions: form.medicalConditions?.trim() || null,
+                    emergencyContact: form.emergencyContact.trim(),
+                    medicalConditions: form.medicalConditions.trim(),
                 });
             } else {
                 res = await updatePatient(patient.id, {
                     name: form.name.trim(),
                     dateOfBirth: form.dateOfBirth || null,
-                    emergencyContact: form.emergencyContact?.trim() || null,
-                    medicalConditions: form.medicalConditions?.trim() || null,
+                    emergencyContact: form.emergencyContact.trim(),
+                    medicalConditions: form.medicalConditions.trim(),
                 });
             }
 
             const apiMsg =
-                res?.data?.message || (isEdit ? "Patient updated successfully." : "Patient created successfully.");
+                res?.data?.message ??
+                res?.message ??
+                (isEdit ? "Patient updated successfully." : "Patient created successfully.");
 
-            const returnedPatient = res?.data?.data?.patient;
-
+            const returnedPatient =
+                res?.data?.data?.patient ?? res?.data?.patient ?? res?.data?.data ?? res?.data ?? null;
 
             onSaved?.({ patient: returnedPatient, message: apiMsg });
             onClose?.();
         } catch (err) {
-            // apiClient throws Error(message) so use err.message
             setError(err?.message || (isEdit ? "Unable to update patient." : "Unable to create patient."));
         } finally {
             setSaving(false);
         }
     };
-
 
     return (
         <div className="pfm-overlay" onClick={onClose} role="presentation">
@@ -208,14 +267,25 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
 
                         <div className="pfm-field">
                             <label className="pfm-label">Date of birth</label>
-                            <input
-                                className="pfm-input"
-                                type="date"
-                                value={form.dateOfBirth}
-                                onChange={(e) => setField("dateOfBirth", e.target.value)}
-                                min="1900-01-01"
-                                max={new Date().toISOString().slice(0, 10)}
+
+                            <DatePicker
+                                selected={dobDate}
+                                onChange={handleDobChange}
+                                dateFormat="dd/MM/yyyy"
+                                placeholderText="DD/MM/YYYY"
+                                showMonthDropdown
+                                showYearDropdown
+                                scrollableYearDropdown
+                                yearDropdownItemNumber={120}
+                                maxDate={new Date()}
+                                minDate={new Date("1900-01-01")}
+                                customInput={
+                                    <DateInputWithButton
+                                        className={`pfm-input ${fieldErrors.dateOfBirth ? "is-error" : ""}`}
+                                    />
+                                }
                             />
+                            {fieldErrors.dateOfBirth && <div className="pfm-help">{fieldErrors.dateOfBirth}</div>}
                         </div>
 
                         <div className="pfm-field">

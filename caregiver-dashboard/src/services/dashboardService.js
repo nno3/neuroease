@@ -1,26 +1,33 @@
 import { api } from "./apiClient";
 
-const MOCK_STATS = {
-    reminderCompliance: 87,
-    activeAlerts: 2,
-    gamesPlayedToday: 0,
-};
+const extractPatients = (res) =>
+    res?.data?.data?.patients ??
+    res?.data?.patients ??
+    res?.data?.data ??
+    [];
 
 export const getDashboardStats = async () => {
     try {
-        const res = await api.get("/dashboard/stats");
+        const [activeRes, archivedRes] = await Promise.allSettled([
+            api.get("/patients"),
+            api.get("/patients/archived"),
+        ]);
 
-        // apiClient likely returns { success, data, message } (not axios response)
-        const payload = res?.data ?? res;
-        const stats = payload?.data?.stats ?? payload?.data ?? payload;
+        const activePatients =
+            activeRes.status === "fulfilled" ? extractPatients(activeRes.value).length : 0;
+
+        const archivedPatients =
+            archivedRes.status === "fulfilled" ? extractPatients(archivedRes.value).length : 0;
 
         return {
-            reminderCompliance: stats?.reminderCompliance ?? 0,
-            activeAlerts: stats?.activeAlerts ?? 0,
-            gamesPlayedToday: stats?.gamesPlayedToday ?? 0,
+            activePatients,
+            archivedPatients,
+            reminderCompliance: 0,
+            activeAlerts: 0,
+            gamesPlayedToday: 0,
         };
-    } catch (error) {
-        console.error("Dashboard stats failed (fallback to mock):", error);
-        return MOCK_STATS;
+    } catch (e) {
+        // don't throw -> prevents "dashboard loading" forever
+        return { activePatients: 0, archivedPatients: 0, reminderCompliance: 0, activeAlerts: 0, gamesPlayedToday: 0 };
     }
 };

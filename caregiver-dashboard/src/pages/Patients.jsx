@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getPatients, getArchivedPatients, archivePatient, unarchivePatient } from "../services/patients";
 import "./Patients.css";
 import PatientFormModal from "../components/PatientFormModal";
+import { useSearchParams } from "react-router-dom";
 
 /* helpers */
 function calcAge(dateOfBirth) {
@@ -112,7 +113,6 @@ export default function Patients() {
     // keep lists separate so stats
     const [activePatients, setActivePatients] = useState([]);
     const [archivedPatients, setArchivedPatients] = useState([]);
-
     const [loadingList, setLoadingList] = useState(true);
     const [errorList, setErrorList] = useState("");
 
@@ -148,11 +148,26 @@ export default function Patients() {
         }, 3000);
     };
 
+    const [searchParams, setSearchParams] = useSearchParams();
+
     useEffect(() => {
         return () => {
             if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
         };
     }, []);
+
+    useEffect(() => {
+        if (searchParams.get("add") === "1") {
+            setFormMode("create");
+            setFormPatient(null);
+            setFormOpen(true);
+
+            const next = new URLSearchParams(searchParams);
+            next.delete("add");
+            setSearchParams(next, { replace: true });
+        }
+    }, [searchParams, setSearchParams]);
+
 
     const refreshAll = async () => {
         setLoadingList(true);

@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import DashboardStats from "../components/Dashboard/DashboardStats";
 import { getDashboardStats } from "../services/dashboardService";
 import { getPatients } from "../services/patients";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "./Dashboard.css";
 
 const Dashboard = () => {
+    const navigate = useNavigate();
     const [stats, setStats] = useState(null);
     const [patients, setPatients] = useState([]);
 
@@ -62,17 +63,19 @@ const Dashboard = () => {
                 }}>
                     Dashboard Overview
                 </h1>
-                <button style={{
-                    padding: '10px 20px',
-                    backgroundColor: '#4A90E2',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease'
-                }}>
+                <button
+                    onClick={() => navigate("/patients?add=1")}
+                    style={{
+                        padding: "10px 20px",
+                        backgroundColor: "#4A90E2",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "6px",
+                        fontSize: "14px",
+                        fontWeight: "500",
+                        cursor: "pointer",
+                    }}
+                >
                     + Add Patient
                 </button>
             </div>
