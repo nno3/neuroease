@@ -250,3 +250,39 @@ Due to delays carried over from previous weeks, Sprint 3 required more extensive
    - `18c23376` merge branch `feature/caregiver-dashboard-skeleton` into `develop`
   - This merge ensured the `develop` branch contains the completed dashboard skeleton, KPI overview section, authentication UI, and the supporting context/routing logic required for subsequent development.
 - Sprint 3 is complete, has passed manual UI-level testing, and has been merged into `develop`. Following the earlier slowdown caused by the longer-than-expected archiving/retention implementation, progress is now back on track and aligned with the intended schedule.
+
+## Week 14 [w/c 13/01/2026] 
+
+* Started Sprint 4 implementation on branch `feature/caregiver-patient-management`, focusing on completing the caregiver-facing patient management workflow end-to-end (UI, backend integration, validation and feedback).
+* Implement Patient Management Interface (Issue #9)
+  * Implemented caregiver patient list UI including search/filtering, patient cards, and a consistent details modal.
+  * Added clear Active/Archived status indicators and ensured UI state remains consistent with backend archiving rules.
+  * Verified data isolation (caregivers only view assigned patients) and ensured archived patients are separated from active lists.
+  * Supporting implementation commit:
+    * `64fea9b0` – added caregiver patient list, details view, archive/unarchive flows and UI consistency improvements.
+* Add/Edit Patient Profile (Issue #10)
+  * Implemented *Add Patient* and *Edit Patient* modal flows with persisted updates and automatic UI refresh after save.
+  * Added consistent validation rules to align with registration standards:
+    * Name length requirements
+    * Email format validation + duplicate email handling (409 conflict surfaced to UI)
+    * Password complexity rules (create flow)
+    * Required patient profile fields (emergency contact and medical conditions)
+    * Improved date-of-birth UX and validation (valid date range and improved picker behaviour)
+  * Added success/error feedback via toast notifications for:
+    * create, update, archive, and unarchive actions.
+  * Supporting commits:
+    * `0fc822e5` – implemented Add/Edit Patient flows (modal form) with backend integration
+    * `365aeba1` – fixed remaining Issue #10 problems and stabilised validation and UI behaviour
+
+* Dashboard integration and consistency improvements
+
+  * Connected the *Dashboard “+ Add Patient”* button to open the same patient creation flow used in Patient Management (via navigation to the Patients page and triggering the modal).
+  * Added a small “My Patients” preview section on the dashboard for consistency, plus a clear *“View all”* link to Patients.
+  * Standardised icon styling across dashboard/patient management by replacing inconsistent emoji-based icons with clean open-source icons.
+  * Supporting commit:
+    * `7009e48a` – updated KPI/icon UI using `lucide-react` for a consistent, professional look
+* Testing and verification outcomes
+  * Initial UI testing identified a failure in patient creation when required fields were missing (form blocked submission without clear validation feedback).
+  * Implemented fixes so validation errors are displayed consistently, duplicate-email errors are surfaced clearly, and all form fields provide actionable feedback.
+  * Re-tested create/update/archive/unarchive workflows; confirmed **no visible UI issues**, correct API responses, and successful UI refresh after mutations.
+  * Posted progress updates on GitLab issues and moved Issue #9 and Issue #10 through In Progress → Testing → Review → Done with commit references and evidence.
