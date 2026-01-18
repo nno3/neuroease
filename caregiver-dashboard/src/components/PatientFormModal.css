@@ -129,3 +129,29 @@
     color:#fff;
     box-shadow:0 2px 4px rgba(0,102,204,.2);
 }
+.pfm-datewrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.pfm-calbtn {
+    margin-left: 8px;
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    color: #334155;
+}
+
+.pfm-calbtn:hover {
+    background: #f8fafc;
+}
+
+.pfm-datewrap.is-disabled {
+    opacity: 0.6;
+    pointer-events: none;
+}
