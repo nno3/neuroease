@@ -1,45 +1,38 @@
 import { useEffect, useMemo, useState, forwardRef } from "react";
-import { Calendar } from "lucide-react";
+import "./ReminderFormModal.css";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import "./ReminderFormModal.css";
+import { Calendar, X } from "lucide-react";
 
 const TYPES = [
     { label: "Medication", value: "medication" },
     { label: "Appointment", value: "appointment" },
     // UI says “task”, backend expects “general”
-    { label: "General", value: "general" },
+    { label: "Task", value: "general" },
 ];
 
 const RECURRENCE = [
     { label: "Once", value: "once" },
     { label: "Daily", value: "daily" },
     { label: "Weekly", value: "weekly" },
-    {label: "Monthly", value: "monthly"},
 ];
 
-// datetime-local => "YYYY-MM-DDTHH:mm"
-function isValidDateTimeLocal(v) {
-    if (!v) return false;
+function parseISODateTime(v) {
+    if (!v) return null;
     const d = new Date(v);
-    return !Number.isNaN(d.getTime());
+    return Number.isNaN(d.getTime()) ? null : d;
 }
 
-function toISOFromLocal(v) {
-    // interpret as local time, convert to ISO for backend DATE
-    const d = new Date(v);
-    return d.toISOString();
-}
-
+/** Custom input (typed input + calendar button) like Patient Management */
 const DateTimeInputWithButton = forwardRef(
-    ({ value, onClick, onChange, placeholder, className, disabled }, ref) => (
+    ({ value, onClick, placeholder, className, disabled }, ref) => (
         <div className={`rfm-datewrap ${disabled ? "is-disabled" : ""}`}>
             <input
                 ref={ref}
                 className={className}
                 value={value || ""}
-                onChange={onChange}     // allow typing
-                onClick={onClick}       // clicking opens picker
+                onClick={onClick}
+                readOnly // keeps react-datepicker stable; users still pick via calendar/time selector
                 placeholder={placeholder}
                 disabled={disabled}
             />
@@ -58,24 +51,18 @@ const DateTimeInputWithButton = forwardRef(
 );
 DateTimeInputWithButton.displayName = "DateTimeInputWithButton";
 
-
-export default function ReminderFormModal({ open, mode, patientId, reminder, onClose, onSubmit }) {
+export default function ReminderFormModal({ open, mode, patientId, patients = [], reminder, onClose, onSubmit,}) {
     const isEdit = mode === "edit";
 
     const initial = useMemo(() => {
-        const scheduled = reminder?.scheduledTime ? new Date(reminder.scheduledTime) : null;
-
-        // convert to datetime-local string (local)
-        const dtLocal = scheduled
-            ? new Date(scheduled.getTime() - scheduled.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
-            : "";
-
         return {
             title: reminder?.title ?? "",
             message: reminder?.message ?? "",
             reminderType: reminder?.reminderType ?? "general",
-            scheduledTimeLocal: dtLocal,
             recurrence: reminder?.recurrence ?? "once",
+            scheduledAt: parseISODateTime(reminder?.scheduledTime),
+            // if editing, reminder already belongs to a patient
+            pickedPatientId: reminder?.patientId ?? "",
         };
     }, [reminder]);
 
@@ -83,14 +70,13 @@ export default function ReminderFormModal({ open, mode, patientId, reminder, onC
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
     const [fieldErrors, setFieldErrors] = useState({});
-    const [dtDate, setDtDate] = useState(() => {
-        return form.scheduledTimeLocal ? new Date(form.scheduledTimeLocal) : null;
-    });
+    // if we're in "All patients" mode, user must pick in modal
+    const [pickedPatientId, setPickedPatientId] = useState(initial.pickedPatientId);
 
     useEffect(() => {
         if (open) {
             setForm(initial);
-            setDtDate(initial.scheduledTimeLocal ? new Date(initial.scheduledTimeLocal) : null);
+            setPickedPatientId(initial.pickedPatientId);
             setSaving(false);
             setError("");
             setFieldErrors({});
@@ -101,21 +87,23 @@ export default function ReminderFormModal({ open, mode, patientId, reminder, onC
 
     const setField = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
+    const resolvePatientId = () => {
+        const pid = patientId ?? pickedPatientId;
+        return pid ? Number(pid) : null;
+    };
+
     const validate = () => {
         const errs = {};
-        if (!patientId) errs.patientId = "Select a patient first.";
+        const pid = resolvePatientId();
 
+        if (!pid) errs.patientId = "Please select a patient.";
         if (!form.title.trim()) errs.title = "Title is required.";
         if (!form.message.trim()) errs.message = "Message is required.";
-
         if (!form.reminderType) errs.reminderType = "Type is required.";
 
-        if (!form.scheduledTimeLocal) errs.scheduledTimeLocal = "Scheduled time is required.";
-        else if (!isValidDateTimeLocal(form.scheduledTimeLocal)) errs.scheduledTimeLocal = "Enter a valid date/time.";
-        else {
-            const d = new Date(form.scheduledTimeLocal);
-            // Prevent past reminders (common requirement)
-            if (d.getTime() < Date.now() - 60_000) errs.scheduledTimeLocal = "Scheduled time cannot be in the past.";
+        if (!form.scheduledAt) errs.scheduledAt = "Scheduled date/time is required.";
+        else if (form.scheduledAt.getTime() < Date.now() - 60_000) {
+            errs.scheduledAt = "Scheduled time cannot be in the past.";
         }
 
         if (!form.recurrence) errs.recurrence = "Recurrence is required.";
@@ -130,14 +118,15 @@ export default function ReminderFormModal({ open, mode, patientId, reminder, onC
             setError("Please fix the highlighted fields.");
             return;
         }
+        const pid = resolvePatientId();
 
         const payload = {
-            patientId,
+            patientId: pid,
             title: form.title.trim(),
             message: form.message.trim(),
-            reminderType: form.reminderType,               // medication|appointment|general
-            scheduledTime: toISOFromLocal(form.scheduledTimeLocal), // ISO string
-            recurrence: form.recurrence,                   // once|daily|weekly
+            reminderType: form.reminderType,       // medication|appointment|general
+            scheduledTime: form.scheduledAt.toISOString(),
+            recurrence: form.recurrence,           // once|daily|weekly
         };
 
         setSaving(true);
@@ -156,15 +145,43 @@ export default function ReminderFormModal({ open, mode, patientId, reminder, onC
                 <div className="rfm-header">
                     <div>
                         <div className="rfm-title">{isEdit ? "Edit reminder" : "Schedule reminder"}</div>
-                        <div className="rfm-subtitle">{isEdit ? "Update the reminder details." : "Create a reminder with recurrence."}</div>
+                        <div className="rfm-subtitle">
+                            {isEdit ? "Update the reminder details." : "Create a reminder with recurrence."}
+                        </div>
                     </div>
-                    <button className="rfm-close" onClick={onClose} type="button">×</button>
+
+                    <button className="rfm-close" onClick={onClose} type="button" aria-label="Close">
+                        <X size={18} />
+                    </button>
                 </div>
 
                 <div className="rfm-body">
                     {error && <div className="rfm-error">{error}</div>}
 
                     <div className="rfm-grid">
+                        {/* Patient selector ONLY when patientId not provided (All patients view) */}
+                        {!patientId && (
+                            <div className="rfm-field">
+                                <label className="rfm-label">Patient *</label>
+                                <select
+                                    className={`rfm-select ${fieldErrors.patientId ? "is-error" : ""}`}
+                                    value={pickedPatientId}
+                                    onChange={(e) => {
+                                        setPickedPatientId(e.target.value);
+                                        setFieldErrors((prev) => ({ ...prev, patientId: undefined }));
+                                    }}
+                                >
+                                    <option value="">Select a patient…</option>
+                                    {patients.map((p) => (
+                                        <option key={p.id} value={p.id}>
+                                            {p.name} (ID {String(p.id).padStart(3, "0")})
+                                        </option>
+                                    ))}
+                                </select>
+                                {fieldErrors.patientId && <div className="rfm-help">{fieldErrors.patientId}</div>}
+                            </div>
+                        )}
+
                         <div className="rfm-field">
                             <label className="rfm-label">Title *</label>
                             <input
@@ -183,7 +200,9 @@ export default function ReminderFormModal({ open, mode, patientId, reminder, onC
                                 onChange={(e) => setField("reminderType", e.target.value)}
                             >
                                 {TYPES.map((t) => (
-                                    <option key={t.value} value={t.value}>{t.label}</option>
+                                    <option key={t.value} value={t.value}>
+                                        {t.label}
+                                    </option>
                                 ))}
                             </select>
                             {fieldErrors.reminderType && <div className="rfm-help">{fieldErrors.reminderType}</div>}
@@ -201,31 +220,30 @@ export default function ReminderFormModal({ open, mode, patientId, reminder, onC
                         </div>
 
                         <div className="rfm-field">
-                            <label className="rfm-label">Scheduled time *</label>
+                            <label className="rfm-label">Scheduled date/time *</label>
                             <DatePicker
-                                selected={dtDate}
+                                selected={form.scheduledAt}
                                 onChange={(date) => {
-                                    setDtDate(date);
-                                    // convert to "YYYY-MM-DDTHH:mm" in local time for your existing logic
-                                    const local = date
-                                        ? new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
-                                        : "";
-                                    setField("scheduledTimeLocal", local);
-                                    setFieldErrors((e) => ({ ...e, scheduledTimeLocal: undefined }));
+                                    setField("scheduledAt", date);
+                                    setFieldErrors((prev) => ({ ...prev, scheduledAt: undefined }));
                                 }}
                                 showTimeSelect
-                                timeIntervals={5}
+                                timeIntervals={15}
                                 timeCaption="Time"
-                                dateFormat="dd/MM/yyyy HH:mm"
-                                placeholderText="DD/MM/YYYY HH:mm"
-                                minDate={new Date()}
+                                dateFormat="dd/MM/yyyy h:mm aa"
+                                placeholderText="DD/MM/YYYY hh:mm"
+                                showMonthDropdown
+                                showYearDropdown
+                                scrollableYearDropdown
+                                yearDropdownItemNumber={15}
+                                minDate={new Date()} // blocks past days; validation blocks past times
                                 customInput={
                                     <DateTimeInputWithButton
-                                        className={`rfm-input ${fieldErrors.scheduledTimeLocal ? "is-error" : ""}`}
+                                        className={`rfm-input ${fieldErrors.scheduledAt ? "is-error" : ""}`}
                                     />
                                 }
                             />
-                            {fieldErrors.scheduledTimeLocal && <div className="rfm-help">{fieldErrors.scheduledTimeLocal}</div>}
+                            {fieldErrors.scheduledAt && <div className="rfm-help">{fieldErrors.scheduledAt}</div>}
                         </div>
 
                         <div className="rfm-field">
@@ -236,7 +254,9 @@ export default function ReminderFormModal({ open, mode, patientId, reminder, onC
                                 onChange={(e) => setField("recurrence", e.target.value)}
                             >
                                 {RECURRENCE.map((r) => (
-                                    <option key={r.value} value={r.value}>{r.label}</option>
+                                    <option key={r.value} value={r.value}>
+                                        {r.label}
+                                    </option>
                                 ))}
                             </select>
 
@@ -252,7 +272,9 @@ export default function ReminderFormModal({ open, mode, patientId, reminder, onC
                 </div>
 
                 <div className="rfm-footer">
-                    <button className="rfm-btn" onClick={onClose} type="button" disabled={saving}>Cancel</button>
+                    <button className="rfm-btn" onClick={onClose} type="button" disabled={saving}>
+                        Cancel
+                    </button>
                     <button className="rfm-btn rfm-btn-primary" onClick={handleSave} type="button" disabled={saving}>
                         {saving ? "Saving…" : isEdit ? "Save changes" : "Create reminder"}
                     </button>

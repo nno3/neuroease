@@ -57,27 +57,30 @@
 .pm-filter {
     display: flex;
     gap: 10px;
-    background: white;
+    margin: 12px 0 16px 0;
     padding: 6px;
     border-radius: 8px;
-    border: 1px solid #dee2e6;
 }
 
 .pm-filter-btn {
-    padding: 10px 22px;
-    border: none;
-    background: transparent;
-    border-radius: 6px;
+    padding: 13px 14px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 700;
+    color: #64748b;
     cursor: pointer;
-    color: #6c757d;
-    transition: all 0.2s ease;
+}
+
+.pm-filter-btn:hover {
+    background: #f8fafc;
 }
 
 .pm-filter-btn.is-active {
-    background: #4A90E2;
-    color: white;
+    background: #e6f2ff;
+    border-color: rgba(74, 144, 226, 0.35);
+    color: #2563eb;
 }
 
 .pm-btn {

@@ -50,13 +50,14 @@
     padding:18px;
 }
 .pfm-error {
-    margin-bottom:12px;
-    padding:10px 12px;
-    border-radius:10px;
-    border:1px solid #ef9a9a;
-    background:#ffebee;
-    color:#c62828;
-    font-weight:700;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+    padding: 10px 12px;
+    border-radius: 12px;
+    margin-bottom: 14px;
+    font-weight: 600;
+    font-size: 13px;
 }
 .pfm-grid {
     display:grid;
@@ -109,25 +110,31 @@
     background:#fff5f5;
 }
 .pfm-footer {
-    padding:18px;
-    border-top:1px solid #e9ecef;
-    background:#f8f9fa;
-    display:flex;
-    justify-content:flex-end;
-    gap:10px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 14px 18px 18px 18px;
+    border-top: 1px solid #eef2f7;
 }
-.pfm-btn { border:1px solid #dee2e6;
-    background:#fff; color:#495057;
-    padding:12px 18px;
-    border-radius:10px;
-    cursor:pointer;
-    font-weight:800;
+
+.pfm-btn {
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
 }
+
 .pfm-btn-primary {
-    background:#0066cc;
-    border-color:#0066cc;
-    color:#fff;
-    box-shadow:0 2px 4px rgba(0,102,204,.2);
+    background: #4a90e2;
+    border-color: #4a90e2;
+    color: #fff;
+}
+.pfm-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 .pfm-datewrap {
     position: relative;
