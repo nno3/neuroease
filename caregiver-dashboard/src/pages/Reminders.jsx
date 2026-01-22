@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getPatients } from "../services/patients";
-import { createReminder, deleteReminder, getRemindersForPatient, updateReminder} from "../services/reminders";
+import {createReminder, deleteReminder, getRemindersForPatient, updateReminder } from "../services/reminders";
 import ReminderFormModal from "../components/ReminderFormModal";
 import { Link } from "react-router-dom";
 import "./Reminders.css";
 
 import {Pill, CalendarDays, ClipboardList, Plus, Trash2, UserRound, Repeat, CheckCircle2, Clock3,} from "lucide-react";
-
+import ReminderCalendar from "../components/ReminderCalendar";
 const TABS = [
     { label: "All", value: "all" },
     { label: "Medication", value: "medication" },
@@ -38,7 +38,11 @@ function formatSchedule(rem) {
         const day = d.toLocaleDateString("en-GB", { weekday: "short" });
         return `Weekly on ${day} at ${time}`;
     }
-    const date = d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    const date = d.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+    });
     return `${date} at ${time}`;
 }
 function TypeIcon({ reminderType, size = 18 }) {
@@ -48,7 +52,7 @@ function TypeIcon({ reminderType, size = 18 }) {
 }
 export default function Reminders() {
     const [patients, setPatients] = useState([]);
-    const [patientId, setPatientId] = useState("all");
+    const [patientId, setPatientId] = useState("all"); // "all" or "123"
     const [reminders, setReminders] = useState([]);
     const [tab, setTab] = useState("all");
 
@@ -58,15 +62,22 @@ export default function Reminders() {
     const [modalOpen, setModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState("create"); // create | edit
     const [editingReminder, setEditingReminder] = useState(null);
+    const [prefillDate, setPrefillDate] = useState(null); // Date used when creating from calendar
 
     const [toast, setToast] = useState(null); // { type, text }
     const toastRef = useRef(null);
-
+    // Calendar navigation
+    const [calendarRefDate, setCalendarRefDate] = useState(new Date());
     const showToast = (type, text) => {
         if (toastRef.current) clearTimeout(toastRef.current);
         setToast({ type, text });
         toastRef.current = setTimeout(() => setToast(null), 3000);
     };
+    useEffect(() => {
+        return () => {
+            if (toastRef.current) clearTimeout(toastRef.current);
+        };
+    }, []);
 
     const normalizeReminders = (res) => {
         const list = res?.data?.data ?? res?.data ?? [];
@@ -126,6 +137,7 @@ export default function Reminders() {
         }
     };
 
+    // Initial load
     useEffect(() => {
         (async () => {
             try {
@@ -133,7 +145,6 @@ export default function Reminders() {
                 const list = pRes?.data?.patients ?? [];
                 setPatients(list);
 
-                // default to ALL patients view
                 setPatientId("all");
                 await loadAllPatients(list);
             } catch (e) {
@@ -154,18 +165,24 @@ export default function Reminders() {
         }
     }, [patientId, patients]);
 
-    const openCreate = () => {
+    const openCreate = (date = null) => {
         setModalMode("create");
         setEditingReminder(null);
+        setPrefillDate(date);
         setModalOpen(true);
     };
 
     const openEdit = (r) => {
         setModalMode("edit");
         setEditingReminder(r);
+        setPrefillDate(null);
         setModalOpen(true);
     };
 
+    const closeModal = () => {
+        setModalOpen(false);
+        setPrefillDate(null);
+    };
     const handleDelete = async (r) => {
         const ok = window.confirm(`Delete reminder "${r?.title ?? "this reminder"}"?`);
         if (!ok) return;
@@ -190,7 +207,7 @@ export default function Reminders() {
                 res = await updateReminder(editingReminder.id, payload);
                 showToast("success", "Reminder updated successfully.");
             }
-            setModalOpen(false);
+            closeModal();
             if (patientId === "all") await loadAllPatients(patients);
             else await loadForPatient(patientId, patients.find((x) => String(x.id) === String(patientId))?.name);
             return res;
@@ -217,7 +234,7 @@ export default function Reminders() {
                 <div>
                     <h1 className="rm-title">Reminder Scheduling</h1>
                     <p className="rm-subtitle">
-                        Create, edit and delete reminders with recurrence for patients under your care.
+                        Schedule reminders for patients under your care. Use the calendar to plan and review.
                     </p>
                 </div>
 
@@ -225,7 +242,8 @@ export default function Reminders() {
                     <Link className="rm-link" to="/patients">
                         Manage patients
                     </Link>
-                    <button className="rm-btn-primary" onClick={openCreate} type="button">
+
+                    <button className="rm-btn-primary" onClick={() => openCreate(null)} type="button">
                         <Plus size={16} />
                         <span>Schedule reminder</span>
                     </button>
@@ -241,10 +259,10 @@ export default function Reminders() {
             <div className="rm-panel">
                 <div className="rm-panel-head">
                     <div>
-                        <div className="rm-panel-title">Current Reminders</div>
+                        <div className="rm-panel-title">Calendar</div>
                         <div className="rm-panel-meta">
                             {selectedPatientName ? `Patient: ${selectedPatientName}` : "Select a patient to view reminders"}
-                            {patientId === "all" && <span className="rm-panel-hint"> • Choose a patient when scheduling</span>}
+                            {patientId === "all" && <span className="rm-panel-hint"> • Filter by patient to focus the calendar</span>}
                         </div>
                     </div>
 
@@ -274,82 +292,98 @@ export default function Reminders() {
                 {loading && <div className="rm-state">Loading reminders…</div>}
                 {error && <div className="rm-state rm-state--error">{error}</div>}
 
-                {!loading && !error && visibleReminders.length === 0 && (
-                    <div className="rm-state">No reminders found for this filter.</div>
+                {!loading && !error && (
+                    <ReminderCalendar
+                        reminders={visibleReminders}
+                        referenceDate={calendarRefDate}
+                        onChangeReferenceDate={setCalendarRefDate}
+                        showPatient={patientId === "all"}
+                        onCreateAt={(date) => openCreate(date)}
+                        onOpenReminder={(reminder) => openEdit(reminder)}
+                    />
                 )}
 
-                {!loading && !error && visibleReminders.length > 0 && (
-                    <div className="rm-list">
-                        {visibleReminders.map((r) => {
-                            const isCompleted = r.isCompleted === true;
+                {/* Optional: keep the list below for quick scanning */}
+                {!loading && !error && (
+                    <div className="rm-listwrap">
+                        <div className="rm-listhead">Upcoming reminders</div>
 
-                            return (
-                                <div className="rm-card" key={r.id}>
-                                    <div className="rm-card-left">
-                                        <div className={`rm-iconbox rm-iconbox--${r.reminderType}`}>
-                                            <TypeIcon reminderType={r.reminderType} />
+                        {visibleReminders.length === 0 ? (
+                            <div className="rm-state">No reminders found for this filter.</div>
+                        ) : (
+                            <div className="rm-list">
+                                {visibleReminders.slice(0, 8).map((r) => {
+                                    const isCompleted = r.isCompleted === true;
+
+                                    return (
+                                        <div className="rm-card rm-card--compact" key={r.id}>
+                                            <div className="rm-card-left">
+                                                <div className={`rm-iconbox rm-iconbox--${r.reminderType}`}>
+                                                    <TypeIcon reminderType={r.reminderType} />
+                                                </div>
+                                            </div>
+
+                                            <div className="rm-card-main">
+                                                <div className="rm-card-title">{r.title}</div>
+
+                                                <div className="rm-lines">
+                                                    <div className="rm-line">
+                                                        <UserRound size={14} />
+                                                        <span className="rm-line-label">Patient:</span>
+                                                        <span className="rm-line-value">
+                              {r.patientName
+                                  ? `${r.patientName} (ID ${format3(r.patientId)})`
+                                  : selectedPatientName && patientId !== "all"
+                                      ? `${selectedPatientName} (ID ${format3(patientId)})`
+                                      : "—"}
+                            </span>
+                                                    </div>
+
+                                                    <div className="rm-line">
+                                                        <Clock3 size={14} />
+                                                        <span className="rm-line-label">Time:</span>
+                                                        <span className="rm-line-value">{formatSchedule(r)}</span>
+                                                    </div>
+
+                                                    <div className="rm-line">
+                                                        <Repeat size={14} />
+                                                        <span className="rm-line-label">Recurrence:</span>
+                                                        <span className="rm-pill">{recurrenceLabel(r.recurrence)}</span>
+                                                        <span className="rm-muted">({typeLabel(r.reminderType)})</span>
+                                                    </div>
+
+                                                    <div className="rm-line">
+                                                        <CheckCircle2 size={14} />
+                                                        <span className="rm-line-label">Status:</span>
+                                                        <span className={`rm-status ${isCompleted ? "is-complete" : "is-pending"}`}>
+                              {isCompleted ? "Completed" : "Pending"}
+                            </span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="rm-card-msg">{r.message}</div>
+                                            </div>
+
+                                            <div className="rm-card-actions">
+                                                <button className="rm-actionbtn" type="button" onClick={() => openEdit(r)}>
+                                                    Edit
+                                                </button>
+
+                                                <button
+                                                    className="rm-iconbtn rm-iconbtn--danger"
+                                                    type="button"
+                                                    onClick={() => handleDelete(r)}
+                                                    aria-label="Delete"
+                                                    title="Delete"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
-
-                                    <div className="rm-card-main">
-                                        <div className="rm-card-title">{r.title}</div>
-
-                                        <div className="rm-lines">
-                                            <div className="rm-line">
-                                                <UserRound size={15} />
-                                                <span className="rm-line-label">Patient:</span>
-                                                <span className="rm-line-value">
-                          {r.patientName
-                              ? `${r.patientName} (ID ${format3(r.patientId)})`
-                              : selectedPatientName && patientId !== "all"
-                                  ? `${selectedPatientName} (ID ${format3(patientId)})`
-                                  : "—"}
-                        </span>
-                                            </div>
-
-                                            <div className="rm-line">
-                                                <Clock3 size={15} />
-                                                <span className="rm-line-label">Time:</span>
-                                                <span className="rm-line-value">{formatSchedule(r)}</span>
-                                            </div>
-
-                                            <div className="rm-line">
-                                                <Repeat size={15} />
-                                                <span className="rm-line-label">Recurrence:</span>
-                                                <span className="rm-pill">{recurrenceLabel(r.recurrence)}</span>
-                                                <span className="rm-muted">({typeLabel(r.reminderType)})</span>
-                                            </div>
-
-                                            <div className="rm-line">
-                                                <CheckCircle2 size={15} />
-                                                <span className="rm-line-label">Status:</span>
-                                                <span className={`rm-status ${isCompleted ? "is-complete" : "is-pending"}`}>
-                          {isCompleted ? "Completed" : "Pending"}
-                        </span>
-                                            </div>
-                                        </div>
-                                        <div className="rm-card-msg">{r.message}</div>
-                                    </div>
-
-                                    <div className="rm-card-actions">
-                                        {/* Edit like Patient Management (text button) */}
-                                        <button className="rm-actionbtn" type="button" onClick={() => openEdit(r)}>
-                                            Edit
-                                        </button>
-
-                                        <button
-                                            className="rm-iconbtn rm-iconbtn--danger"
-                                            type="button"
-                                            onClick={() => handleDelete(r)}
-                                            aria-label="Delete"
-                                            title="Delete"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
-                                    </div>
-                                </div>
-                            );
-                        })}
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -360,7 +394,8 @@ export default function Reminders() {
                 patientId={patientId === "all" ? null : Number(patientId)}
                 patients={patients}
                 reminder={editingReminder}
-                onClose={() => setModalOpen(false)}
+                prefillDate={prefillDate}
+                onClose={closeModal}
                 onSubmit={onSubmit}
             />
         </div>

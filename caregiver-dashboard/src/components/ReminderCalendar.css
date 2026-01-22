@@ -1,0 +1,242 @@
+.rc-wrap {
+    border: 1px solid #eef2f7;
+    border-radius: 14px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.rc-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    border-bottom: 1px solid #eef2f7;
+    gap: 12px;
+}
+
+.rc-month {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 800;
+    color: #0f172a;
+    font-size: 14px;
+}
+
+.rc-head-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.rc-btn {
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.rc-btn:hover {
+    background: #f8fafc;
+}
+
+.rc-iconbtn {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+}
+
+.rc-iconbtn:hover {
+    background: #f8fafc;
+}
+
+.rc-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+}
+
+.rc-weekday {
+    padding: 10px 10px;
+    border-bottom: 1px solid #eef2f7;
+    background: #fbfdff;
+    font-size: 12px;
+    font-weight: 800;
+    color: #64748b;
+}
+
+.rc-cell {
+    min-height: 120px;
+    padding: 10px 10px;
+    border-bottom: 1px solid #eef2f7;
+    border-right: 1px solid #eef2f7;
+    background: #fff;
+    text-align: left;
+    cursor: pointer;
+}
+
+.rc-cell:nth-child(7n + 7) {
+    border-right: none;
+}
+
+.rc-cell:hover {
+    background: #fbfdff;
+}
+
+.rc-cell.is-out {
+    background: #fafafa;
+    color: #94a3b8;
+}
+
+.rc-cell.is-today {
+    outline: 2px solid rgba(74, 144, 226, 0.25);
+    outline-offset: -2px;
+    background: #f7fbff;
+}
+
+.rc-cell-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.rc-daynum {
+    font-weight: 900;
+    font-size: 13px;
+    color: #0f172a;
+}
+
+.rc-addhint {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #475569;
+}
+
+.rc-events {
+    margin-top: 8px;
+    display: grid;
+    gap: 6px;
+}
+
+.rc-event {
+    display: grid;
+    grid-template-columns: 44px 1fr;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.rc-event:hover {
+    background: #f8fafc;
+}
+
+.rc-event-time {
+    font-size: 12px;
+    font-weight: 900;
+    color: #0f172a;
+}
+
+.rc-event-title {
+    font-size: 12px;
+    font-weight: 800;
+    color: #334155;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.rc-event-patient {
+    grid-column: 1 / -1;
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Type tint */
+.rc-event.is-medication { border-color: rgba(37, 99, 235, 0.28); background: #f2f7ff; }
+.rc-event.is-appointment { border-color: rgba(180, 83, 9, 0.28); background: #fff7ef; }
+.rc-event.is-general { border-color: rgba(15, 118, 110, 0.28); background: #f1fbf8; }
+
+/* Status */
+.rc-event.is-overdue {
+    border-color: rgba(185, 28, 28, 0.35);
+    background: #fff1f2;
+}
+
+.rc-event.is-today {
+    border-color: rgba(74, 144, 226, 0.45);
+}
+
+.rc-event.is-complete {
+    opacity: 0.75;
+}
+
+/* "+N more" */
+.rc-more {
+    font-size: 11px;
+    font-weight: 800;
+    color: #64748b;
+    padding-left: 2px;
+}
+
+/* Legend */
+.rc-legend {
+    padding: 10px 14px;
+    border-top: 1px solid #eef2f7;
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.rc-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.rc-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    display: inline-block;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+}
+
+.rc-dot.is-today {
+    background: #e6f2ff;
+    border-color: rgba(74, 144, 226, 0.35);
+}
+
+.rc-dot.is-upcoming {
+    background: #f8fafc;
+}
+
+.rc-dot.is-overdue {
+    background: #fff1f2;
+    border-color: rgba(185, 28, 28, 0.35);
+}

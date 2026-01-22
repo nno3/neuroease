@@ -51,20 +51,23 @@ const DateTimeInputWithButton = forwardRef(
 );
 DateTimeInputWithButton.displayName = "DateTimeInputWithButton";
 
-export default function ReminderFormModal({ open, mode, patientId, patients = [], reminder, onClose, onSubmit,}) {
+export default function ReminderFormModal({ open, mode, patientId, patients = [], reminder,  prefillDate = null, onClose, onSubmit,}) {
     const isEdit = mode === "edit";
 
     const initial = useMemo(() => {
+        const fromReminder = reminder?.scheduledTime ? new Date(reminder.scheduledTime) : null;
+        const fromPrefill = prefillDate ? new Date(prefillDate) : null;
+        const scheduledAt = isEdit ? fromReminder : (fromPrefill || fromReminder);
+        const safeScheduledAt = scheduledAt && !Number.isNaN(scheduledAt.getTime()) ? scheduledAt : null;
         return {
             title: reminder?.title ?? "",
             message: reminder?.message ?? "",
             reminderType: reminder?.reminderType ?? "general",
             recurrence: reminder?.recurrence ?? "once",
-            scheduledAt: parseISODateTime(reminder?.scheduledTime),
-            // if editing, reminder already belongs to a patient
-            pickedPatientId: reminder?.patientId ?? "",
+            scheduledAt: safeScheduledAt,
+            pickedPatientId: reminder?.patientId ? String(reminder.patientId) : "",
         };
-    }, [reminder]);
+    }, [reminder, prefillDate, isEdit]);
 
     const [form, setForm] = useState(initial);
     const [saving, setSaving] = useState(false);

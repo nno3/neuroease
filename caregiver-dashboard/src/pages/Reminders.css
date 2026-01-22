@@ -309,3 +309,12 @@
     border-color: #fecaca;
     color: #b91c1c;
 }
+.rm-viewtoggle {
+    display: flex;
+    gap: 10px;
+    margin: 10px 0 0 0;
+}
+.rm-filter-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
