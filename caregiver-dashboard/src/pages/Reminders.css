@@ -1,3 +1,5 @@
+This is my current css, the white block at the end is now gone but I want the reminder cards to be as big as they were earlier and for it to be scrollable if there is so many appointments rather than adjusting the size of the cards. and I also want rm-schedule-section to always match the length of rm-calendar-section.
+
 .rm-page {
     padding: 24px;
 }
@@ -317,4 +319,113 @@
 .rm-filter-btn:disabled {
     opacity: 0.55;
     cursor: not-allowed;
+}
+.rm-splitview {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 18px;
+}
+
+.rm-calendar-section {
+    min-width: 0;
+}
+
+.rm-schedule-section {
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid #eef2f7;
+    display: flex;
+    flex-direction: column;
+    max-height: 1315px;
+}
+
+.rm-schedule-head {
+    padding: 14px 16px;
+    border-bottom: 1px solid #eef2f7;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.rm-schedule-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.rm-clear-btn {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #64748b;
+}
+
+.rm-clear-btn:hover {
+    background: #f8fafc;
+}
+
+.rm-schedule-list {
+    padding: 12px;
+    display: block;
+    gap: 12px;
+    flex-grow: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.rm-schedule-card {
+    display: grid;
+    grid-template-columns: 56px 1fr auto;
+    gap: 12px;
+    background: #fff;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 7px;
+    border: 1px solid #eef2f7;
+    align-items: start;
+    max-height: 440px;
+}
+
+.rm-schedule-card:hover {
+    background: #fbfdff;
+}
+
+.rm-schedule-left {
+    display: flex;
+    align-items: center;
+}
+
+.rm-schedule-main {
+    padding-top: 35px;
+    min-width: 0;
+}
+
+.rm-schedule-card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #243447;
+    line-height: 1.3;
+    margin-bottom: 8px;
+}
+
+@media (max-width: 1200px) {
+    .rm-splitview {
+        grid-template-columns: 1fr;
+    }
+
+    .rm-schedule-section {
+        order: -1;
+    }
+}
+.rm-schedule-subtitle{
+    font-weight: 550;
+    padding: 15px 17px;
+    color: #26262d;
+
 }

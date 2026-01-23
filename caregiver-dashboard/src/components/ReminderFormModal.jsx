@@ -7,7 +7,7 @@ import { Calendar, X } from "lucide-react";
 const TYPES = [
     { label: "Medication", value: "medication" },
     { label: "Appointment", value: "appointment" },
-    // UI says “task”, backend expects “general”
+    // UI says "task", backend expects "general"
     { label: "Task", value: "general" },
 ];
 
@@ -51,7 +51,7 @@ const DateTimeInputWithButton = forwardRef(
 );
 DateTimeInputWithButton.displayName = "DateTimeInputWithButton";
 
-export default function ReminderFormModal({ open, mode, patientId, patients = [], reminder,  prefillDate = null, onClose, onSubmit,}) {
+export default function ReminderFormModal({ open, mode, patientId, patients = [], reminder, prefillDate = null, onClose, onSubmit }) {
     const isEdit = mode === "edit";
 
     const initial = useMemo(() => {
@@ -59,12 +59,21 @@ export default function ReminderFormModal({ open, mode, patientId, patients = []
         const fromPrefill = prefillDate ? new Date(prefillDate) : null;
         const scheduledAt = isEdit ? fromReminder : (fromPrefill || fromReminder);
         const safeScheduledAt = scheduledAt && !Number.isNaN(scheduledAt.getTime()) ? scheduledAt : null;
+
+        // Add end time logic
+        const fromReminderEnd = reminder?.endTime ? new Date(reminder.endTime) : null;
+        const safeEndAt = fromReminderEnd && !Number.isNaN(fromReminderEnd.getTime()) ? fromReminderEnd : null;
+
+        // If editing a "once" recurrence that has an endTime, clear it
+        const shouldClearEndTime = reminder?.recurrence === "once" && safeEndAt;
+
         return {
             title: reminder?.title ?? "",
             message: reminder?.message ?? "",
             reminderType: reminder?.reminderType ?? "general",
             recurrence: reminder?.recurrence ?? "once",
             scheduledAt: safeScheduledAt,
+            endAt: shouldClearEndTime ? null : safeEndAt, // Clear end time for "once" recurrence
             pickedPatientId: reminder?.patientId ? String(reminder.patientId) : "",
         };
     }, [reminder, prefillDate, isEdit]);
@@ -110,6 +119,19 @@ export default function ReminderFormModal({ open, mode, patientId, patients = []
         }
 
         if (!form.recurrence) errs.recurrence = "Recurrence is required.";
+
+        // Add end date validation
+        if (form.endAt) {
+            // For recurring reminders, end date must be after or equal to start date
+            if (form.recurrence !== "once" && form.endAt < form.scheduledAt) {
+                errs.endAt = "End date must be after start date.";
+            }
+            // For one-time reminders, end date doesn't make sense
+            if (form.recurrence === "once") {
+                errs.endAt = "End date is not applicable for one-time reminders.";
+            }
+        }
+
         return errs;
     };
 
@@ -127,10 +149,15 @@ export default function ReminderFormModal({ open, mode, patientId, patients = []
             patientId: pid,
             title: form.title.trim(),
             message: form.message.trim(),
-            reminderType: form.reminderType,       // medication|appointment|general
+            reminderType: form.reminderType,
             scheduledTime: form.scheduledAt.toISOString(),
-            recurrence: form.recurrence,           // once|daily|weekly
+            recurrence: form.recurrence,
         };
+
+        // Only add endTime for recurring reminders (not for "once")
+        if (form.recurrence !== "once" && form.endAt) {
+            payload.endTime = form.endAt.toISOString();
+        }
 
         setSaving(true);
         try {
@@ -228,6 +255,10 @@ export default function ReminderFormModal({ open, mode, patientId, patients = []
                                 selected={form.scheduledAt}
                                 onChange={(date) => {
                                     setField("scheduledAt", date);
+                                    // If end date exists and is now before the new start date, clear it
+                                    if (form.endAt && form.endAt < date) {
+                                        setField("endAt", null);
+                                    }
                                     setFieldErrors((prev) => ({ ...prev, scheduledAt: undefined }));
                                 }}
                                 showTimeSelect
@@ -254,7 +285,14 @@ export default function ReminderFormModal({ open, mode, patientId, patients = []
                             <select
                                 className={`rfm-select ${fieldErrors.recurrence ? "is-error" : ""}`}
                                 value={form.recurrence}
-                                onChange={(e) => setField("recurrence", e.target.value)}
+                                onChange={(e) => {
+                                    setField("recurrence", e.target.value);
+                                    // If recurrence is "once", clear end date
+                                    if (e.target.value === "once") {
+                                        setField("endAt", null);
+                                    }
+                                    setFieldErrors((prev) => ({ ...prev, recurrence: undefined, endAt: undefined }));
+                                }}
                             >
                                 {RECURRENCE.map((r) => (
                                     <option key={r.value} value={r.value}>
@@ -270,6 +308,42 @@ export default function ReminderFormModal({ open, mode, patientId, patients = []
                             )}
 
                             {fieldErrors.recurrence && <div className="rfm-help">{fieldErrors.recurrence}</div>}
+                        </div>
+
+                        <div className="rfm-field">
+                            <label className="rfm-label">
+                                End date/time {form.recurrence !== "once" ? "(optional)" : ""}
+                            </label>
+                            <DatePicker
+                                selected={form.endAt}
+                                onChange={(date) => {
+                                    setField("endAt", date);
+                                    setFieldErrors((prev) => ({ ...prev, endAt: undefined }));
+                                }}
+                                showTimeSelect
+                                timeIntervals={15}
+                                timeCaption="Time"
+                                dateFormat="dd/MM/yyyy h:mm aa"
+                                placeholderText="DD/MM/YYYY hh:mm"
+                                showMonthDropdown
+                                showYearDropdown
+                                scrollableYearDropdown
+                                yearDropdownItemNumber={15}
+                                minDate={form.scheduledAt || new Date()} // End date should be after start date
+                                disabled={form.recurrence === "once"}
+                                customInput={
+                                    <DateTimeInputWithButton
+                                        className={`rfm-input ${fieldErrors.endAt ? "is-error" : ""}`}
+                                        disabled={form.recurrence === "once"}
+                                    />
+                                }
+                            />
+                            {fieldErrors.endAt && <div className="rfm-help">{fieldErrors.endAt}</div>}
+                            <div className="rfm-help-muted">
+                                {form.recurrence === "once"
+                                    ? "End date is not applicable for one-time reminders."
+                                    : "Leave empty for indefinite recurring reminders."}
+                            </div>
                         </div>
                     </div>
                 </div>

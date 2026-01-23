@@ -28,6 +28,10 @@ const Reminder = sequelize.define('Reminder', {
         type: DataTypes.DATE,
         allowNull: false
     },
+    endTime: {
+        type: DataTypes.DATE,
+        allowNull: true  // Optional field
+    },
     isCompleted: {
         type: DataTypes.BOOLEAN,
         defaultValue: false

@@ -75,11 +75,11 @@ function defaultDateTimeForDay(day) {
 }
 
 function safeDate(v) {
+    if (v === null || v === undefined || v === "") return null;
     const d = new Date(v);
     return Number.isNaN(d.getTime()) ? null : d;
 }
 
-// Expand recurrence occurrences within range [rangeStart..rangeEnd]
 function expandOccurrences(reminder, rangeStart, rangeEnd) {
     const out = [];
     const dt = safeDate(reminder?.scheduledTime);
@@ -88,12 +88,12 @@ function expandOccurrences(reminder, rangeStart, rangeEnd) {
     const start = startOfDay(rangeStart);
     const end = endOfDay(rangeEnd);
 
+    const reminderEndRaw = safeDate(reminder?.endTime);
+    const reminderEnd = reminderEndRaw ? endOfDay(reminderEndRaw) : null;
     const recur = reminder?.recurrence || "once";
 
     if (recur === "once") {
-        if (dt >= start && dt <= end) {
-            out.push({ reminder, occursAt: dt });
-        }
+        if (dt >= start && dt <= end) out.push({ reminder, occursAt: dt });
         return out;
     }
 
@@ -101,14 +101,13 @@ function expandOccurrences(reminder, rangeStart, rangeEnd) {
         let first = new Date(dt);
 
         if (first < start) {
-            // move forward day-by-day to first >= start (keep same time)
             const diffDays = Math.floor((startOfDay(start) - startOfDay(first)) / MS_DAY);
             first.setDate(first.getDate() + diffDays);
             if (first < start) first.setDate(first.getDate() + 1);
         }
 
-        // cap to prevent runaway
         for (let i = 0, cur = new Date(first); i < 70 && cur <= end; i++) {
+            if (reminderEnd && cur > reminderEnd) break;
             if (cur >= start && cur <= end) out.push({ reminder, occursAt: new Date(cur) });
             cur.setDate(cur.getDate() + 1);
         }
@@ -116,7 +115,7 @@ function expandOccurrences(reminder, rangeStart, rangeEnd) {
     }
 
     if (recur === "weekly") {
-        const targetDow = dt.getDay(); // 0..6
+        const targetDow = dt.getDay();
         let first = new Date(dt);
 
         if (first < start) {
@@ -129,13 +128,13 @@ function expandOccurrences(reminder, rangeStart, rangeEnd) {
         }
 
         for (let i = 0, cur = new Date(first); i < 20 && cur <= end; i++) {
+            if (reminderEnd && cur > reminderEnd) break;
             if (cur >= start && cur <= end) out.push({ reminder, occursAt: new Date(cur) });
             cur.setDate(cur.getDate() + 7);
         }
         return out;
     }
 
-    // fallback
     if (dt >= start && dt <= end) out.push({ reminder, occursAt: dt });
     return out;
 }
@@ -147,6 +146,8 @@ export default function ReminderCalendar({
                                              onCreateAt,
                                              onOpenReminder,
                                              showPatient = true,
+                                             selectedDate,
+                                             onSelectDate,
                                          }) {
     const today = new Date();
 
@@ -178,8 +179,9 @@ export default function ReminderCalendar({
         const rangeEnd = grid.days[grid.days.length - 1];
 
         const all = [];
-        reminders.forEach((r) => {
-            all.push(...expandOccurrences(r, rangeStart, rangeEnd));
+        reminders.forEach((r, index) => {
+            const occurrences = expandOccurrences(r, rangeStart, rangeEnd);
+            all.push(...occurrences);
         });
 
         all.forEach((occ) => {
@@ -196,7 +198,6 @@ export default function ReminderCalendar({
 
         return map;
     }, [reminders, grid]);
-
     const goPrev = () => {
         const d = referenceDate ? new Date(referenceDate) : new Date();
         d.setMonth(d.getMonth() - 1);
@@ -210,7 +211,9 @@ export default function ReminderCalendar({
     };
 
     const goToday = () => {
-        onChangeReferenceDate?.(new Date());
+        const now = new Date();
+        onChangeReferenceDate?.(now);
+        onSelectDate?.(now);
     };
 
     const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -251,30 +254,38 @@ export default function ReminderCalendar({
                     const key = toKey(day);
                     const list = occurrencesByDay.get(key) || [];
                     const isToday = sameDate(day, today);
+                    const isSelected = selectedDate && sameDate(day, selectedDate);
                     const inMonth = day.getMonth() === (referenceDate || today).getMonth();
-
                     return (
-                        <button
+                        <div
                             key={key}
-                            type="button"
                             className={[
                                 "rc-cell",
                                 !inMonth ? "is-out" : "",
                                 isToday ? "is-today" : "",
+                                isSelected ? "is-selected" : "",
                             ].join(" ")}
-                            onClick={() => onCreateAt?.(defaultDateTimeForDay(day))}
-                            title="Click to schedule a reminder"
+                            onClick={() => onSelectDate?.(day)}
+                            title="Click to view schedule"
                         >
                             <div className="rc-cell-top">
                                 <div className="rc-daynum">{day.getDate()}</div>
 
-                                <div className="rc-addhint" title="Schedule reminder">
-                                    <CalendarPlus size={16} />
-                                </div>
+                                <button
+                                    className="rc-addhint"
+                                    title="Schedule reminder"
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onCreateAt?.(defaultDateTimeForDay(day));
+                                    }}
+                                >
+                                    <CalendarPlus size={16}/>
+                                </button>
                             </div>
 
                             <div className="rc-events">
-                                {list.slice(0, 4).map((occ) => {
+                                {list.slice(0, 3).map((occ) => {
                                     const r = occ.reminder;
                                     const occursAt = occ.occursAt;
                                     const now = new Date();
@@ -313,24 +324,24 @@ export default function ReminderCalendar({
                                     );
                                 })}
 
-                                {list.length > 4 && (
-                                    <div className="rc-more">+{list.length - 4} more</div>
+                                {list.length > 3 && (
+                                    <div className="rc-more">+{list.length - 3} more</div>
                                 )}
                             </div>
-                        </button>
+                        </div>
                     );
                 })}
             </div>
 
             <div className="rc-legend">
                 <div className="rc-legend-item">
-                    <span className="rc-dot is-today" /> Today
+                    <span className="rc-dot rc-medication"/> Medication
                 </div>
                 <div className="rc-legend-item">
-                    <span className="rc-dot is-upcoming" /> Upcoming
+                    <span className="rc-dot rc-appointment"/> Appointment
                 </div>
                 <div className="rc-legend-item">
-                    <span className="rc-dot is-overdue" /> Overdue
+                    <span className="rc-dot rc-task"/> Tasks
                 </div>
             </div>
         </div>

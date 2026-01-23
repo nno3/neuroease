@@ -3,9 +3,7 @@ const { Reminder, User } = require('../models');
 // Create reminder
 const createReminder = async (req, res) => {
     try {
-        const { patientId, title, message, reminderType, scheduledTime, recurrence } = req.body;
-
-        // Ownership check
+        const { patientId, title, message, reminderType, scheduledTime, recurrence, endTime } = req.body;
         if (req.user.userType === 'patient' && req.user.userId !== patientId) {
             return res.status(403).json({ success: false, message: "Patients can only create their own reminders" });
         }
@@ -18,13 +16,19 @@ const createReminder = async (req, res) => {
             }
         }
 
+        // Validate endTime if provided
+        if (endTime && new Date(endTime) <= new Date(scheduledTime)) {
+            return res.status(400).json({ success: false, message: "End time must be after start time" });
+        }
+
         const reminder = await Reminder.create({
             patientId,
             title,
             message,
             reminderType,
             scheduledTime,
-            recurrence
+            recurrence,
+            endTime  // Include endTime
         });
 
         res.json({ success: true, data: reminder });
@@ -71,7 +75,6 @@ const updateReminder = async (req, res) => {
             return res.status(404).json({ success: false, message: "Reminder not found" });
         }
 
-        // Ownership check
         if (req.user.userType === 'patient' && req.user.userId !== reminder.patientId) {
             return res.status(403).json({ success: false, message: "Access denied" });
         }
@@ -81,6 +84,18 @@ const updateReminder = async (req, res) => {
             const patients = await caregiver.getPatients();
             if (!patients.some(p => p.id === reminder.patientId)) {
                 return res.status(403).json({ success: false, message: "Not assigned to patient" });
+            }
+        }
+
+        // Validate endTime if provided in update
+        if (req.body.endTime && req.body.scheduledTime) {
+            if (new Date(req.body.endTime) <= new Date(req.body.scheduledTime)) {
+                return res.status(400).json({ success: false, message: "End time must be after start time" });
+            }
+        } else if (req.body.endTime && !req.body.scheduledTime) {
+            // If only endTime is being updated, compare with existing scheduledTime
+            if (new Date(req.body.endTime) <= new Date(reminder.scheduledTime)) {
+                return res.status(400).json({ success: false, message: "End time must be after start time" });
             }
         }
 

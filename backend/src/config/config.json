@@ -1,0 +1,29 @@
+{
+  "development": {
+    "username": "neuroease_user",
+    "password": "neuroease_password",
+    "database": "neuroease_db",
+    "host": "127.0.0.1",
+    "port": 5432,
+    "dialect": "postgres",
+    "logging": false
+  },
+  "test": {
+    "username": "postgres",
+    "password": "postgres_password",
+    "database": "neuroease_test",
+    "host": "127.0.0.1",
+    "port": 5432,
+    "dialect": "postgres",
+    "logging": false
+  },
+  "production": {
+    "username": "postgres",
+    "password": "postgres_password",
+    "database": "neuroease_prod",
+    "host": "127.0.0.1",
+    "port": 5432,
+    "dialect": "postgres",
+    "logging": false
+  }
+}

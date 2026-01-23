@@ -7,6 +7,15 @@ import "./Reminders.css";
 
 import {Pill, CalendarDays, ClipboardList, Plus, Trash2, UserRound, Repeat, CheckCircle2, Clock3,} from "lucide-react";
 import ReminderCalendar from "../components/ReminderCalendar";
+
+function sameDate(a, b) {
+    return (
+        a.getFullYear() === b.getFullYear() &&
+        a.getMonth() === b.getMonth() &&
+        a.getDate() === b.getDate()
+    );
+}
+
 const TABS = [
     { label: "All", value: "all" },
     { label: "Medication", value: "medication" },
@@ -33,10 +42,24 @@ function formatSchedule(rem) {
 
     const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 
-    if (rem.recurrence === "daily") return `Daily at ${time}`;
+    // Add end date display if available
+    let endInfo = "";
+    if (rem.endTime) {
+        const endDate = new Date(rem.endTime);
+        if (!Number.isNaN(endDate.getTime())) {
+            const endDateStr = endDate.toLocaleDateString("en-GB", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+            });
+            endInfo = ` until ${endDateStr}`;
+        }
+    }
+
+    if (rem.recurrence === "daily") return `Daily at ${time}${endInfo}`;
     if (rem.recurrence === "weekly") {
         const day = d.toLocaleDateString("en-GB", { weekday: "short" });
-        return `Weekly on ${day} at ${time}`;
+        return `Weekly on ${day} at ${time}${endInfo}`;
     }
     const date = d.toLocaleDateString("en-GB", {
         day: "2-digit",
@@ -50,6 +73,48 @@ function TypeIcon({ reminderType, size = 18 }) {
     if (reminderType === "appointment") return <CalendarDays size={size} />;
     return <ClipboardList size={size} />;
 }
+function safeDate(v) {
+    if (v === null || v === undefined || v === "") return null;
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function endOfDay(d) {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+}
+
+function doesReminderOccurOnDate(reminder, targetDate) {
+    const reminderDate = new Date(reminder.scheduledTime);
+    if (Number.isNaN(reminderDate.getTime())) return false;
+
+    const targetStart = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+    const targetEnd = endOfDay(targetDate);
+
+    const endRaw = safeDate(reminder.endTime);
+    const endInclusive = endRaw ? endOfDay(endRaw) : null;
+
+    // If there is an end date and the selected day is after it -> doesn't occur
+    if (endInclusive && targetStart > endInclusive) return false;
+
+    const recur = reminder.recurrence || "once";
+
+    if (recur === "once") {
+        return reminderDate >= targetStart && reminderDate <= targetEnd;
+    }
+
+    if (recur === "daily") {
+        const startDay = new Date(reminderDate.getFullYear(), reminderDate.getMonth(), reminderDate.getDate());
+        return targetStart >= startDay;
+    }
+
+    if (recur === "weekly") {
+        const startDay = new Date(reminderDate.getFullYear(), reminderDate.getMonth(), reminderDate.getDate());
+        return targetStart >= startDay && reminderDate.getDay() === targetDate.getDay();
+    }
+
+    return false;
+}
+
 export default function Reminders() {
     const [patients, setPatients] = useState([]);
     const [patientId, setPatientId] = useState("all"); // "all" or "123"
@@ -68,6 +133,7 @@ export default function Reminders() {
     const toastRef = useRef(null);
     // Calendar navigation
     const [calendarRefDate, setCalendarRefDate] = useState(new Date());
+    const [selectedDate, setSelectedDate] = useState(null);
     const showToast = (type, text) => {
         if (toastRef.current) clearTimeout(toastRef.current);
         setToast({ type, text });
@@ -224,9 +290,25 @@ export default function Reminders() {
     }, [patients, patientId]);
 
     const visibleReminders = useMemo(() => {
-        if (tab === "all") return reminders;
-        return reminders.filter((r) => r.reminderType === tab);
-    }, [reminders, tab]);
+        let filtered = reminders;
+
+        // Filter by tab
+        if (tab !== "all") {
+            filtered = filtered.filter((r) => r.reminderType === tab);
+        }
+
+        // Filter by selected date if one is chosen
+        if (selectedDate) {
+            filtered = filtered.filter((r) => {
+                return doesReminderOccurOnDate(r, selectedDate);
+            });
+        }
+
+        return filtered;
+    }, [reminders, tab, selectedDate]);
+
+
+
 
     return (
         <div className="rm-page">
@@ -291,99 +373,140 @@ export default function Reminders() {
 
                 {loading && <div className="rm-state">Loading reminders…</div>}
                 {error && <div className="rm-state rm-state--error">{error}</div>}
-
                 {!loading && !error && (
-                    <ReminderCalendar
-                        reminders={visibleReminders}
-                        referenceDate={calendarRefDate}
-                        onChangeReferenceDate={setCalendarRefDate}
-                        showPatient={patientId === "all"}
-                        onCreateAt={(date) => openCreate(date)}
-                        onOpenReminder={(reminder) => openEdit(reminder)}
-                    />
-                )}
+                    <div className="rm-splitview">
+                        <div className="rm-calendar-section">
+                            <ReminderCalendar
+                                reminders={tab === "all" ? reminders : reminders.filter((r) => r.reminderType === tab)}
+                                referenceDate={calendarRefDate}
+                                onChangeReferenceDate={setCalendarRefDate}
+                                showPatient={patientId === "all"}
+                                selectedDate={selectedDate}
+                                onSelectDate={setSelectedDate}
+                                onCreateAt={(date) => openCreate(date)}
+                                onOpenReminder={(reminder) => openEdit(reminder)}
+                            />
+                        </div>
 
-                {/* Optional: keep the list below for quick scanning */}
-                {!loading && !error && (
-                    <div className="rm-listwrap">
-                        <div className="rm-listhead">Upcoming reminders</div>
+                        <div className="rm-schedule-section">
+                            <div className="rm-schedule-head">
+                                <div className="rm-schedule-title">
+                                    {selectedDate
+                                        ? selectedDate.toLocaleDateString("en-GB", {
+                                            weekday: "long",
+                                            day: "numeric",
+                                            month: "long",
+                                            year: "numeric"
+                                        })
+                                        : "Select a date to view schedule"}
+                                </div>
 
-                        {visibleReminders.length === 0 ? (
-                            <div className="rm-state">No reminders found for this filter.</div>
-                        ) : (
-                            <div className="rm-list">
-                                {visibleReminders.slice(0, 8).map((r) => {
-                                    const isCompleted = r.isCompleted === true;
-
-                                    return (
-                                        <div className="rm-card rm-card--compact" key={r.id}>
-                                            <div className="rm-card-left">
-                                                <div className={`rm-iconbox rm-iconbox--${r.reminderType}`}>
-                                                    <TypeIcon reminderType={r.reminderType} />
-                                                </div>
-                                            </div>
-
-                                            <div className="rm-card-main">
-                                                <div className="rm-card-title">{r.title}</div>
-
-                                                <div className="rm-lines">
-                                                    <div className="rm-line">
-                                                        <UserRound size={14} />
-                                                        <span className="rm-line-label">Patient:</span>
-                                                        <span className="rm-line-value">
-                              {r.patientName
-                                  ? `${r.patientName} (ID ${format3(r.patientId)})`
-                                  : selectedPatientName && patientId !== "all"
-                                      ? `${selectedPatientName} (ID ${format3(patientId)})`
-                                      : "—"}
-                            </span>
-                                                    </div>
-
-                                                    <div className="rm-line">
-                                                        <Clock3 size={14} />
-                                                        <span className="rm-line-label">Time:</span>
-                                                        <span className="rm-line-value">{formatSchedule(r)}</span>
-                                                    </div>
-
-                                                    <div className="rm-line">
-                                                        <Repeat size={14} />
-                                                        <span className="rm-line-label">Recurrence:</span>
-                                                        <span className="rm-pill">{recurrenceLabel(r.recurrence)}</span>
-                                                        <span className="rm-muted">({typeLabel(r.reminderType)})</span>
-                                                    </div>
-
-                                                    <div className="rm-line">
-                                                        <CheckCircle2 size={14} />
-                                                        <span className="rm-line-label">Status:</span>
-                                                        <span className={`rm-status ${isCompleted ? "is-complete" : "is-pending"}`}>
-                              {isCompleted ? "Completed" : "Pending"}
-                            </span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="rm-card-msg">{r.message}</div>
-                                            </div>
-
-                                            <div className="rm-card-actions">
-                                                <button className="rm-actionbtn" type="button" onClick={() => openEdit(r)}>
-                                                    Edit
-                                                </button>
-
-                                                <button
-                                                    className="rm-iconbtn rm-iconbtn--danger"
-                                                    type="button"
-                                                    onClick={() => handleDelete(r)}
-                                                    aria-label="Delete"
-                                                    title="Delete"
-                                                >
-                                                    <Trash2 size={18} />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                                {selectedDate && (
+                                    <button
+                                        className="rm-clear-btn"
+                                        type="button"
+                                        onClick={() => setSelectedDate(null)}
+                                    >
+                                        Clear
+                                    </button>
+                                )}
                             </div>
-                        )}
+
+                            <div className={"rm-schedule-subtitle"}>
+                                 Scheduled Reminders
+                            </div>
+                            {visibleReminders.length === 0 ? (
+                                <div className="rm-state">
+                                    {selectedDate
+                                        ? "No reminders scheduled for this date."
+                                        : "Select a date on the calendar to view scheduled reminders."}
+                                </div>
+                            ) : (
+                                <div className="rm-schedule-list">
+                                    {visibleReminders.map((r) => {
+                                        const isCompleted = r.isCompleted === true;
+
+                                        return (
+                                            <div className="rm-schedule-card" key={r.id}>
+                                                <div className="rm-schedule-left">
+                                                    <div className={`rm-iconbox rm-iconbox--${r.reminderType}`}>
+                                                        <TypeIcon reminderType={r.reminderType}/>
+                                                    </div>
+                                                </div>
+
+                                                <div className="rm-schedule-main">
+                                                    <div className="rm-schedule-card-title">{r.title}</div>
+
+                                                    <div className="rm-lines">
+                                                        {(patientId === "all" || selectedDate) && (
+                                                            <div className="rm-line">
+                                                                <UserRound size={14}/>
+                                                                <span className="rm-line-label">Patient:</span>
+                                                                <span className="rm-line-value">
+                                                                    {r.patientName
+                                                                        ? `${r.patientName} (ID ${format3(r.patientId)})`
+                                                                        : selectedPatientName && patientId !== "all"
+                                                                            ? `${selectedPatientName} (ID ${format3(patientId)})`
+                                                                            : "—"}
+                                                                </span>
+                                                            </div>
+                                                        )}
+
+                                                        <div className="rm-line">
+                                                            <Clock3 size={14}/>
+                                                            <span className="rm-line-label">Time:</span>
+                                                            <span className="rm-line-value">{formatSchedule(r)}</span>
+                                                        </div>
+
+                                                        <div className="rm-line">
+                                                            <Repeat size={14}/>
+                                                            <span className="rm-line-label">Recurrence:</span>
+                                                            <span
+                                                                className="rm-pill">{recurrenceLabel(r.recurrence)}</span>
+                                                            <span
+                                                                className="rm-muted">({typeLabel(r.reminderType)})</span>
+                                                        </div>
+                                                        <div className="rm-line">
+                                                            <CalendarDays size={14}/>
+                                                            <span className="rm-line-label">Duration:</span>
+                                                            <span className="rm-line-value">{r.endTime ? `Until ${new Date(r.endTime).toLocaleDateString("en-GB", {day: "2-digit", month: "short", year: "numeric"})}` : "No end date"}</span>
+                                                        </div>
+
+                                                        <div className="rm-line">
+                                                            <CheckCircle2 size={14}/>
+                                                            <span className="rm-line-label">Status:</span>
+                                                            <span
+                                                                className={`rm-status ${isCompleted ? "is-complete" : "is-pending"}`}>
+                                                                {isCompleted ? "Completed" : "Pending"}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    {r.message && <div className="rm-card-msg">{r.message}</div>}
+                                                </div>
+
+                                                <div className="rm-card-actions">
+                                                    <button className="rm-actionbtn" type="button"
+                                                            onClick={() => openEdit(r)}>
+                                                        Edit
+                                                    </button>
+
+                                                    <button
+                                                        className="rm-iconbtn rm-iconbtn--danger"
+                                                        type="button"
+                                                        onClick={() => handleDelete(r)}
+                                                        aria-label="Delete"
+                                                        title="Delete"
+                                                    >
+                                                        <Trash2 size={18}/>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
             </div>

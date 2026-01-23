@@ -95,10 +95,10 @@
     color: #94a3b8;
 }
 
-.rc-cell.is-today {
-    outline: 2px solid rgba(74, 144, 226, 0.25);
+.rc-cell.is-selected {
+    outline: 2px solid rgba(74, 144, 226, 0.5);
     outline-offset: -2px;
-    background: #f7fbff;
+    background: #e6f2ff;
 }
 
 .rc-cell-top {
@@ -123,6 +123,15 @@
     border: 1px solid #e2e8f0;
     background: #fff;
     color: #475569;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.rc-addhint:hover {
+    background: #4a90e2;
+    border-color: #4a90e2;
+    color: #fff;
+    transform: scale(1.05);
 }
 
 .rc-events {
@@ -178,11 +187,6 @@
 .rc-event.is-appointment { border-color: rgba(180, 83, 9, 0.28); background: #fff7ef; }
 .rc-event.is-general { border-color: rgba(15, 118, 110, 0.28); background: #f1fbf8; }
 
-/* Status */
-.rc-event.is-overdue {
-    border-color: rgba(185, 28, 28, 0.35);
-    background: #fff1f2;
-}
 
 .rc-event.is-today {
     border-color: rgba(74, 144, 226, 0.45);
@@ -227,16 +231,17 @@
     background: #fff;
 }
 
-.rc-dot.is-today {
+.rc-medication {
     background: #e6f2ff;
     border-color: rgba(74, 144, 226, 0.35);
 }
 
-.rc-dot.is-upcoming {
-    background: #f8fafc;
+.rc-appointment {
+    border-color: rgba(180, 83, 9, 0.28);
+    background: #fff7ef;
 }
 
-.rc-dot.is-overdue {
-    background: #fff1f2;
-    border-color: rgba(185, 28, 28, 0.35);
+.rc-task {
+    border-color: rgba(15, 118, 110, 0.28);
+    background: #f1fbf8;
 }
