@@ -12,8 +12,8 @@ const DateInputWithButton = forwardRef(
                 ref={ref}
                 className={className}
                 value={value || ""}
-                onChange={onChange}     // allows typing
-                onClick={onClick}       // opens calendar when clicking input
+                onChange={onChange} // allows typing
+                onClick={onClick} // opens calendar when clicking input
                 placeholder={placeholder}
                 disabled={disabled}
             />
@@ -51,16 +51,61 @@ function passwordError(password) {
     return "";
 }
 
+/**
+ * Emergency contact(s) validation:
+ * - Allows multiple contacts, one per line.
+ * - Each line must include a name + phone (formats supported):
+ *   "Name — +44 7700..." or "Name: +44..." or "Name - +44..."
+ *   Fallback: splits at first digit if no delimiter.
+ */
 function emergencyContactError(value) {
-    const v = String(value || "").trim();
-    if (!v) return "Emergency contact is required.";
-    if (v.length < 6) return "Emergency contact is too short.";
-    if (v.length > 30) return "Emergency contact is too long (max 30 characters).";
-    // simple "phone-ish" check: allows +, spaces, dashes, parentheses
-    if (!/^[0-9+\-\s()]+$/.test(v)) return "Emergency contact must be a phone number.";
-    // must include at least 7 digits
-    const digits = v.replace(/\D/g, "");
-    if (digits.length < 7) return "Emergency contact must contain at least 7 digits.";
+    const text = String(value || "").trim();
+    if (!text) return "Emergency contact is required.";
+
+    const lines = text
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean);
+
+    if (lines.length === 0) return "Emergency contact is required.";
+    if (text.length > 400) return "Emergency contact is too long (max 400 characters).";
+
+    const parseLine = (line) => {
+        const parts = line.split(/[:\-–—]/); // :, -, –, —
+        if (parts.length >= 2) {
+            const name = parts[0].trim();
+            const phone = parts.slice(1).join("-").trim();
+            return { name, phone };
+        }
+
+        const idx = line.search(/\d/);
+        if (idx === -1) return { name: "", phone: "" };
+        const name = line.slice(0, idx).trim();
+        const phone = line.slice(idx).trim();
+        return { name, phone };
+    };
+
+    for (const line of lines) {
+        const { name, phone } = parseLine(line);
+
+        if (!name || name.length < 2) {
+            return "Each emergency contact must include a name (min 2 characters).";
+        }
+
+        if (!phone) {
+            return "Each emergency contact must include a phone number.";
+        }
+
+        if (!/^[0-9+\-\s()]+$/.test(phone)) {
+            return "Phone number can only contain digits, spaces, +, -, and parentheses.";
+        }
+
+        const digits = phone.replace(/\D/g, "");
+        if (digits.length < 7) {
+            return "Each phone number must contain at least 7 digits.";
+        }
+    }
+
     return "";
 }
 
@@ -72,7 +117,6 @@ function parseISODate(iso) {
 
 function formatISODate(d) {
     if (!d) return "";
-    // keep YYYY-MM-DD
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const dd = String(d.getDate()).padStart(2, "0");
@@ -144,6 +188,15 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
 
         if (!form.medicalConditions.trim()) errs.medicalConditions = "Medical conditions is required.";
 
+        if (!form.dateOfBirth) {
+            errs.dateOfBirth = "Date of birth is required.";
+        } else {
+            const d = parseISODate(form.dateOfBirth);
+            if (!d) errs.dateOfBirth = "Enter a valid date of birth.";
+            else if (d > new Date()) errs.dateOfBirth = "Date of birth cannot be in the future.";
+            else if (d < new Date("1900-01-01")) errs.dateOfBirth = "Date of birth must be after 01/01/1900.";
+        }
+
         if (form.dateOfBirth) {
             const d = parseISODate(form.dateOfBirth);
             if (!d) errs.dateOfBirth = "Enter a valid date of birth.";
@@ -213,7 +266,9 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                             {isEdit ? "Update the patient profile." : "Create a patient and assign them to your care."}
                         </div>
                     </div>
-                    <button className="pfm-close" onClick={onClose} type="button">×</button>
+                    <button className="pfm-close" onClick={onClose} type="button">
+                        ×
+                    </button>
                 </div>
 
                 <div className="pfm-body">
@@ -226,6 +281,7 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                                 className={`pfm-input ${fieldErrors.name ? "is-error" : ""}`}
                                 value={form.name}
                                 onChange={(e) => setField("name", e.target.value)}
+                                placeholder="e.g. Mary Johnson"
                             />
                             {fieldErrors.name && <div className="pfm-help">{fieldErrors.name}</div>}
                         </div>
@@ -237,6 +293,7 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                                 value={form.email}
                                 onChange={(e) => setField("email", e.target.value)}
                                 disabled={isEdit}
+                                placeholder="e.g. mary@example.com"
                             />
                             {fieldErrors.email && <div className="pfm-help">{fieldErrors.email}</div>}
                         </div>
@@ -249,13 +306,14 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                                     type="password"
                                     value={form.password}
                                     onChange={(e) => setField("password", e.target.value)}
+                                    placeholder="Min 8 chars, 1 uppercase, 1 number, 1 symbol"
                                 />
                                 {fieldErrors.password && <div className="pfm-help">{fieldErrors.password}</div>}
                             </div>
                         )}
 
                         <div className="pfm-field">
-                            <label className="pfm-label">Date of birth</label>
+                            <label className="pfm-label">Date of birth *</label>
 
                             <DatePicker
                                 selected={dobDate}
@@ -269,20 +327,25 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                                 maxDate={new Date()}
                                 minDate={new Date("1900-01-01")}
                                 customInput={
-                                    <DateInputWithButton
-                                        className={`pfm-input ${fieldErrors.dateOfBirth ? "is-error" : ""}`}
-                                    />
+                                    <DateInputWithButton className={`pfm-input ${fieldErrors.dateOfBirth ? "is-error" : ""}`} />
                                 }
                             />
                             {fieldErrors.dateOfBirth && <div className="pfm-help">{fieldErrors.dateOfBirth}</div>}
                         </div>
 
-                        <div className="pfm-field">
-                            <label className="pfm-label">Emergency contact *</label>
-                            <input
-                                className={`pfm-input ${fieldErrors.emergencyContact ? "is-error" : ""}`}
+                        {/* multi-contact emergency contact field */}
+                        <div className="pfm-field pfm-span2">
+                            <label className="pfm-label">Emergency contact(s) *</label>
+                            <textarea
+                                className={`pfm-textarea ${fieldErrors.emergencyContact ? "is-error" : ""}`}
+                                rows={3}
                                 value={form.emergencyContact}
                                 onChange={(e) => setField("emergencyContact", e.target.value)}
+                                placeholder={`e.g. 
+Mum — +44 7700 900123 
+John Smith — 0116 123 4567`}
+
+
                             />
                             {fieldErrors.emergencyContact && <div className="pfm-help">{fieldErrors.emergencyContact}</div>}
                         </div>
@@ -294,6 +357,7 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                                 rows={4}
                                 value={form.medicalConditions}
                                 onChange={(e) => setField("medicalConditions", e.target.value)}
+                                placeholder="e.g. Diabetes, Hypertension, Asthma…"
                             />
                             {fieldErrors.medicalConditions && <div className="pfm-help">{fieldErrors.medicalConditions}</div>}
                         </div>

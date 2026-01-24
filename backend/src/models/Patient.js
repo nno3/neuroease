@@ -16,7 +16,7 @@ const Patient = sequelize.define('Patient', {
         allowNull: true
     },
     emergencyContact: {
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         allowNull: true
     },
     medicalConditions: {

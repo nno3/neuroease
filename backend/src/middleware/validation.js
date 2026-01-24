@@ -36,6 +36,47 @@ const loginSchema = yup.object({
     password: yup.string().required('Password is required')
 });
 
+/**
+ * Multi-contact validator:
+ * Each line must be like: "Name - 07..." (allows -, :, — etc.)
+ */
+function validateEmergencyContacts(value) {
+    if (value == null) return "Emergency contact is required.";
+    const v = String(value).trim();
+    if (!v) return "Emergency contact is required.";
+
+    // Split by lines: one contact per line
+    const lines = v.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    if (lines.length === 0) return "Emergency contact is required.";
+
+    if (lines.length > 10) return "Too many contacts (max 10).";
+
+    for (const line of lines) {
+        // allow separators: -, —, :, etc.
+        const parts = line.split(/[:\-–—]/);
+        if (parts.length < 2) return "Each contact must be in 'Name - Number' format.";
+
+        const name = parts[0].trim();
+        const phone = parts.slice(1).join("-").trim();
+
+        if (name.length < 2) return "Contact name is too short.";
+        if (name.length > 50) return "Contact name is too long.";
+
+        // phone-ish: digits + + - spaces ()
+        if (!/^[0-9+\-\s()]+$/.test(phone)) return "Phone number contains invalid characters.";
+        // must include at least 7 digits
+        const digits = phone.replace(/\D/g, "");
+        if (digits.length < 7) return "Phone number must contain at least 7 digits.";
+        if (digits.length > 20) return "Phone number is too long.";
+    }
+
+    // optional overall length guard
+    if (v.length > 500) return "Emergency contacts too long (max 500 characters).";
+
+    return null;
+}
+
+
 const validate = (schema) => {
     return async (req, res, next) => {
         try {
@@ -98,14 +139,23 @@ const patientRegistrationSchema = yup.object({
         .min(2, 'Name must be at least 2 characters')
         .max(50, 'Name cannot exceed 50 characters')
         .required('Name is required'),
-    dateOfBirth: yup.date().nullable(),
+    // changed dob so its required
+    dateOfBirth: yup
+        .date()
+        .nullable()
+        .typeError("Enter a valid date of birth")
+        .required("Date of birth is required")
+        .max(new Date(), "Date of birth cannot be in the future")
+        .min(new Date("1900-01-01"), "Date of birth must be after 01/01/1900"),
+
+    // multi-line emergency contact validation
     emergencyContact: yup
         .string()
-        .trim()
-        .min(6, 'Emergency contact is too short')
-        .max(30, 'Emergency contact is too long (max 30 characters)')
-        .matches(/[0-9]/, 'Emergency contact must include a phone number')
-        .required('Emergency contact is required'),
+        .required("Emergency contact is required")
+        .test("emergency-contacts", function (value) {
+            const msg = validateEmergencyContacts(value);
+            return msg ? this.createError({ message: msg }) : true;
+        }),
     medicalConditions: yup.string().max(500, 'Medical conditions description too long')
 });
 
