@@ -251,7 +251,7 @@ Due to delays carried over from previous weeks, Sprint 3 required more extensive
   - This merge ensured the `develop` branch contains the completed dashboard skeleton, KPI overview section, authentication UI, and the supporting context/routing logic required for subsequent development.
 - Sprint 3 is complete, has passed manual UI-level testing, and has been merged into `develop`. Following the earlier slowdown caused by the longer-than-expected archiving/retention implementation, progress is now back on track and aligned with the intended schedule.
 
-## Week 14 [w/c 13/01/2026] 
+## Week 14 [w/c 12/01/2026] 
 
 * Started Sprint 4 implementation on branch `feature/caregiver-patient-management`, focusing on completing the caregiver-facing patient management workflow end-to-end (UI, backend integration, validation and feedback).
 * Implement Patient Management Interface (Issue #9)
@@ -286,3 +286,43 @@ Due to delays carried over from previous weeks, Sprint 3 required more extensive
   * Implemented fixes so validation errors are displayed consistently, duplicate-email errors are surfaced clearly, and all form fields provide actionable feedback.
   * Re-tested create/update/archive/unarchive workflows; confirmed **no visible UI issues**, correct API responses, and successful UI refresh after mutations.
   * Posted progress updates on GitLab issues and moved Issue #9 and Issue #10 through In Progress → Testing → Review → Done with commit references and evidence.
+
+## Week 15 [w/c 19/01/2026]
+
+* Continued Sprint 4 development on branch `feature/reminder-scheduling-ui` with a focus on completing and validating the Reminder Scheduling functionality within the caregiver dashboard.
+* Reminder Scheduling – Create/Edit/Delete & Recurrence (Issue #11) [Completed]
+* Fully implemented reminder scheduling functionality, allowing caregivers to:
+  * Create reminders with defined types (medication, appointment, task)
+  * Edit and delete existing reminders
+  * Configure recurrence patterns consistent with backend data formats
+  * Ensured immediate UI updates across reminder list views following create, update, or delete actions.
+  * Implemented comprehensive client-side validation to prevent invalid dates/times and missing required fields.
+  * Verified correct integration with the backend reminder management API.
+  * Supporting implementation commits:
+    * `fb32bcd1` – implemented reminder scheduling UI with CRUD, recurrence, and validation
+    * `3e2f6beb` – fixed reminder scheduling behaviour and aligned UI with Patient Management
+    * `42713778` – added reminder duration/end-date support and refined scheduling logic
+  * Issue #11 was reviewed, verified through manual testing, and moved to Done.
+  
+
+* Reminder Calendar View (Issue #12)
+  * Implemented a calendar-based visualisation for reminders to improve clarity when managing multiple scheduled events.
+  * Added colour-coded calendar entries to distinguish reminder types at a glance.
+  * Improved calendar interactions, including patient filtering and clearer date selection.
+  * Ensured consistency between calendar view and reminder list view.
+  * Supporting implementation commit: 
+    * `b191f893` – added calendar component to reminders page
+  * The calendar functionality has been moved to Testing pending further verification and refinement.
+  * Testing, debugging, and stabilisation
+    * Conducted manual UI-level testing across reminder creation, editing, deletion, and recurrence scenarios.
+    * During testing, identified inconsistent behaviour in patient creation that affected reminder assignment flows.
+    * Investigated and resolved the issue to ensure stable interaction between patient management and reminder scheduling.
+    * Supporting bug-fix commit:
+      * `89ca5e3a` – fixed inconsistent patient creation behaviour identified during reminder-related testing
+    * Verification outcomes
+        * Correct validation and error feedback for reminder forms
+        * Immediate UI refresh after reminder mutations
+        * Stable end-to-end caregiver workflow from patient selection to reminder scheduling
+* Updated GitLab issues with evidence and commit references, reflecting accurate status progression across In Progress → Testing → Review → Done where applicable.
+
+Sprint 4 reminder scheduling functionality is now largely complete, with core CRUD and recurrence features signed off and the calendar view undergoing final testing and validation.
