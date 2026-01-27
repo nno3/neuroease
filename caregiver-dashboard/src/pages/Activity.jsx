@@ -58,13 +58,13 @@ function TypeIcon({ type, size = 16 }) {
 
 function statusLabel(v) {
     if (v === "completed") return "Completed";
-    if (v === "missed") return "Missed";
+    if (v === "overdue" || v === "missed") return "Overdue";
     return "Pending";
 }
 
 function StatusIcon({ status, size = 16 }) {
     if (status === "completed") return <CheckCircle2 size={size} />;
-    if (status === "missed") return <AlertTriangle size={size} />;
+    if (status === "overdue" || status === "missed") return <AlertTriangle size={size} />;
     return <Clock3 size={size} />;
 }
 
@@ -164,6 +164,71 @@ function makeMockRows({ patients, patientId, type, fromDate, toDate }) {
     return filtered;
 }
 
+function normalizeStatusForCharts(s) {
+    if (s === "completed") return "completed";
+    if (s === "overdue" || s === "missed") return "overdue";
+    return "pending";
+}
+
+function normalizeType(t) {
+    return t === "medication" || t === "appointment" || t === "general" ? t : "general";
+}
+
+function initBreakdown() {
+    return {
+        medication: { total: 0, completed: 0, pending: 0, overdue: 0 },
+        appointment: { total: 0, completed: 0, pending: 0, overdue: 0 },
+        general: { total: 0, completed: 0, pending: 0, overdue: 0 },
+    };
+}
+
+function buildEmptySeries(rangeStart, rangeEnd) {
+    const out = [];
+    const dayStart = startOfDay(rangeStart);
+    const dayEnd = startOfDay(rangeEnd);
+    for (let cur = new Date(dayStart); cur <= dayEnd; cur = addDays(cur, 1)) {
+        out.push({ date: dateKey(cur), completed: 0, pending: 0, overdue: 0, total: 0 });
+    }
+    return out;
+}
+
+function buildAggregatesFromRows(rows, rangeStart, rangeEnd) {
+    const seriesMap = new Map();
+    const dayStart = startOfDay(rangeStart);
+    const dayEnd = startOfDay(rangeEnd);
+
+    for (let cur = new Date(dayStart); cur <= dayEnd; cur = addDays(cur, 1)) {
+        const k = dateKey(cur);
+        seriesMap.set(k, { date: k, completed: 0, pending: 0, overdue: 0, total: 0 });
+    }
+
+    const breakdownByType = initBreakdown();
+    const totals = { total: 0, completed: 0, pending: 0, overdue: 0 };
+
+    rows.forEach((r) => {
+        const d = safeDate(r.occursAt);
+        if (!d) return;
+        const k = dateKey(d);
+        if (!seriesMap.has(k)) return;
+
+        const st = normalizeStatusForCharts(r.status);
+        const entry = seriesMap.get(k);
+        entry[st] += 1;
+        entry.total += 1;
+        seriesMap.set(k, entry);
+
+        const ty = normalizeType(r.reminderType);
+        breakdownByType[ty][st] += 1;
+        breakdownByType[ty].total += 1;
+
+        totals[st] += 1;
+        totals.total += 1;
+    });
+
+    const seriesByDay = Array.from(seriesMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+    return { seriesByDay, breakdownByType, totals };
+}
+
 export default function Activity() {
     const [patients, setPatients] = useState([]);
     const [patientId, setPatientId] = useState("all");
@@ -174,10 +239,13 @@ export default function Activity() {
     const [toDate, setToDate] = useState(() => today);
 
     const [rows, setRows] = useState([]);
-    const [usingMock, setUsingMock] = useState(true);
-
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(true); // list loading
     const [error, setError] = useState("");
+    const [usingMockList, setUsingMockList] = useState(true);
+
+    const [summaryLoading, setSummaryLoading] = useState(true);
+    const [summaryError, setSummaryError] = useState("");
+    const [summaryData, setSummaryData] = useState(null); // { seriesByDay, breakdownByType, totals, meta... }
 
     const [refreshKey, setRefreshKey] = useState(0);
 
@@ -194,6 +262,75 @@ export default function Activity() {
     }, []);
 
     useEffect(() => {
+        const ac = new AbortController();
+
+        (async () => {
+            setSummaryLoading(true);
+            setSummaryError("");
+
+            const safeFrom = fromDate ? startOfDay(fromDate) : addDays(new Date(), -13);
+            const safeTo = toDate ? endOfDay(toDate) : endOfDay(new Date());
+
+            if (safeFrom > safeTo) {
+                setSummaryError("The 'From' date cannot be after the 'To' date.");
+                setSummaryData(null);
+                setSummaryLoading(false);
+                return;
+            }
+
+            const params = new URLSearchParams({
+                patientId: String(patientId),
+                type: String(type),
+                from: toISODateOnly(safeFrom),
+                to: toISODateOnly(safeTo),
+            });
+
+            try {
+                const token =
+                    localStorage.getItem("token") ||
+                    localStorage.getItem("authToken") ||
+                    localStorage.getItem("accessToken");
+
+                const res = await fetch(`/api/activity/summary?${params.toString()}`, {
+                    method: "GET",
+                    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+                    credentials: "include",
+                    signal: ac.signal,
+                });
+
+                if (!res.ok) {
+                    let msg = `Activity Summary API error (${res.status})`;
+                    try {
+                        const j = await res.json();
+                        msg = j?.message || msg;
+                    } catch {
+                        // ignore
+                    }
+                    throw new Error(msg);
+                }
+
+                const json = await res.json();
+                const data = json?.data;
+
+                // basic shape guard
+                if (!data || !Array.isArray(data.seriesByDay) || !data.breakdownByType || !data.totals) {
+                    throw new Error("Activity Summary API returned unexpected data.");
+                }
+
+                setSummaryData(data);
+            } catch (e) {
+                if (e?.name === "AbortError") return;
+                setSummaryData(null);
+                setSummaryError(e?.message || "Unable to load activity summary.");
+            } finally {
+                setSummaryLoading(false);
+            }
+        })();
+
+        return () => ac.abort();
+    }, [patientId, type, fromDate, toDate, refreshKey]);
+
+    useEffect(() => {
         (async () => {
             setLoading(true);
             setError("");
@@ -205,7 +342,7 @@ export default function Activity() {
                 setError("The 'From' date cannot be after the 'To' date.");
                 setRows([]);
                 setLoading(false);
-                setUsingMock(true);
+                setUsingMockList(true);
                 return;
             }
 
@@ -246,7 +383,7 @@ export default function Activity() {
                     : [];
 
                 setRows(normalized);
-                setUsingMock(false);
+                setUsingMockList(false);
             } catch {
                 const mock = makeMockRows({
                     patients,
@@ -256,7 +393,7 @@ export default function Activity() {
                     toDate: safeTo,
                 });
                 setRows(mock);
-                setUsingMock(true);
+                setUsingMockList(true);
             } finally {
                 setLoading(false);
             }
@@ -269,62 +406,49 @@ export default function Activity() {
         return `${f} → ${t}`;
     }, [fromDate, toDate]);
 
-    const summary = useMemo(() => {
-        const s = {
-            total: rows.length,
-            byStatus: { completed: 0, pending: 0, missed: 0 },
-            byType: { medication: 0, appointment: 0, general: 0 },
-        };
-        rows.forEach((r) => {
-            const st = r.status || "pending";
-            s.byStatus[st] = (s.byStatus[st] || 0) + 1;
-            const ty = r.reminderType || "general";
-            s.byType[ty] = (s.byType[ty] || 0) + 1;
-        });
-        return s;
-    }, [rows]);
-
-    const timeseries = useMemo(() => {
-        const f = fromDate ? startOfDay(fromDate) : addDays(new Date(), -13);
-        const t = toDate ? endOfDay(toDate) : endOfDay(new Date());
-
-        const map = new Map();
-        let cur = new Date(f);
-        while (cur <= t) {
-            const k = dateKey(cur);
-            map.set(k, { date: k, completed: 0, pending: 0, missed: 0, total: 0 });
-            cur = addDays(cur, 1);
-        }
-
-        rows.forEach((r) => {
-            const d = safeDate(r.occursAt);
-            if (!d) return;
-            const k = dateKey(d);
-            if (!map.has(k)) return;
-            const entry = map.get(k);
-            const st = r.status || "pending";
-            entry[st] = (entry[st] || 0) + 1;
-            entry.total += 1;
-            map.set(k, entry);
-        });
-
-        return Array.from(map.values());
-    }, [rows, fromDate, toDate]);
-
-    const maxDaily = useMemo(() => Math.max(1, ...timeseries.map((d) => d.total)), [timeseries]);
-
     const selectedPatientName = useMemo(() => {
         if (patientId === "all") return "All patients";
         const p = patients.find((x) => String(x.id) === String(patientId));
         return p?.name ?? `Patient ${patientId}`;
     }, [patients, patientId]);
 
+    const chartAgg = useMemo(() => {
+        const safeFrom = fromDate ? startOfDay(fromDate) : addDays(new Date(), -13);
+        const safeTo = toDate ? endOfDay(toDate) : endOfDay(new Date());
+
+        if (summaryData) {
+            return {
+                seriesByDay: summaryData.seriesByDay,
+                breakdownByType: summaryData.breakdownByType,
+                totals: summaryData.totals,
+                usingLiveSummary: true,
+            };
+        }
+
+        const built = buildAggregatesFromRows(rows, safeFrom, safeTo);
+        return {
+            ...built,
+            usingLiveSummary: false,
+        };
+    }, [summaryData, rows, fromDate, toDate]);
+
+    const seriesByDay = chartAgg.seriesByDay || buildEmptySeries(startOfDay(fromDate || new Date()), endOfDay(toDate || new Date()));
+    const breakdownByType = chartAgg.breakdownByType || initBreakdown();
+    const totals = chartAgg.totals || { total: 0, completed: 0, pending: 0, overdue: 0 };
+
+    const maxDaily = useMemo(
+        () => Math.max(1, ...seriesByDay.map((d) => d.total || 0)),
+        [seriesByDay]
+    );
+
     return (
         <div className="act-page">
             <div className="act-topbar">
                 <div>
                     <h1 className="act-title">Activity Monitoring</h1>
-                    <p className="act-subtitle">Review scheduled activity from reminders and track adherence over time.</p>
+                    <p className="act-subtitle">
+                        Review scheduled activity from reminders and track adherence over time.
+                    </p>
                 </div>
 
                 <div className="act-actions">
@@ -336,11 +460,11 @@ export default function Activity() {
                         className="act-btn"
                         type="button"
                         onClick={() => setRefreshKey((k) => k + 1)}
-                        disabled={loading}
+                        disabled={loading || summaryLoading}
                         title="Refresh"
                     >
                         <RefreshCw size={16} />
-                        <span>{loading ? "Refreshing…" : "Refresh"}</span>
+                        <span>{loading || summaryLoading ? "Refreshing…" : "Refresh"}</span>
                     </button>
                 </div>
             </div>
@@ -351,8 +475,8 @@ export default function Activity() {
                         <div className="act-panel-title">Filters</div>
                         <div className="act-panel-meta">
                             Patient: <b>{selectedPatientName}</b> • Range: <b>{dateRangeLabel}</b>
-                            {usingMock && <span className="act-pill act-pill--warn">Mock data</span>}
-                            {!usingMock && <span className="act-pill act-pill--ok">Live</span>}
+                            {!chartAgg.usingLiveSummary && <span className="act-pill act-pill--warn">Mock charts</span>}
+                            {chartAgg.usingLiveSummary && <span className="act-pill act-pill--ok">Live charts</span>}
                         </div>
                     </div>
                 </div>
@@ -424,98 +548,115 @@ export default function Activity() {
                     </div>
                 </div>
 
-                {error && <div className="act-error">{error}</div>}
+                {(error || summaryError) && <div className="act-error">{error || summaryError}</div>}
 
                 <div className="act-content">
                     <div className="act-kpis">
                         <div className="act-kpi">
                             <div className="act-kpi-label">Total items</div>
-                            <div className="act-kpi-value">{summary.total}</div>
+                            <div className="act-kpi-value">{totals.total}</div>
                         </div>
                         <div className="act-kpi">
                             <div className="act-kpi-label">Completed</div>
-                            <div className="act-kpi-value">{summary.byStatus.completed}</div>
+                            <div className="act-kpi-value">{totals.completed}</div>
                         </div>
                         <div className="act-kpi">
                             <div className="act-kpi-label">Pending</div>
-                            <div className="act-kpi-value">{summary.byStatus.pending}</div>
+                            <div className="act-kpi-value">{totals.pending}</div>
                         </div>
                         <div className="act-kpi">
-                            <div className="act-kpi-label">Missed</div>
-                            <div className="act-kpi-value">{summary.byStatus.missed}</div>
+                            <div className="act-kpi-label">Overdue</div>
+                            <div className="act-kpi-value">{totals.overdue}</div>
                         </div>
                     </div>
 
                     <div className="act-charts">
                         <div className="act-chart">
                             <div className="act-chart-head">
-                                <div className="act-chart-title">Daily activity volume</div>
-                                <div className="act-chart-sub">Stacked (Completed / Pending / Missed)</div>
+                                <div className="act-chart-title">Reminder adherence trend</div>
+                                <div className="act-chart-sub">Stacked (Completed / Pending / Overdue)</div>
                             </div>
 
-                            <div className="act-bars" role="img" aria-label="Daily activity chart">
-                                {timeseries.map((d) => {
-                                    const hTotal = (d.total / maxDaily) * 100;
-                                    const hCompleted = d.total ? (d.completed / d.total) * 100 : 0;
-                                    const hPending = d.total ? (d.pending / d.total) * 100 : 0;
-                                    const hMissed = d.total ? (d.missed / d.total) * 100 : 0;
+                            {summaryLoading ? (
+                                <div className="act-state">Loading charts…</div>
+                            ) : seriesByDay.length === 0 ? (
+                                <div className="act-state">No chart data for this range.</div>
+                            ) : (
+                                <>
+                                    <div className="act-bars" role="img" aria-label="Adherence trend chart">
+                                        {seriesByDay.map((d) => {
+                                            const total = Number(d.total || 0);
+                                            const completed = Number(d.completed || 0);
+                                            const pending = Number(d.pending || 0);
+                                            const overdue = Number(d.overdue || 0);
+                                            const hTotal = (total / maxDaily) * 100;
+                                            const hCompleted = total ? (completed / total) * 100 : 0;
+                                            const hPending = total ? (pending / total) * 100 : 0;
+                                            const hOverdue = total ? (overdue / total) * 100 : 0;
 
-                                    return (
-                                        <div key={d.date} className="act-barcol" title={`${d.date} • total ${d.total}`}>
-                                            <div className="act-bar" style={{ height: `${hTotal}%` }}>
-                                                <div className="act-bar-seg is-completed" style={{ height: `${hCompleted}%` }} />
-                                                <div className="act-bar-seg is-pending" style={{ height: `${hPending}%` }} />
-                                                <div className="act-bar-seg is-missed" style={{ height: `${hMissed}%` }} />
-                                            </div>
-                                            <div className="act-barlabel">{d.date.slice(8, 10)}</div>
+                                            return (
+                                                <div key={d.date} className="act-barcol" title={`${d.date}\nTotal: ${total}\nCompleted: ${completed}\nPending: ${pending}\nOverdue: ${overdue}`}>
+                                                    <div className="act-bar" style={{ height: `${hTotal}%` }}>
+                                                        <div className="act-bar-seg is-completed" style={{ height: `${hCompleted}%` }} />
+                                                        <div className="act-bar-seg is-pending" style={{ height: `${hPending}%` }} />
+                                                        <div className="act-bar-seg is-overdue" style={{ height: `${hOverdue}%` }} />
+                                                    </div>
+                                                    <div className="act-barlabel">{d.date.slice(8, 10)}</div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <div className="act-legend">
+                                        <div className="act-legend-item">
+                                            <span className="act-dot is-completed" /> Completed
                                         </div>
-                                    );
-                                })}
-                            </div>
-
-                            <div className="act-legend">
-                                <div className="act-legend-item">
-                                    <span className="act-dot is-completed" /> Completed
-                                </div>
-                                <div className="act-legend-item">
-                                    <span className="act-dot is-pending" /> Pending
-                                </div>
-                                <div className="act-legend-item">
-                                    <span className="act-dot is-missed" /> Missed
-                                </div>
-                            </div>
+                                        <div className="act-legend-item">
+                                            <span className="act-dot is-pending" /> Pending
+                                        </div>
+                                        <div className="act-legend-item">
+                                            <span className="act-dot is-overdue" /> Overdue
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         <div className="act-chart">
                             <div className="act-chart-head">
-                                <div className="act-chart-title">Breakdown by type</div>
+                                <div className="act-chart-title">Breakdown by reminder type</div>
                                 <div className="act-chart-sub">Medication / Appointment / Task</div>
                             </div>
 
-                            <div className="act-typebars">
-                                {["medication", "appointment", "general"].map((t) => {
-                                    const val = summary.byType[t] || 0;
-                                    const pct = summary.total ? Math.round((val / summary.total) * 100) : 0;
-                                    return (
-                                        <div key={t} className="act-typebar">
-                                            <div className={`act-typebar-icon is-${t}`}>
-                                                <TypeIcon type={t} />
-                                            </div>
-                                            <div className="act-typebar-main">
-                                                <div className="act-typebar-top">
-                                                    <span className="act-typebar-title">{typeLabel(t)}</span>
-                                                    <span className="act-typebar-meta">
-                            {val} • {pct}%
-                          </span>
+                            {summaryLoading ? (
+                                <div className="act-state">Loading charts…</div>
+                            ) : (
+                                <div className="act-typebars">
+                                    {["medication", "appointment", "general"].map((t) => {
+                                        const val = breakdownByType?.[t]?.total ?? 0;
+                                        const pct = totals.total ? Math.round((val / totals.total) * 100) : 0;
+
+                                        return (
+                                            <div key={t} className="act-typebar">
+                                                <div className={`act-typebar-icon is-${t}`}>
+                                                    <TypeIcon type={t} />
                                                 </div>
-                                                <div className="act-typebar-track">
-                                                    <div className={`act-typebar-fill is-${t}`} style={{ width: `${pct}%` }} />
+                                                <div className="act-typebar-main">
+                                                    <div className="act-typebar-top">
+                                                        <span className="act-typebar-title">{typeLabel(t)}</span>
+                                                        <span className="act-typebar-meta">
+                              {val} • {pct}%
+                            </span>
+                                                    </div>
+                                                    <div className="act-typebar-track">
+                                                        <div className={`act-typebar-fill is-${t}`} style={{ width: `${pct}%` }} />
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -540,6 +681,7 @@ export default function Activity() {
                                         ? occursAt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
                                         : "—";
 
+                                    const st = r.status || "pending";
                                     return (
                                         <div className="act-card" key={r.reminderId}>
                                             <div className={`act-iconbox is-${r.reminderType || "general"}`}>
@@ -569,9 +711,9 @@ export default function Activity() {
                                                 </div>
                                             </div>
 
-                                            <div className={`act-status is-${r.status || "pending"}`}>
-                                                <StatusIcon status={r.status || "pending"} />
-                                                <span>{statusLabel(r.status || "pending")}</span>
+                                            <div className={`act-status is-${st}`}>
+                                                <StatusIcon status={st} />
+                                                <span>{statusLabel(st)}</span>
                                             </div>
                                         </div>
                                     );
@@ -581,7 +723,8 @@ export default function Activity() {
                     </div>
 
                     <div className="act-footnote">
-                        once backend endpoint exists (GET /api/activity), the page automatically switches from Mock → Live.
+                        Charts now use <b>GET /api/activity/summary</b>. The list will switch to live once the occurrences endpoint (GET /api/activity) is implemented.
+                        {usingMockList && " (List currently using mock fallback.)"}
                     </div>
                 </div>
             </div>

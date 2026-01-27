@@ -310,11 +310,12 @@
     grid-auto-flow: column;
     grid-auto-columns: minmax(14px, 1fr);
     gap: 6px;
-    align-items: end;
+    align-items: stretch;
     padding: 6px 0 0 0;
 }
 
 .act-barcol {
+    height: 100%;
     display: grid;
     gap: 6px;
     align-items: end;
@@ -603,4 +604,13 @@
         justify-self: start;
         margin-left: 68px;
     }
+}
+
+.act-bar-seg.is-overdue { background: #fecaca; }
+.act-dot.is-overdue { background: #ef4444; }
+
+.act-status.is-overdue {
+    background: #fef2f2;
+    color: #991b1b;
+    border-color: #fecaca;
 }

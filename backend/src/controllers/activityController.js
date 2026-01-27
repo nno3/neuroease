@@ -9,11 +9,40 @@ function isValidDateOnly(str) {
 }
 
 function parseDateOnly(str, { endOfDay = false } = {}) {
-    if (!isValidDateOnly(str)) return null;
-    const time = endOfDay ? '23:59:59.999' : '00:00:00.000';
-    const d = new Date(`${str}T${time}`);
-    if (Number.isNaN(d.getTime())) return null;
-    return d;
+    console.log('Parsing date string:', str); // Add this for debugging
+
+    if (!str || typeof str !== 'string') {
+        console.log('Invalid input: not a string or empty');
+        return null;
+    }
+
+    // Try multiple date formats
+    let dateStr = str.trim();
+
+    // First try YYYY-MM-DD (what we expect)
+    if (DATE_ONLY_RE.test(dateStr)) {
+        const time = endOfDay ? '23:59:59.999' : '00:00:00.000';
+        const d = new Date(`${dateStr}T${time}`);
+        if (!Number.isNaN(d.getTime())) {
+            return d;
+        }
+    }
+
+    // Try DD/MM/YYYY (what might be coming from the frontend display)
+    const ddMmYyyyRe = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+    if (ddMmYyyyRe.test(dateStr)) {
+        const parts = dateStr.split('/');
+        // Convert DD/MM/YYYY to YYYY-MM-DD
+        const isoStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        const time = endOfDay ? '23:59:59.999' : '00:00:00.000';
+        const d = new Date(`${isoStr}T${time}`);
+        if (!Number.isNaN(d.getTime())) {
+            return d;
+        }
+    }
+
+    console.log('Date string does not match any expected pattern:', dateStr);
+    return null;
 }
 
 function startOfDay(d) {
@@ -155,12 +184,19 @@ function buildEmptySeries(rangeStart, rangeEnd) {
 
 const activityController = {
     /**
-     * GET /api/activity/summary?patientId=all|<id>&from=YYYY-MM-DD&to=YYYY-MM-DD
+     * GET /api/activity/summary?patientId=all|<id>&type=all|medication|appointment|general&from=YYYY-MM-DD&to=YYYY-MM-DD
      */
     getActivitySummary: async (req, res) => {
         try {
             const patientIdRaw = req.query.patientId ?? 'all';
             const fromRaw = req.query.from;
+            const typeRaw = req.query.type ?? 'all';
+            const allowedTypes = new Set(['all', 'medication', 'appointment', 'general']);
+
+            if (!allowedTypes.has(String(typeRaw))) {
+                return res.status(400).json({ success: false, message: 'Invalid type' });
+            }
+
             const toRaw = req.query.to;
 
             if (!fromRaw || !toRaw) {
@@ -226,16 +262,21 @@ const activityController = {
             }
 
             // fetch reminders that could have occurrences in range
+            const where = {
+                patientId: { [Op.in]: targetIds },
+                scheduledTime: { [Op.lte]: rangeEnd },
+                [Op.or]: [{ endTime: null }, { endTime: { [Op.gte]: rangeStart } }],
+            };
+
+            if (String(typeRaw) !== 'all') {
+                where.reminderType = String(typeRaw);
+            }
+
             const reminders = await Reminder.findAll({
-                where: {
-                    patientId: { [Op.in]: targetIds },
-                    scheduledTime: { [Op.lte]: rangeEnd },
-                    [Op.or]: [{ endTime: null }, { endTime: { [Op.gte]: rangeStart } }],
-                },
+                where,
                 attributes: ['id', 'patientId', 'title', 'reminderType', 'scheduledTime', 'endTime', 'recurrence', 'isCompleted'],
                 order: [['scheduledTime', 'ASC']],
             });
-
             // series map
             const seriesMap = new Map();
             for (const row of buildEmptySeries(rangeStart, rangeEnd)) seriesMap.set(row.date, row);
