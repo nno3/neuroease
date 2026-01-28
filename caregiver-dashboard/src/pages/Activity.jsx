@@ -238,16 +238,84 @@ export default function Activity() {
     const [fromDate, setFromDate] = useState(() => addDays(today, -13));
     const [toDate, setToDate] = useState(() => today);
 
-    const [rows, setRows] = useState([]);
-    const [loading, setLoading] = useState(true); // list loading
-    const [error, setError] = useState("");
-    const [usingMockList, setUsingMockList] = useState(true);
-
     const [summaryLoading, setSummaryLoading] = useState(true);
     const [summaryError, setSummaryError] = useState("");
     const [summaryData, setSummaryData] = useState(null); // { seriesByDay, breakdownByType, totals, meta... }
 
     const [refreshKey, setRefreshKey] = useState(0);
+
+    const LOG_LIMIT = 25;
+    const [logItems, setLogItems] = useState([]);
+    const [logPage, setLogPage] = useState(1);
+    const [logHasMore, setLogHasMore] = useState(false);
+    const [logLoading, setLogLoading] = useState(false);
+    const [logError, setLogError] = useState("");
+
+    useEffect(() => {
+        setLogPage(1);
+        setLogItems([]);
+    }, [patientId, type, fromDate, toDate, refreshKey]);
+
+    useEffect(() => {
+        const ac = new AbortController();
+
+        (async () => {
+            setLogLoading(true);
+            setLogError("");
+
+            const safeFrom = fromDate ? startOfDay(fromDate) : addDays(new Date(), -13);
+            const safeTo = toDate ? endOfDay(toDate) : endOfDay(new Date());
+
+            const params = new URLSearchParams({
+                patientId: String(patientId),
+                type: String(type),
+                from: toISODateOnly(safeFrom),
+                to: toISODateOnly(safeTo),
+                page: String(logPage),
+                limit: String(LOG_LIMIT),
+            });
+
+            try {
+                const token =
+                    localStorage.getItem("token") ||
+                    localStorage.getItem("authToken") ||
+                    localStorage.getItem("accessToken");
+
+                const res = await fetch(`/api/activity/log?${params.toString()}`, {
+                    method: "GET",
+                    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+                    credentials: "include",
+                    signal: ac.signal,
+                });
+
+                if (!res.ok) {
+                    let msg = `Activity log error (${res.status})`;
+                    try {
+                        const j = await res.json();
+                        msg = j?.message || msg;
+                    } catch {}
+                    throw new Error(msg);
+                }
+
+                const json = await res.json();
+                const data = json?.data ?? json;
+
+                const items = Array.isArray(data?.items) ? data.items : [];
+                const hasMore = Boolean(data?.hasMore);
+
+                setLogItems((prev) => (logPage === 1 ? items : [...prev, ...items]));
+                setLogHasMore(hasMore);
+            } catch (e) {
+                if (e?.name === "AbortError") return;
+                setLogError(e?.message || "Unable to load activity log.");
+            } finally {
+                setLogLoading(false);
+            }
+        })();
+
+        return () => ac.abort();
+    }, [patientId, type, fromDate, toDate, refreshKey, logPage]);
+
 
     useEffect(() => {
         (async () => {
@@ -330,76 +398,6 @@ export default function Activity() {
         return () => ac.abort();
     }, [patientId, type, fromDate, toDate, refreshKey]);
 
-    useEffect(() => {
-        (async () => {
-            setLoading(true);
-            setError("");
-
-            const safeFrom = fromDate ? startOfDay(fromDate) : addDays(new Date(), -13);
-            const safeTo = toDate ? endOfDay(toDate) : endOfDay(new Date());
-
-            if (safeFrom > safeTo) {
-                setError("The 'From' date cannot be after the 'To' date.");
-                setRows([]);
-                setLoading(false);
-                setUsingMockList(true);
-                return;
-            }
-
-            const params = new URLSearchParams({
-                patientId: String(patientId),
-                type: String(type),
-                from: toISODateOnly(safeFrom),
-                to: toISODateOnly(safeTo),
-            });
-
-            try {
-                const token =
-                    localStorage.getItem("token") ||
-                    localStorage.getItem("authToken") ||
-                    localStorage.getItem("accessToken");
-
-                const res = await fetch(`/api/activity?${params.toString()}`, {
-                    method: "GET",
-                    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-                    credentials: "include",
-                });
-
-                if (!res.ok) throw new Error(`Activity API unavailable (${res.status})`);
-
-                const json = await res.json();
-                const occ = json?.data?.occurrences ?? [];
-
-                const normalized = Array.isArray(occ)
-                    ? occ.map((o) => ({
-                        reminderId: o.reminderId ?? o.id ?? `${o.reminderId}-${o.occursAt}`,
-                        title: o.title ?? "Reminder",
-                        reminderType: o.reminderType ?? "general",
-                        patientId: o.patientId ?? null,
-                        patientName: o.patientName ?? "Patient",
-                        occursAt: o.occursAt ?? o.scheduledTime ?? new Date().toISOString(),
-                        status: o.status ?? "pending",
-                    }))
-                    : [];
-
-                setRows(normalized);
-                setUsingMockList(false);
-            } catch {
-                const mock = makeMockRows({
-                    patients,
-                    patientId,
-                    type,
-                    fromDate: safeFrom,
-                    toDate: safeTo,
-                });
-                setRows(mock);
-                setUsingMockList(true);
-            } finally {
-                setLoading(false);
-            }
-        })();
-    }, [patients, patientId, type, fromDate, toDate, refreshKey]);
-
     const dateRangeLabel = useMemo(() => {
         const f = fromDate ? fromDate.toLocaleDateString("en-GB") : "—";
         const t = toDate ? toDate.toLocaleDateString("en-GB") : "—";
@@ -413,9 +411,6 @@ export default function Activity() {
     }, [patients, patientId]);
 
     const chartAgg = useMemo(() => {
-        const safeFrom = fromDate ? startOfDay(fromDate) : addDays(new Date(), -13);
-        const safeTo = toDate ? endOfDay(toDate) : endOfDay(new Date());
-
         if (summaryData) {
             return {
                 seriesByDay: summaryData.seriesByDay,
@@ -425,12 +420,13 @@ export default function Activity() {
             };
         }
 
-        const built = buildAggregatesFromRows(rows, safeFrom, safeTo);
         return {
-            ...built,
+            seriesByDay: buildEmptySeries(startOfDay(fromDate || new Date()), endOfDay(toDate || new Date())),
+            breakdownByType: initBreakdown(),
+            totals: { total: 0, completed: 0, pending: 0, overdue: 0 },
             usingLiveSummary: false,
         };
-    }, [summaryData, rows, fromDate, toDate]);
+    }, [summaryData, fromDate, toDate]);
 
     const seriesByDay = chartAgg.seriesByDay || buildEmptySeries(startOfDay(fromDate || new Date()), endOfDay(toDate || new Date()));
     const breakdownByType = chartAgg.breakdownByType || initBreakdown();
@@ -460,11 +456,11 @@ export default function Activity() {
                         className="act-btn"
                         type="button"
                         onClick={() => setRefreshKey((k) => k + 1)}
-                        disabled={loading || summaryLoading}
+                        disabled={logLoading || summaryLoading}
                         title="Refresh"
                     >
                         <RefreshCw size={16} />
-                        <span>{loading || summaryLoading ? "Refreshing…" : "Refresh"}</span>
+                        <span>{logLoading || summaryLoading ? "Refreshing…" : "Refresh"}</span>
                     </button>
                 </div>
             </div>
@@ -548,7 +544,7 @@ export default function Activity() {
                     </div>
                 </div>
 
-                {(error || summaryError) && <div className="act-error">{error || summaryError}</div>}
+                {(logError || summaryError) && <div className="act-error">{logError || summaryError}</div>}
 
                 <div className="act-content">
                     <div className="act-kpis">
@@ -595,11 +591,15 @@ export default function Activity() {
                                             const hOverdue = total ? (overdue / total) * 100 : 0;
 
                                             return (
-                                                <div key={d.date} className="act-barcol" title={`${d.date}\nTotal: ${total}\nCompleted: ${completed}\nPending: ${pending}\nOverdue: ${overdue}`}>
-                                                    <div className="act-bar" style={{ height: `${hTotal}%` }}>
-                                                        <div className="act-bar-seg is-completed" style={{ height: `${hCompleted}%` }} />
-                                                        <div className="act-bar-seg is-pending" style={{ height: `${hPending}%` }} />
-                                                        <div className="act-bar-seg is-overdue" style={{ height: `${hOverdue}%` }} />
+                                                <div key={d.date} className="act-barcol"
+                                                     title={`${d.date}\nTotal: ${total}\nCompleted: ${completed}\nPending: ${pending}\nOverdue: ${overdue}`}>
+                                                    <div className="act-bar" style={{height: `${hTotal}%`}}>
+                                                        <div className="act-bar-seg is-completed"
+                                                             style={{height: `${hCompleted}%`}}/>
+                                                        <div className="act-bar-seg is-pending"
+                                                             style={{height: `${hPending}%`}}/>
+                                                        <div className="act-bar-seg is-overdue"
+                                                             style={{height: `${hOverdue}%`}}/>
                                                     </div>
                                                     <div className="act-barlabel">{d.date.slice(8, 10)}</div>
                                                 </div>
@@ -609,13 +609,13 @@ export default function Activity() {
 
                                     <div className="act-legend">
                                         <div className="act-legend-item">
-                                            <span className="act-dot is-completed" /> Completed
+                                            <span className="act-dot is-completed"/> Completed
                                         </div>
                                         <div className="act-legend-item">
-                                            <span className="act-dot is-pending" /> Pending
+                                            <span className="act-dot is-pending"/> Pending
                                         </div>
                                         <div className="act-legend-item">
-                                            <span className="act-dot is-overdue" /> Overdue
+                                            <span className="act-dot is-overdue"/> Overdue
                                         </div>
                                     </div>
                                 </>
@@ -639,7 +639,7 @@ export default function Activity() {
                                         return (
                                             <div key={t} className="act-typebar">
                                                 <div className={`act-typebar-icon is-${t}`}>
-                                                    <TypeIcon type={t} />
+                                                    <TypeIcon type={t}/>
                                                 </div>
                                                 <div className="act-typebar-main">
                                                     <div className="act-typebar-top">
@@ -649,7 +649,8 @@ export default function Activity() {
                             </span>
                                                     </div>
                                                     <div className="act-typebar-track">
-                                                        <div className={`act-typebar-fill is-${t}`} style={{ width: `${pct}%` }} />
+                                                        <div className={`act-typebar-fill is-${t}`}
+                                                             style={{width: `${pct}%`}}/>
                                                     </div>
                                                 </div>
                                             </div>
@@ -662,57 +663,63 @@ export default function Activity() {
 
                     <div className="act-listpanel">
                         <div className="act-listhead">
-                            <div className="act-listtitle">Activity list</div>
-                            <div className="act-listmeta">{loading ? "Loading…" : `${rows.length} items`}</div>
+                            <div className="act-listtitle">Activity log</div>
+                            <div className="act-listmeta">
+                                {logLoading && logPage === 1 ? "Loading…" : `${logItems.length} items`}
+                            </div>
                         </div>
 
-                        {loading ? (
+                        {logLoading && logPage === 1 ? (
                             <div className="act-state">Loading activity…</div>
-                        ) : rows.length === 0 ? (
+                        ) : logItems.length === 0 ? (
                             <div className="act-state">No activity found for the current filters.</div>
                         ) : (
                             <div className="act-list">
-                                {rows.map((r) => {
-                                    const occursAt = safeDate(r.occursAt);
+                                {logItems.map((it) => {
+                                    const occursAt = safeDate(it.timestamp);
                                     const timeStr = occursAt
-                                        ? occursAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+                                        ? occursAt.toLocaleTimeString("en-GB", {hour: "2-digit", minute: "2-digit"})
                                         : "—";
                                     const dateStr = occursAt
-                                        ? occursAt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+                                        ? occursAt.toLocaleDateString("en-GB", {
+                                            day: "2-digit",
+                                            month: "short",
+                                            year: "numeric"
+                                        })
                                         : "—";
 
-                                    const st = r.status || "pending";
+                                    const t = it.details?.reminderType || "general";
+                                    const st = it.status || "pending";
+
                                     return (
-                                        <div className="act-card" key={r.reminderId}>
-                                            <div className={`act-iconbox is-${r.reminderType || "general"}`}>
-                                                <TypeIcon type={r.reminderType || "general"} size={18} />
+                                        <div className="act-card" key={`${it.details?.reminderId}-${it.timestamp}`}>
+                                            <div className={`act-iconbox is-${t}`}>
+                                                <TypeIcon type={t} size={18}/>
                                             </div>
 
                                             <div className="act-card-main">
-                                                <div className="act-card-title">{r.title}</div>
+                                                <div className="act-card-title">{it.details?.title || "Reminder"}</div>
 
                                                 <div className="act-lines">
                                                     <div className="act-line">
                                                         <span className="act-line-label">Patient:</span>
-                                                        <span className="act-line-value">{r.patientName || "Patient"}</span>
+                                                        <span className="act-line-value">{it.patientName}</span>
                                                     </div>
 
                                                     <div className="act-line">
                                                         <span className="act-line-label">When:</span>
-                                                        <span className="act-line-value">
-                              {dateStr} • {timeStr}
-                            </span>
+                                                        <span className="act-line-value">{dateStr} • {timeStr}</span>
                                                     </div>
 
                                                     <div className="act-line">
-                                                        <span className="act-line-label">Type:</span>
-                                                        <span className="act-line-value">{typeLabel(r.reminderType || "general")}</span>
+                                                        <span className="act-line-label">Action:</span>
+                                                        <span className="act-line-value">{it.actionType}</span>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <div className={`act-status is-${st}`}>
-                                                <StatusIcon status={st} />
+                                                <StatusIcon status={st}/>
                                                 <span>{statusLabel(st)}</span>
                                             </div>
                                         </div>
@@ -720,11 +727,25 @@ export default function Activity() {
                                 })}
                             </div>
                         )}
+
+                        {logError && <div className="act-error">{logError}</div>}
+
+                        {logHasMore && (
+                            <div style={{padding: "0 12px 12px"}}>
+                                <button
+                                    className="act-btn"
+                                    type="button"
+                                    disabled={logLoading}
+                                    onClick={() => setLogPage((p) => p + 1)}
+                                >
+                                    {logLoading ? "Loading…" : "Load more"}
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div className="act-footnote">
-                        Charts now use <b>GET /api/activity/summary</b>. The list will switch to live once the occurrences endpoint (GET /api/activity) is implemented.
-                        {usingMockList && " (List currently using mock fallback.)"}
+                        Charts use <b>GET /api/activity/summary</b>. Activity log uses <b>GET /api/activity/log</b>.
                     </div>
                 </div>
             </div>

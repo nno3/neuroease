@@ -350,6 +350,188 @@ const activityController = {
             return res.status(500).json({ success: false, message: 'Error generating activity summary' });
         }
     },
+
+    /**
+     * GET /api/activity/log?patientId=all|<id>&type=all|medication|appointment|general&from=YYYY-MM-DD&to=YYYY-MM-DD&page=1&limit=25
+     */
+    getActivityLog: async (req, res) => {
+        try {
+            const patientIdRaw = req.query.patientId ?? "all";
+            const typeRaw = req.query.type ?? "all";
+            const fromRaw = req.query.from;
+            const toRaw = req.query.to;
+
+            const page = Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1);
+            const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit ?? "25"), 10) || 25));
+
+            const allowedTypes = new Set(["all", "medication", "appointment", "general"]);
+            if (!allowedTypes.has(String(typeRaw))) {
+                return res.status(400).json({ success: false, message: "Invalid type" });
+            }
+
+            if (!fromRaw || !toRaw) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Query params 'from' and 'to' are required (YYYY-MM-DD).",
+                });
+            }
+
+            const rangeStart = parseDateOnly(fromRaw, { endOfDay: false });
+            const rangeEnd = parseDateOnly(toRaw, { endOfDay: true });
+
+            if (!rangeStart || !rangeEnd) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid date format. Use YYYY-MM-DD for 'from' and 'to'.",
+                });
+            }
+
+            if (rangeStart > rangeEnd) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid range: 'from' cannot be after 'to'.",
+                });
+            }
+
+            // caregiver + assigned patients
+            const caregiver = await User.findByPk(req.user.userId);
+            if (!caregiver) return res.status(404).json({ success: false, message: "Caregiver not found" });
+
+            const assignedPatients = await caregiver.getPatients({
+                where: { isArchived: false },
+                attributes: ["id", "name"],
+            });
+
+            const assignedIds = assignedPatients.map((p) => p.id);
+            const patientNameById = new Map(assignedPatients.map((p) => [p.id, p.name]));
+
+            if (assignedIds.length === 0) {
+                return res.json({
+                    success: true,
+                    data: {
+                        patientId: "all",
+                        type: String(typeRaw),
+                        from: fromRaw,
+                        to: toRaw,
+                        page,
+                        limit,
+                        total: 0,
+                        totalPages: 0,
+                        hasMore: false,
+                        items: [],
+                        meta: { computedFrom: "reminders", hasActivityLogs: false },
+                    },
+                });
+            }
+
+            // patient filter + assignment check
+            let targetIds = assignedIds;
+            if (String(patientIdRaw) !== "all") {
+                const pid = parseInt(String(patientIdRaw), 10);
+                if (!Number.isFinite(pid)) return res.status(400).json({ success: false, message: "Invalid patientId" });
+                if (!assignedIds.includes(pid)) {
+                    return res.status(403).json({ success: false, message: "Access denied. Patient not assigned to you." });
+                }
+                targetIds = [pid];
+            }
+
+            // fetch reminders that could have occurrences in range
+            const where = {
+                patientId: { [Op.in]: targetIds },
+                scheduledTime: { [Op.lte]: rangeEnd },
+                [Op.or]: [{ endTime: null }, { endTime: { [Op.gte]: rangeStart } }],
+            };
+            if (String(typeRaw) !== "all") where.reminderType = String(typeRaw);
+
+            const reminders = await Reminder.findAll({
+                where,
+                attributes: ["id", "patientId", "title", "reminderType", "scheduledTime", "endTime", "recurrence", "isCompleted"],
+                order: [["scheduledTime", "ASC"]],
+            });
+
+            // Optional ActivityLog override (same idea as summary)
+            let logsByKey = new Map();
+            let hasActivityLogs = false;
+
+            if (ActivityLog) {
+                const logs = await ActivityLog.findAll({
+                    where: { occursAt: { [Op.between]: [rangeStart, rangeEnd] } },
+                    attributes: ["reminderId", "occursAt", "status"],
+                });
+
+                if (logs.length) hasActivityLogs = true;
+
+                logs.forEach((l) => {
+                    const k = `${l.reminderId}|${new Date(l.occursAt).toISOString()}`;
+                    logsByKey.set(k, l.status);
+                });
+            }
+
+            const now = new Date();
+            const items = [];
+
+            reminders.forEach((reminder) => {
+                forEachOccurrenceInRange(reminder, rangeStart, rangeEnd, (occursAt) => {
+                    const logKey = `${reminder.id}|${occursAt.toISOString()}`;
+                    const statusFromLog = logsByKey.get(logKey);
+                    const status = statusFromLog || computeFallbackStatus(reminder, occursAt, now);
+
+                    const actionType =
+                        status === "completed"
+                            ? "Reminder completed"
+                            : status === "overdue"
+                                ? "Reminder overdue"
+                                : "Reminder scheduled";
+
+                    items.push({
+                        timestamp: occursAt.toISOString(),
+                        patientId: reminder.patientId,
+                        patientName: patientNameById.get(reminder.patientId) || `Patient ${reminder.patientId}`,
+                        actionType,
+                        status, // completed | pending | overdue
+                        details: {
+                            reminderId: reminder.id,
+                            title: reminder.title,
+                            reminderType: normalizeType(reminder.reminderType),
+                            recurrence: reminder.recurrence || "once",
+                        },
+                    });
+                });
+            });
+
+            // newest-first
+            items.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            const total = items.length;
+            const totalPages = Math.ceil(total / limit);
+            const start = (page - 1) * limit;
+            const pageItems = items.slice(start, start + limit);
+
+            return res.json({
+                success: true,
+                data: {
+                    patientId: String(patientIdRaw),
+                    type: String(typeRaw),
+                    from: fromRaw,
+                    to: toRaw,
+                    page,
+                    limit,
+                    total,
+                    totalPages,
+                    hasMore: page < totalPages,
+                    items: pageItems,
+                    meta: {
+                        computedFrom: hasActivityLogs ? "activity_logs+reminders" : "reminders",
+                        hasActivityLogs,
+                    },
+                },
+            });
+        } catch (error) {
+            console.error("Activity log error:", error);
+            return res.status(500).json({ success: false, message: "Error generating activity log" });
+        }
+    },
+
 };
 
 module.exports = activityController;
