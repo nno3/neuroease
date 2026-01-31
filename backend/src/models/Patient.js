@@ -15,11 +15,50 @@ const Patient = sequelize.define('Patient', {
         type: DataTypes.DATE,
         allowNull: true
     },
+
+    address: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    gender: {
+        type: DataTypes.STRING(50),
+        allowNull: true
+    },
+    phoneNumber: {
+        type: DataTypes.STRING(50),
+        allowNull: true
+    },
+    // Care & Emergency – structured fields
+    preferredCommunication: {
+        type: DataTypes.STRING(50),
+        allowNull: true
+    },
+
+    careNotes: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    emergencyContactName: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+    },
+    emergencyContactRelationship: {
+        type: DataTypes.STRING(100),
+        allowNull: true
+    },
+    emergencyContactPhone: {
+        type: DataTypes.STRING(50),
+        allowNull: true
+    },
     emergencyContact: {
         type: DataTypes.TEXT,
         allowNull: true
     },
     medicalConditions: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    medicalHistory: {
         type: DataTypes.TEXT,
         allowNull: true
     }

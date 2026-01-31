@@ -5,11 +5,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import "./Activity.css";
 import { Calendar as CalendarIcon, RefreshCw, ClipboardList, Pill, CalendarDays, CheckCircle2, AlertTriangle, Clock3,} from "lucide-react";
 import { getPatients } from "../services/patients";
-
-function format3(id) {
-    if (id === null || id === undefined) return "000";
-    return String(id).padStart(3, "0");
-}
+import { format3 } from "../utils/patientHelpers";
 
 function safeDate(v) {
     const d = new Date(v);

@@ -1,14 +1,30 @@
 import { useEffect, useState } from "react";
 import DashboardStats from "../components/Dashboard/DashboardStats";
 import { getDashboardStats } from "../services/dashboardService";
-import { getPatients } from "../services/patients";
+import { getPatients, getPatientById, archivePatient } from "../services/patients";
 import { useNavigate, Link } from "react-router-dom";
+import PatientDetailsModal from "../components/PatientDetailsModal";
+import PatientFormModal from "../components/PatientFormModal";
+import * as patientHelpers from "../utils/patientHelpers";
 import "./Dashboard.css";
+import "./Patients.css";
 
 const Dashboard = () => {
     const navigate = useNavigate();
     const [stats, setStats] = useState(null);
     const [patients, setPatients] = useState([]);
+    const [detailsPatient, setDetailsPatient] = useState(null);
+    const [formOpen, setFormOpen] = useState(false);
+    const [formMode, setFormMode] = useState("create");
+    const [formPatient, setFormPatient] = useState(null);
+
+    const refreshPatients = () => {
+        getPatients().then((res) => {
+            const list = res?.data?.patients ?? [];
+            setPatients(list);
+            if (stats) setStats((s) => ({ ...s, activePatients: list.length }));
+        });
+    };
 
     useEffect(() => {
         Promise.allSettled([getPatients(), getDashboardStats()]).then(([patientsRes, statsRes]) => {
@@ -29,20 +45,43 @@ const Dashboard = () => {
         });
     }, []);
 
+    const visiblePatients = patients.slice(0, 3);
 
-    function getInitials(name = "") {
-        const parts = name.trim().split(/\s+/).filter(Boolean);
-        if (parts.length === 0) return "P";
-        if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-    }
+    const openDetails = (p) => {
+        setDetailsPatient(p);
+    };
 
-    function format3(id) {
-        if (id === null || id === undefined) return "000";
-        return String(id).padStart(3, "0");
-    }
+    const closeDetails = () => {
+        setDetailsPatient(null);
+    };
 
-    const visiblePatients = patients.slice(0, 4);
+    const openEdit = (patient) => {
+        const id = patient?.id ?? patient?.patientId;
+        if (!id) {
+            setFormMode("edit");
+            setFormPatient(patient);
+            setFormOpen(true);
+            return;
+        }
+        getPatientById(id)
+            .then((res) => {
+                const full = res?.data?.data?.patient ?? res?.data?.patient;
+                setFormMode("edit");
+                setFormPatient(full ?? patient);
+                setFormOpen(true);
+            })
+            .catch(() => {
+                setFormMode("edit");
+                setFormPatient(patient);
+                setFormOpen(true);
+            });
+    };
+
+    const openEditFromDetails = () => {
+        if (!detailsPatient) return;
+        closeDetails();
+        openEdit(detailsPatient);
+    };
 
     if (!stats) return <p>Loading dashboard...</p>;
 
@@ -140,22 +179,59 @@ const Dashboard = () => {
                     </div>
                 ) : (
                     <>
-                        <div className="dp-grid">
+                        <div className="dp-cards-grid">
                             {visiblePatients.map((p) => {
-                                const conditions = p?.Patient?.medicalConditions?.trim() || "";
+                                const id = p.id ?? p.patientId;
+                                const name = p.name ?? "Unnamed patient";
+                                const profile = p.Patient ?? p.profile ?? null;
+                                const age = patientHelpers.calcAge(profile?.dateOfBirth);
+                                const conditions = patientHelpers.getMedicalConditionsDisplay(profile?.medicalHistory ?? profile?.medicalConditions);
                                 return (
-                                    <div key={p.id} className="dp-card">
+                                    <div key={id} className="dp-card dp-card-pm">
                                         <div className="dp-card-top">
-                                            <div className="dp-avatar">{getInitials(p.name)}</div>
-                                            <div className="dp-head">
-                                                <div className="dp-name">{p.name}</div>
-                                                <div className="dp-id">ID {format3(p.id)}</div>
+                                            <div className="dp-card-avatar" style={{ background: patientHelpers.getAvatarColor(id) }}>
+                                                {patientHelpers.getInitials(name)}
+                                            </div>
+                                            <div className="dp-card-head">
+                                                <div className="dp-card-name">{name}</div>
+                                                <div className="dp-card-badges">
+                                                    <span className="dp-card-badge">ID {patientHelpers.format3(id)}</span>
+                                                    <span className="dp-card-status dp-card-status-active">
+                                                        <span className="dp-card-status-dot" />
+                                                        Active
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
 
-                                        <div className="dp-row">
-                                            <span className="dp-label">Conditions</span>
-                                            <span className={`dp-value ${conditions ? "" : "is-muted"}`}>{conditions || "—"}</span>
+                                        <div className="dp-card-metrics">
+                                            <div className="dp-card-metric">
+                                                <div className="dp-card-metric-label">Age</div>
+                                                <div className="dp-card-metric-value">{age ?? "—"}</div>
+                                            </div>
+                                            <div className="dp-card-metric">
+                                                <div className="dp-card-metric-label">Conditions</div>
+                                                <div className="dp-card-metric-value dp-card-metric-conditions">
+                                                    {conditions?.trim() ? conditions : "—"}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="dp-card-actions">
+                                            <button
+                                                type="button"
+                                                className="dp-card-btn dp-card-btn-primary"
+                                                onClick={() => openDetails(p)}
+                                            >
+                                                View Details
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="dp-card-btn dp-card-btn-ghost"
+                                                onClick={() => openEdit(p)}
+                                            >
+                                                Edit
+                                            </button>
                                         </div>
                                     </div>
                                 );
@@ -173,6 +249,30 @@ const Dashboard = () => {
                     </>
                 )}
             </div>
+
+            {detailsPatient && (
+                <PatientDetailsModal
+                    patient={detailsPatient}
+                    onClose={closeDetails}
+                    onEdit={openEditFromDetails}
+                />
+            )}
+
+            <PatientFormModal
+                open={formOpen}
+                mode={formMode}
+                patient={formPatient}
+                onClose={() => setFormOpen(false)}
+                onSaved={() => {
+                    refreshPatients();
+                    setFormOpen(false);
+                }}
+                onArchivePatient={archivePatient}
+                onArchived={() => {
+                    refreshPatients();
+                    setFormOpen(false);
+                }}
+            />
 
             {/* Recent Activity */}
             <div style={{
