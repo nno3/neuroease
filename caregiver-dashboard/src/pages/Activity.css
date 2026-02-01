@@ -391,6 +391,7 @@
     display: flex;
     gap: 8px;
     align-items: flex-end;
+    margin-left: 30px;
     padding: 0 2px 2px 2px;
     position: relative;
     background:
@@ -470,7 +471,7 @@
     transform: rotate(-45deg);
     transform-origin: top left;
     width: 80px;
-    margin-left: calc(50% - 40px);
+    margin-left: calc(50% - 110px);
 }
 
 .act-chart-fullscreen {
