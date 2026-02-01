@@ -3,7 +3,6 @@ import DashboardStats from "../components/Dashboard/DashboardStats";
 import { getDashboardStats } from "../services/dashboardService";
 import { getPatients, getPatientById, archivePatient } from "../services/patients";
 import { useNavigate, Link } from "react-router-dom";
-import PatientDetailsModal from "../components/PatientDetailsModal";
 import PatientFormModal from "../components/PatientFormModal";
 import * as patientHelpers from "../utils/patientHelpers";
 import "./Dashboard.css";

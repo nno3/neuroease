@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, forwardRef } from "react";
+import { useEffect, useMemo, useState, forwardRef, Fragment } from "react";
 import { Link } from "react-router-dom";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -38,6 +38,14 @@ function dateKey(d) {
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const dd = String(d.getDate()).padStart(2, "0");
     return `${yyyy}-${mm}-${dd}`;
+}
+
+function formatBarLabel(isoDateStr) {
+    const str = typeof isoDateStr === "string" ? isoDateStr : "";
+    if (!str || str.length < 10) return str || "";
+    const d = new Date(str + "T12:00:00");
+    if (Number.isNaN(d.getTime())) return str.slice(8, 10);
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
 function typeLabel(v) {
@@ -99,77 +107,6 @@ const TYPES = [
     { label: "Tasks", value: "general" },
 ];
 
-function makeMockRows({ patients, patientId, type, fromDate, toDate }) {
-    const names =
-        patients?.length
-            ? patients.map((p) => ({ id: p.id, name: p.name }))
-            : [
-                { id: 101, name: "Patient A" },
-                { id: 102, name: "Patient B" },
-                { id: 103, name: "Patient C" },
-            ];
-
-    const chosen = patientId === "all" ? names : names.filter((x) => String(x.id) === String(patientId));
-
-    const start = startOfDay(fromDate);
-    const end = endOfDay(toDate);
-
-    const poolTitles = {
-        medication: ["Take medication", "Vitamin dose", "Blood pressure pill"],
-        appointment: ["Clinic appointment", "Doctor check-up", "Physio session"],
-        general: ["Hydration reminder", "Walk 10 minutes", "Cognitive exercise"],
-    };
-
-    const statuses = ["pending", "completed", "missed"];
-
-    const out = [];
-    let cur = new Date(start);
-    while (cur <= end) {
-        const count = 1 + (cur.getDate() % 3);
-        for (let i = 0; i < count; i++) {
-            const patient = chosen[(cur.getDate() + i) % chosen.length];
-            const t =
-                type !== "all"
-                    ? type
-                    : ["medication", "appointment", "general"][(cur.getDate() + i) % 3];
-
-            const title = poolTitles[t][(cur.getDate() + i) % poolTitles[t].length];
-            const occursAt = new Date(cur);
-            occursAt.setHours(9 + ((i * 3) % 8), (i * 15) % 60, 0, 0);
-
-            out.push({
-                reminderId: `mock-${dateKey(cur)}-${i}`,
-                title,
-                reminderType: t,
-                patientId: patient.id,
-                patientName: patient.name,
-                occursAt: occursAt.toISOString(),
-                status: statuses[(cur.getDate() + i) % statuses.length],
-            });
-        }
-        cur = addDays(cur, 1);
-    }
-
-    const filtered = out.filter((r) => {
-        const matchesPatient = patientId === "all" ? true : String(r.patientId) === String(patientId);
-        const matchesType = type === "all" ? true : r.reminderType === type;
-        return matchesPatient && matchesType;
-    });
-
-    filtered.sort((a, b) => new Date(a.occursAt) - new Date(b.occursAt));
-    return filtered;
-}
-
-function normalizeStatusForCharts(s) {
-    if (s === "completed") return "completed";
-    if (s === "overdue" || s === "missed") return "overdue";
-    return "pending";
-}
-
-function normalizeType(t) {
-    return t === "medication" || t === "appointment" || t === "general" ? t : "general";
-}
-
 function initBreakdown() {
     return {
         medication: { total: 0, completed: 0, pending: 0, overdue: 0 },
@@ -188,43 +125,6 @@ function buildEmptySeries(rangeStart, rangeEnd) {
     return out;
 }
 
-function buildAggregatesFromRows(rows, rangeStart, rangeEnd) {
-    const seriesMap = new Map();
-    const dayStart = startOfDay(rangeStart);
-    const dayEnd = startOfDay(rangeEnd);
-
-    for (let cur = new Date(dayStart); cur <= dayEnd; cur = addDays(cur, 1)) {
-        const k = dateKey(cur);
-        seriesMap.set(k, { date: k, completed: 0, pending: 0, overdue: 0, total: 0 });
-    }
-
-    const breakdownByType = initBreakdown();
-    const totals = { total: 0, completed: 0, pending: 0, overdue: 0 };
-
-    rows.forEach((r) => {
-        const d = safeDate(r.occursAt);
-        if (!d) return;
-        const k = dateKey(d);
-        if (!seriesMap.has(k)) return;
-
-        const st = normalizeStatusForCharts(r.status);
-        const entry = seriesMap.get(k);
-        entry[st] += 1;
-        entry.total += 1;
-        seriesMap.set(k, entry);
-
-        const ty = normalizeType(r.reminderType);
-        breakdownByType[ty][st] += 1;
-        breakdownByType[ty].total += 1;
-
-        totals[st] += 1;
-        totals.total += 1;
-    });
-
-    const seriesByDay = Array.from(seriesMap.values()).sort((a, b) => a.date.localeCompare(b.date));
-    return { seriesByDay, breakdownByType, totals };
-}
-
 export default function Activity() {
     const [patients, setPatients] = useState([]);
     const [patientId, setPatientId] = useState("all");
@@ -239,6 +139,8 @@ export default function Activity() {
     const [summaryData, setSummaryData] = useState(null); // { seriesByDay, breakdownByType, totals, meta... }
 
     const [refreshKey, setRefreshKey] = useState(0);
+    const [selectedBarDate, setSelectedBarDate] = useState(null);
+    const [chartMaximised, setChartMaximised] = useState(false);
 
     const LOG_LIMIT = 25;
     const [logItems, setLogItems] = useState([]);
@@ -433,318 +335,408 @@ export default function Activity() {
         [seriesByDay]
     );
 
-    return (
-        <div className="act-page">
-            <div className="act-topbar">
-                <div>
-                    <h1 className="act-title">Activity Monitoring</h1>
-                    <p className="act-subtitle">
-                        Review scheduled activity from reminders and track adherence over time.
-                    </p>
+    const chartContent = (
+        <>
+            {seriesByDay.length > 14 && (
+                <div className="act-scroll-hint">
+                    ← Scroll horizontally to view all {seriesByDay.length} days →
                 </div>
-
-                <div className="act-actions">
-                    <Link className="act-link" to="/patients">
-                        Manage patients
-                    </Link>
-
-                    <button
-                        className="act-btn"
-                        type="button"
-                        onClick={() => setRefreshKey((k) => k + 1)}
-                        disabled={logLoading || summaryLoading}
-                        title="Refresh"
-                    >
-                        <RefreshCw size={16} />
-                        <span>{logLoading || summaryLoading ? "Refreshing…" : "Refresh"}</span>
-                    </button>
+            )}
+            <div className="act-chart-bars-wrap">
+                <div className="act-chart-ylabel" aria-hidden="true">Activity Count</div>
+                <div className="act-bars-container">
+                    <div className="act-bars" role="img" aria-label="Adherence trend chart">
+                        {seriesByDay.map((d) => {
+                            const total = Number(d.total || 0);
+                            const completed = Number(d.completed || 0);
+                            const pending = Number(d.pending || 0);
+                            const overdue = Number(d.overdue || 0);
+                            const hTotal = Math.max(2, (total / maxDaily) * 100);
+                            const hCompleted = total ? (completed / total) * 100 : 0;
+                            const hPending = total ? (pending / total) * 100 : 0;
+                            const hOverdue = total ? (overdue / total) * 100 : 0;
+                            const isSelected = selectedBarDate === d.date;
+                            return (
+                                <div
+                                    key={d.date}
+                                    className={`act-barcol ${isSelected ? "is-selected" : ""}`}
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => setSelectedBarDate((prev) => (prev === d.date ? null : d.date))}
+                                    onKeyDown={(e) => e.key === "Enter" && setSelectedBarDate((prev) => (prev === d.date ? null : d.date))}
+                                    title={`${formatBarLabel(d.date)} — Total: ${total}, Completed: ${completed}, Pending: ${pending}, Overdue: ${overdue}`}
+                                >
+                                    <div className="act-bar" style={{ height: `${hTotal}%` }}>
+                                        <div className="act-bar-seg is-completed" style={{ height: `${hCompleted}%` }} />
+                                        <div className="act-bar-seg is-pending" style={{ height: `${hPending}%` }} />
+                                        <div className="act-bar-seg is-overdue" style={{ height: `${hOverdue}%` }} />
+                                    </div>
+                                    <div className="act-barlabel">{formatBarLabel(d.date)}</div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
+            {selectedBarDate && (() => {
+                const d = seriesByDay.find((x) => x.date === selectedBarDate);
+                if (!d) return null;
+                const total = Number(d.total || 0);
+                const completed = Number(d.completed || 0);
+                const pending = Number(d.pending || 0);
+                const overdue = Number(d.overdue || 0);
+                const patientsForDay = logItems
+                    .filter((it) => it.timestamp && dateKey(new Date(it.timestamp)) === selectedBarDate)
+                    .map((it) => it.patientName)
+                    .filter(Boolean);
+                const uniquePatients = [...new Set(patientsForDay)];
+                return (
+                    <div className="act-bar-summary">
+                        <div className="act-bar-summary-row">
+                            <strong>{formatBarLabel(selectedBarDate)}</strong>
+                            <span>Total: {total}</span>
+                            <span>Completed: {completed}</span>
+                            <span>Pending: {pending}</span>
+                            <span>Overdue: {overdue}</span>
+                        </div>
+                        {uniquePatients.length > 0 && (
+                            <div className="act-bar-summary-patients">
+                                Patients: {uniquePatients.join(", ")}
+                            </div>
+                        )}
+                        <button type="button" className="act-bar-summary-close" onClick={() => setSelectedBarDate(null)} aria-label="Close">
+                            ×
+                        </button>
+                    </div>
+                );
+            })()}
+            <div className="act-legend">
+                <div className="act-legend-item">
+                    <span className="act-dot is-completed"/> Completed
+                </div>
+                <div className="act-legend-item">
+                    <span className="act-dot is-pending"/> Pending
+                </div>
+                <div className="act-legend-item">
+                    <span className="act-dot is-overdue"/> Overdue
+                </div>
+            </div>
+        </>
+    );
 
-            <div className="act-panel">
-                <div className="act-panel-head">
+    return (
+        <Fragment>
+            <div className="act-page">
+                <div className="act-topbar">
                     <div>
-                        <div className="act-panel-title">Filters</div>
-                        <div className="act-panel-meta">
-                            Patient: <b>{selectedPatientName}</b> • Range: <b>{dateRangeLabel}</b>
-                            {!chartAgg.usingLiveSummary && <span className="act-pill act-pill--warn">Mock charts</span>}
-                            {chartAgg.usingLiveSummary && <span className="act-pill act-pill--ok">Live charts</span>}
-                        </div>
+                        <h1 className="act-title">Activity Monitoring</h1>
+                        <p className="act-subtitle">
+                            Review scheduled activity from reminders and track adherence over time.
+                        </p>
+                    </div>
+
+                    <div className="act-actions">
+                        <Link className="act-link" to="/patients">
+                            Manage patients
+                        </Link>
+
+                        <button
+                            className="act-btn"
+                            type="button"
+                            onClick={() => setRefreshKey((k) => k + 1)}
+                            disabled={logLoading || summaryLoading}
+                            title="Refresh"
+                        >
+                            <RefreshCw size={16} />
+                            <span>{logLoading || summaryLoading ? "Refreshing…" : "Refresh"}</span>
+                        </button>
                     </div>
                 </div>
 
-                <div className="act-controls">
-                    <div className="act-control">
-                        <label className="act-label">Patient</label>
-                        <select className="act-select" value={patientId} onChange={(e) => setPatientId(e.target.value)}>
-                            <option value="all">All patients</option>
-                            {patients.map((p) => (
-                                <option key={p.id} value={String(p.id)}>
-                                    {p.name} (ID {format3(p.id)})
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="act-control act-control--tabs">
-                        <label className="act-label">Type</label>
-                        <div className="act-tabs">
-                            {TYPES.map((t) => (
-                                <button
-                                    key={t.value}
-                                    type="button"
-                                    className={`act-tab ${type === t.value ? "is-active" : ""}`}
-                                    onClick={() => setType(t.value)}
-                                >
-                                    {t.label}
-                                </button>
-                            ))}
+                <div className="act-panel">
+                    <div className="act-panel-head">
+                        <div>
+                            <div className="act-panel-title">Filters</div>
+                            <div className="act-panel-meta">
+                                Patient: <b>{selectedPatientName}</b> • Range: <b>{dateRangeLabel}</b>
+                                {!chartAgg.usingLiveSummary && <span className="act-pill act-pill--warn">Mock charts</span>}
+                                {chartAgg.usingLiveSummary && <span className="act-pill act-pill--ok">Live charts</span>}
+                            </div>
                         </div>
                     </div>
 
-                    <div className="act-control">
-                        <label className="act-label">From</label>
-                        <DatePicker
-                            selected={fromDate}
-                            onChange={(d) => setFromDate(d)}
-                            dateFormat="dd/MM/yyyy"
-                            placeholderText="DD/MM/YYYY"
-                            maxDate={toDate || new Date()}
-                            calendarStartDay={1}
-                            showMonthDropdown
-                            showYearDropdown
-                            dropdownMode="select"
-                            scrollableYearDropdown
-                            yearDropdownItemNumber={120}
-                            customInput={<DateInputWithButton className="act-input" />}
-                        />
+                    <div className="act-controls">
+                        <div className="act-control">
+                            <label className="act-label">Patient</label>
+                            <select className="act-select" value={patientId} onChange={(e) => setPatientId(e.target.value)}>
+                                <option value="all">All patients</option>
+                                {patients.map((p) => (
+                                    <option key={p.id} value={String(p.id)}>
+                                        {p.name} (ID {format3(p.id)})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="act-control act-control--tabs">
+                            <label className="act-label">Type</label>
+                            <div className="act-tabs">
+                                {TYPES.map((t) => (
+                                    <button
+                                        key={t.value}
+                                        type="button"
+                                        className={`act-tab ${type === t.value ? "is-active" : ""}`}
+                                        onClick={() => setType(t.value)}
+                                    >
+                                        {t.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="act-control">
+                            <label className="act-label">From</label>
+                            <DatePicker
+                                selected={fromDate}
+                                onChange={(d) => setFromDate(d)}
+                                dateFormat="dd/MM/yyyy"
+                                placeholderText="DD/MM/YYYY"
+                                maxDate={toDate || new Date()}
+                                calendarStartDay={1}
+                                showMonthDropdown
+                                showYearDropdown
+                                dropdownMode="select"
+                                scrollableYearDropdown
+                                yearDropdownItemNumber={120}
+                                customInput={<DateInputWithButton className="act-input" />}
+                            />
+                        </div>
+
+                        <div className="act-control">
+                            <label className="act-label">To</label>
+                            <DatePicker
+                                selected={toDate}
+                                onChange={(d) => setToDate(d)}
+                                dateFormat="dd/MM/yyyy"
+                                placeholderText="DD/MM/YYYY"
+                                minDate={fromDate || undefined}
+                                maxDate={new Date()}
+                                calendarStartDay={1}
+                                showMonthDropdown
+                                showYearDropdown
+                                dropdownMode="select"
+                                scrollableYearDropdown
+                                yearDropdownItemNumber={120}
+                                customInput={<DateInputWithButton className="act-input" />}
+                            />
+                        </div>
                     </div>
 
-                    <div className="act-control">
-                        <label className="act-label">To</label>
-                        <DatePicker
-                            selected={toDate}
-                            onChange={(d) => setToDate(d)}
-                            dateFormat="dd/MM/yyyy"
-                            placeholderText="DD/MM/YYYY"
-                            minDate={fromDate || undefined}
-                            maxDate={new Date()}
-                            calendarStartDay={1}
-                            showMonthDropdown
-                            showYearDropdown
-                            dropdownMode="select"
-                            scrollableYearDropdown
-                            yearDropdownItemNumber={120}
-                            customInput={<DateInputWithButton className="act-input" />}
-                        />
-                    </div>
-                </div>
+                    {(logError || summaryError) && <div className="act-error">{logError || summaryError}</div>}
 
-                {(logError || summaryError) && <div className="act-error">{logError || summaryError}</div>}
+                    <div className="act-content">
+                        <div className="act-kpis">
+                            <div className="act-kpi">
+                                <div className="act-kpi-label">Total items</div>
+                                <div className="act-kpi-value">{totals.total}</div>
+                            </div>
+                            <div className="act-kpi">
+                                <div className="act-kpi-label">Completed</div>
+                                <div className="act-kpi-value">{totals.completed}</div>
+                            </div>
+                            <div className="act-kpi">
+                                <div className="act-kpi-label">Pending</div>
+                                <div className="act-kpi-value">{totals.pending}</div>
+                            </div>
+                            <div className="act-kpi">
+                                <div className="act-kpi-label">Overdue</div>
+                                <div className="act-kpi-value">{totals.overdue}</div>
+                            </div>
+                        </div>
 
-                <div className="act-content">
-                    <div className="act-kpis">
-                        <div className="act-kpi">
-                            <div className="act-kpi-label">Total items</div>
-                            <div className="act-kpi-value">{totals.total}</div>
-                        </div>
-                        <div className="act-kpi">
-                            <div className="act-kpi-label">Completed</div>
-                            <div className="act-kpi-value">{totals.completed}</div>
-                        </div>
-                        <div className="act-kpi">
-                            <div className="act-kpi-label">Pending</div>
-                            <div className="act-kpi-value">{totals.pending}</div>
-                        </div>
-                        <div className="act-kpi">
-                            <div className="act-kpi-label">Overdue</div>
-                            <div className="act-kpi-value">{totals.overdue}</div>
-                        </div>
-                    </div>
+                        <div className="act-charts">
+                            <div className="act-chart">
+                                <div className="act-chart-head">
+                                    <div>
+                                        <div className="act-chart-title">Reminder adherence trend</div>
+                                        <div className="act-chart-sub">Stacked (Completed / Pending / Overdue)</div>
+                                    </div>
+                                    {!summaryLoading && seriesByDay.length > 0 && (
+                                        <button
+                                            type="button"
+                                            className="act-chart-maximise-btn"
+                                            onClick={() => setChartMaximised(true)}
+                                            title="Expand chart to view fully"
+                                        >
+                                            Expand chart
+                                        </button>
+                                    )}
+                                </div>
 
-                    <div className="act-charts">
-                        <div className="act-chart">
-                            <div className="act-chart-head">
-                                <div className="act-chart-title">Reminder adherence trend</div>
-                                <div className="act-chart-sub">Stacked (Completed / Pending / Overdue)</div>
+                                {summaryLoading ? (
+                                    <div className="act-state">Loading charts…</div>
+                                ) : seriesByDay.length === 0 ? (
+                                    <div className="act-state">No chart data for this range.</div>
+                                ) : (
+                                    chartContent
+                                )}
                             </div>
 
-                            {summaryLoading ? (
-                                <div className="act-state">Loading charts…</div>
-                            ) : seriesByDay.length === 0 ? (
-                                <div className="act-state">No chart data for this range.</div>
-                            ) : (
-                                <>
-                                    <div className="act-bars" role="img" aria-label="Adherence trend chart">
-                                        {seriesByDay.map((d) => {
-                                            const total = Number(d.total || 0);
-                                            const completed = Number(d.completed || 0);
-                                            const pending = Number(d.pending || 0);
-                                            const overdue = Number(d.overdue || 0);
-                                            const hTotal = (total / maxDaily) * 100;
-                                            const hCompleted = total ? (completed / total) * 100 : 0;
-                                            const hPending = total ? (pending / total) * 100 : 0;
-                                            const hOverdue = total ? (overdue / total) * 100 : 0;
+                            <div className="act-chart">
+                                <div className="act-chart-head">
+                                    <div className="act-chart-title">Breakdown by reminder type</div>
+                                    <div className="act-chart-sub">Medication / Appointment / Task</div>
+                                </div>
+
+                                {summaryLoading ? (
+                                    <div className="act-state">Loading charts…</div>
+                                ) : (
+                                    <div className="act-typebars">
+                                        {["medication", "appointment", "general"].map((t) => {
+                                            const val = breakdownByType?.[t]?.total ?? 0;
+                                            const pct = totals.total ? Math.round((val / totals.total) * 100) : 0;
 
                                             return (
-                                                <div key={d.date} className="act-barcol"
-                                                     title={`${d.date}\nTotal: ${total}\nCompleted: ${completed}\nPending: ${pending}\nOverdue: ${overdue}`}>
-                                                    <div className="act-bar" style={{height: `${hTotal}%`}}>
-                                                        <div className="act-bar-seg is-completed"
-                                                             style={{height: `${hCompleted}%`}}/>
-                                                        <div className="act-bar-seg is-pending"
-                                                             style={{height: `${hPending}%`}}/>
-                                                        <div className="act-bar-seg is-overdue"
-                                                             style={{height: `${hOverdue}%`}}/>
+                                                <div key={t} className="act-typebar">
+                                                    <div className={`act-typebar-icon is-${t}`}>
+                                                        <TypeIcon type={t}/>
                                                     </div>
-                                                    <div className="act-barlabel">{d.date.slice(8, 10)}</div>
+                                                    <div className="act-typebar-main">
+                                                        <div className="act-typebar-top">
+                                                            <span className="act-typebar-title">{typeLabel(t)}</span>
+                                                            <span className="act-typebar-meta">
+                              {val} • {pct}%
+                            </span>
+                                                        </div>
+                                                        <div className="act-typebar-track">
+                                                            <div className={`act-typebar-fill is-${t}`}
+                                                                 style={{width: `${pct}%`}}/>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             );
                                         })}
                                     </div>
-
-                                    <div className="act-legend">
-                                        <div className="act-legend-item">
-                                            <span className="act-dot is-completed"/> Completed
-                                        </div>
-                                        <div className="act-legend-item">
-                                            <span className="act-dot is-pending"/> Pending
-                                        </div>
-                                        <div className="act-legend-item">
-                                            <span className="act-dot is-overdue"/> Overdue
-                                        </div>
-                                    </div>
-                                </>
-                            )}
+                                )}
+                            </div>
                         </div>
 
-                        <div className="act-chart">
-                            <div className="act-chart-head">
-                                <div className="act-chart-title">Breakdown by reminder type</div>
-                                <div className="act-chart-sub">Medication / Appointment / Task</div>
+                        <div className="act-listpanel">
+                            <div className="act-listhead">
+                                <div className="act-listtitle">Activity log</div>
+                                <div className="act-listmeta">
+                                    {logLoading && logPage === 1 ? "Loading…" : `${logItems.length} items`}
+                                </div>
                             </div>
 
-                            {summaryLoading ? (
-                                <div className="act-state">Loading charts…</div>
+                            {logLoading && logPage === 1 ? (
+                                <div className="act-state">Loading activity…</div>
+                            ) : logItems.length === 0 ? (
+                                <div className="act-state">No activity found for the current filters.</div>
                             ) : (
-                                <div className="act-typebars">
-                                    {["medication", "appointment", "general"].map((t) => {
-                                        const val = breakdownByType?.[t]?.total ?? 0;
-                                        const pct = totals.total ? Math.round((val / totals.total) * 100) : 0;
+                                <div className="act-list">
+                                    {logItems.map((it) => {
+                                        const occursAt = safeDate(it.timestamp);
+                                        const timeStr = occursAt
+                                            ? occursAt.toLocaleTimeString("en-GB", {hour: "2-digit", minute: "2-digit"})
+                                            : "—";
+                                        const dateStr = occursAt
+                                            ? occursAt.toLocaleDateString("en-GB", {
+                                                day: "2-digit",
+                                                month: "short",
+                                                year: "numeric"
+                                            })
+                                            : "—";
+
+                                        const t = it.details?.reminderType || "general";
+                                        const st = it.status || "pending";
 
                                         return (
-                                            <div key={t} className="act-typebar">
-                                                <div className={`act-typebar-icon is-${t}`}>
-                                                    <TypeIcon type={t}/>
+                                            <div className="act-card" key={`${it.details?.reminderId}-${it.timestamp}`}>
+                                                <div className={`act-iconbox is-${t}`}>
+                                                    <TypeIcon type={t} size={18}/>
                                                 </div>
-                                                <div className="act-typebar-main">
-                                                    <div className="act-typebar-top">
-                                                        <span className="act-typebar-title">{typeLabel(t)}</span>
-                                                        <span className="act-typebar-meta">
-                              {val} • {pct}%
-                            </span>
+
+                                                <div className="act-card-main">
+                                                    <div className="act-card-title">{it.details?.title || "Reminder"}</div>
+
+                                                    <div className="act-lines">
+                                                        <div className="act-line">
+                                                            <span className="act-line-label">Patient:</span>
+                                                            <span className="act-line-value">{it.patientName}</span>
+                                                        </div>
+
+                                                        <div className="act-line">
+                                                            <span className="act-line-label">When:</span>
+                                                            <span className="act-line-value">{dateStr} • {timeStr}</span>
+                                                        </div>
+
+                                                        <div className="act-line">
+                                                            <span className="act-line-label">Action:</span>
+                                                            <span className="act-line-value">{it.actionType}</span>
+                                                        </div>
                                                     </div>
-                                                    <div className="act-typebar-track">
-                                                        <div className={`act-typebar-fill is-${t}`}
-                                                             style={{width: `${pct}%`}}/>
-                                                    </div>
+                                                </div>
+
+                                                <div className={`act-status is-${st}`}>
+                                                    <StatusIcon status={st}/>
+                                                    <span>{statusLabel(st)}</span>
                                                 </div>
                                             </div>
                                         );
                                     })}
                                 </div>
                             )}
+
+                            {logError && <div className="act-error">{logError}</div>}
+
+                            {logHasMore && (
+                                <div style={{padding: "0 12px 12px"}}>
+                                    <button
+                                        className="act-btn"
+                                        type="button"
+                                        disabled={logLoading}
+                                        onClick={() => setLogPage((p) => p + 1)}
+                                    >
+                                        {logLoading ? "Loading…" : "Load more"}
+                                    </button>
+                                </div>
+                            )}
                         </div>
-                    </div>
 
-                    <div className="act-listpanel">
-                        <div className="act-listhead">
-                            <div className="act-listtitle">Activity log</div>
-                            <div className="act-listmeta">
-                                {logLoading && logPage === 1 ? "Loading…" : `${logItems.length} items`}
-                            </div>
+                        <div className="act-footnote">
+                            Charts use <b>GET /api/activity/summary</b>. Activity log uses <b>GET /api/activity/log</b>.
                         </div>
-
-                        {logLoading && logPage === 1 ? (
-                            <div className="act-state">Loading activity…</div>
-                        ) : logItems.length === 0 ? (
-                            <div className="act-state">No activity found for the current filters.</div>
-                        ) : (
-                            <div className="act-list">
-                                {logItems.map((it) => {
-                                    const occursAt = safeDate(it.timestamp);
-                                    const timeStr = occursAt
-                                        ? occursAt.toLocaleTimeString("en-GB", {hour: "2-digit", minute: "2-digit"})
-                                        : "—";
-                                    const dateStr = occursAt
-                                        ? occursAt.toLocaleDateString("en-GB", {
-                                            day: "2-digit",
-                                            month: "short",
-                                            year: "numeric"
-                                        })
-                                        : "—";
-
-                                    const t = it.details?.reminderType || "general";
-                                    const st = it.status || "pending";
-
-                                    return (
-                                        <div className="act-card" key={`${it.details?.reminderId}-${it.timestamp}`}>
-                                            <div className={`act-iconbox is-${t}`}>
-                                                <TypeIcon type={t} size={18}/>
-                                            </div>
-
-                                            <div className="act-card-main">
-                                                <div className="act-card-title">{it.details?.title || "Reminder"}</div>
-
-                                                <div className="act-lines">
-                                                    <div className="act-line">
-                                                        <span className="act-line-label">Patient:</span>
-                                                        <span className="act-line-value">{it.patientName}</span>
-                                                    </div>
-
-                                                    <div className="act-line">
-                                                        <span className="act-line-label">When:</span>
-                                                        <span className="act-line-value">{dateStr} • {timeStr}</span>
-                                                    </div>
-
-                                                    <div className="act-line">
-                                                        <span className="act-line-label">Action:</span>
-                                                        <span className="act-line-value">{it.actionType}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className={`act-status is-${st}`}>
-                                                <StatusIcon status={st}/>
-                                                <span>{statusLabel(st)}</span>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-
-                        {logError && <div className="act-error">{logError}</div>}
-
-                        {logHasMore && (
-                            <div style={{padding: "0 12px 12px"}}>
-                                <button
-                                    className="act-btn"
-                                    type="button"
-                                    disabled={logLoading}
-                                    onClick={() => setLogPage((p) => p + 1)}
-                                >
-                                    {logLoading ? "Loading…" : "Load more"}
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="act-footnote">
-                        Charts use <b>GET /api/activity/summary</b>. Activity log uses <b>GET /api/activity/log</b>.
                     </div>
                 </div>
             </div>
-        </div>
+
+            {chartMaximised && (
+                <div
+                    className="act-chart-fullscreen"
+                    onClick={() => setChartMaximised(false)}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Expanded adherence chart"
+                >
+                    <div className="act-chart-fullscreen-content" onClick={(e) => e.stopPropagation()}>
+                        <div className="act-chart-fullscreen-head">
+                            <h3 className="act-chart-fullscreen-title">Reminder adherence trend</h3>
+                            <button
+                                type="button"
+                                className="act-chart-fullscreen-close"
+                                onClick={() => setChartMaximised(false)}
+                                aria-label="Close expanded chart"
+                            >
+                                Close
+                            </button>
+                        </div>
+                        <div className="act-chart-fullscreen-body">
+                            {chartContent}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </Fragment>
     );
 }
