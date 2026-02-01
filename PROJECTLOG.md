@@ -326,3 +326,68 @@ Due to delays carried over from previous weeks, Sprint 3 required more extensive
 * Updated GitLab issues with evidence and commit references, reflecting accurate status progression across In Progress → Testing → Review → Done where applicable.
 
 Sprint 4 reminder scheduling functionality is now largely complete, with core CRUD and recurrence features signed off and the calendar view undergoing final testing and validation.
+
+
+## Week 16 [w/c 26/01/2026]
+
+- Started sprint 5 development with a focus on completing and stabilising the Activity Monitoring feature set, covering backend aggregation APIs, UI charts, and activity logs to provide caregivers with meaningful insights into patient adherence and behaviour.
+
+ *Activity Monitoring – Backend APIs (Issues #14 & #16)*
+
+- Implemented the Activity Summary API to provide chart-ready aggregates for the Activity Monitoring page.
+  - Added authenticated endpoint `GET /api/activity/summary` with strict caregiver-only access and patient assignment enforcement.
+  - Designed the response to return:
+    - `seriesByDay` (counts per day)
+    - `breakdownByType` (counts by reminder type)
+    - aggregate totals for the selected date range
+  - Implemented recurrence expansion logic (once/daily/weekly) with end-date support to ensure reminder occurrences are counted consistently with calendar and UI behaviour.
+  - Introduced inferred status logic for MVP (overdue/pending/completed) to maintain a stable API contract prior to full per-occurrence logging.
+  - Verified behaviour using authenticated cURL requests, confirming correct 401 responses without tokens and valid aggregated outputs with correct assignment checks.
+  - Issue #14 was reviewed, verified, and moved to Done.
+  - Supporting commit: `787b0d9b`
+
+- Implemented a live Activity Log API and UI integration to replace mock data:
+  - Added endpoint to return a paginated, filterable list of reminder occurrences for the Activity Monitoring page.
+  - Introduced an `ActivityLog` model to track per-occurrence adherence (completed/missed), resolving the limitation of one-time reminder completion flags.
+  - Added upsert support for activity logs so adherence data can be recorded reliably.
+  - Verified correct behaviour through manual testing, including status updates affecting summary totals.
+  - Issue #16 progressed from implementation to Testing, then review.
+  - Supporting commit: `1ed72c8b`
+
+*Activity Monitoring – UI & Visualisation (Issues #13 & #15)*
+
+- Finalised the Activity Monitoring page UI, including layout, filters, and integration with live backend data.
+  - Ensured consistent styling with Patient Management and Reminder Scheduling pages.
+  - Confirmed no visible UI errors during manual testing.
+  - Issue #13 reviewed and moved to Done.
+
+- Implemented and refined Activity Charts (adherence trends and reminder type breakdown):
+  - Integrated summary-driven charts using backend aggregates.
+  - Added filters, tooltips, and improved axis labelling for readability.
+  - Refined chart layout to prevent label overlap and ensure dates remain fully visible.
+  - Conducted UI testing and applied minor visual refinements before review.
+  - Issue #15 moved to Review following UI improvements.
+  - Supporting commits:
+    - `6e0c01d6` – summary-driven charts with filters and tooltips
+    - `6d87db90`, `a09bd082` – UI refinements for chart readability
+
+*Patient Profile & Management Refinements (Usability & Data Integrity)*
+
+- Refined the patient create/edit workflow to improve usability and data quality, incorporating supervisor feedback:
+  - Reorganised the form into clearly defined sections (Personal, Medical, Medical History, Care & Emergency) using a tabbed modal to reduce cognitive load.
+  - Structured Medical History inputs to better reflect real clinical records.
+  - Converted chronic conditions from free-text into a structured, repeatable list with optional diagnosis dates.
+  - Made Diagnosis mandatory while keeping Medical History optional to avoid blocking patient registration when information is incomplete.
+  - Strengthened validation rules for names (preventing numeric input while allowing real-world punctuation such as hyphens and apostrophes).
+
+- Ensured backend models and persistence logic correctly store and retrieve all new fields, preventing partial-update overwrites and data loss.
+- Aligned View Details layout with Edit Profile for consistency and improved caregiver workflow efficiency.
+
+*Dashboard Consistency & Stability Improvements*
+
+- Updated dashboard patient cards to visually and structurally match Patient Management views.
+- Limited dashboard previews to three patients for clarity while preserving quick navigation to full management.
+- Refactored shared helper utilities (e.g., age calculation, formatting) to reduce duplication and prevent runtime errors.
+- Fixed a dashboard runtime error related to helper imports, improving overall system stability.
+
+Sprint 5: Activity Monitoring & Reporting Charts (Phase 2)  largely complete, with backend aggregation, live activity logging, and visual analytics implemented and verified. Remaining work focuses on final chart review feedback and continued integration testing across caregiver workflows.
