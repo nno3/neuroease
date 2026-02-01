@@ -76,7 +76,6 @@ function validateEmergencyContacts(value) {
     return null;
 }
 
-
 const validate = (schema) => {
     return async (req, res, next) => {
         try {
@@ -138,8 +137,11 @@ const patientRegistrationSchema = yup.object({
     name: yup.string()
         .min(2, 'Name must be at least 2 characters')
         .max(50, 'Name cannot exceed 50 characters')
+        .matches(
+            /^[A-Za-zÀ-ÿ\s\-'.]+$/,
+            'Name must contain only letters, spaces, hyphens, apostrophes, and periods'
+        )
         .required('Name is required'),
-    // changed dob so its required
     dateOfBirth: yup
         .date()
         .nullable()
@@ -148,16 +150,65 @@ const patientRegistrationSchema = yup.object({
         .max(new Date(), "Date of birth cannot be in the future")
         .min(new Date("1900-01-01"), "Date of birth must be after 01/01/1900"),
 
-    // multi-line emergency contact validation
-    emergencyContact: yup
+    emergencyContact: yup.string().max(500, 'Emergency contact too long').nullable(),
+
+    emergencyContactName: yup.string().max(255, 'Emergency contact name too long').nullable(),
+    emergencyContactRelationship: yup.string().max(100, 'Relationship too long').nullable(),
+    emergencyContactPhone: yup.string().max(50, 'Emergency contact phone too long').nullable(),
+
+    preferredCommunication: yup.string().max(50, 'Preferred communication too long').nullable(),
+    careNotes: yup.string().max(2000, 'Care notes too long').nullable(),
+
+    address: yup
         .string()
-        .required("Emergency contact is required")
-        .test("emergency-contacts", function (value) {
-            const msg = validateEmergencyContacts(value);
-            return msg ? this.createError({ message: msg }) : true;
-        }),
-    medicalConditions: yup.string().max(500, 'Medical conditions description too long')
-});
+        .required("Address is required")
+        .min(2, "Address must be at least 2 characters")
+        .max(500, "Address too long"),
+
+    gender: yup.string().max(50, 'Gender too long').nullable(),
+
+    medicalHistory: yup.object().shape({
+        diagnosis: yup.string().max(255, 'Diagnosis too long').nullable(),
+        diagnosisDate: yup.string().max(30, 'Diagnosis date too long').nullable(),
+        stageSeverity: yup.string().max(100, 'Stage too long').nullable(),
+        primaryConsultant: yup.string().max(255, 'Primary consultant too long').nullable(),
+        currentMedications: yup.string().max(1000, 'Current medications too long').nullable(),
+        chronicConditions: yup.mixed().test('chronic-conditions', 'Invalid chronic conditions', function (value) {
+            if (value == null) return true;
+            if (typeof value === 'string') return value.length <= 2000;
+            if (Array.isArray(value)) {
+                return value.every(item =>
+                    item && typeof item === 'object' &&
+                    (item.diagnosis == null || typeof item.diagnosis === 'string') &&
+                    (item.diagnosedDate == null || typeof item.diagnosedDate === 'string') &&
+                    (item.dateNotApplicable == null || typeof item.dateNotApplicable === 'boolean')
+                );
+            }
+            return false;
+        }).nullable(),
+        surgicalHistory: yup.string().max(1000, 'Surgical history too long').nullable(),
+        hospitalizations: yup.string().max(1000, 'Hospitalizations too long').nullable(),
+        previousMedications: yup.string().max(1000, 'Previous medications too long').nullable(),
+        allergies: yup.string().max(1000, 'Allergies too long').nullable(),
+        familyHistory: yup.string().max(1000, 'Family history too long').nullable(),
+        lifestyleFactors: yup.string().max(1000, 'Lifestyle factors too long').nullable(),
+        immunizations: yup.string().max(1000, 'Immunizations too long').nullable(),
+    }).default(undefined).nullable(),
+
+    medicalConditions: yup.string().max(2000, 'Medical conditions description too long').nullable(),
+})
+    .test("emergency-contact-required", "Emergency contact is required: provide Contact Name and Contact Phone, or legacy emergency contact text", function (obj) {
+        const name = String(obj?.emergencyContactName ?? "").trim();
+        const phone = String(obj?.emergencyContactPhone ?? "").trim();
+        const digits = phone.replace(/\D/g, "");
+        const legacy = String(obj?.emergencyContact ?? "").trim();
+        if (name.length >= 2 && digits.length >= 7) return true;
+        if (legacy) {
+            const msg = validateEmergencyContacts(legacy);
+            return !msg;
+        }
+        return false;
+    });
 
 const reminderSchema = yup.object({
     patientId: yup.number().required('Patient ID is required'),

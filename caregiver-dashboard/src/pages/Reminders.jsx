@@ -3,6 +3,7 @@ import { getPatients } from "../services/patients";
 import {createReminder, deleteReminder, getRemindersForPatient, updateReminder } from "../services/reminders";
 import ReminderFormModal from "../components/ReminderFormModal";
 import { Link } from "react-router-dom";
+import { format3 } from "../utils/patientHelpers";
 import "./Reminders.css";
 
 import {Pill, CalendarDays, ClipboardList, Plus, Trash2, UserRound, Repeat, CheckCircle2, Clock3,} from "lucide-react";
@@ -22,10 +23,6 @@ const TABS = [
     { label: "Appointments", value: "appointment" },
     { label: "Tasks", value: "general" },
 ];
-function format3(id) {
-    if (id === null || id === undefined) return "000";
-    return String(id).padStart(3, "0");
-}
 function recurrenceLabel(v) {
     if (v === "daily") return "Daily";
     if (v === "weekly") return "Weekly";

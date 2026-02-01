@@ -7,6 +7,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Patients from './pages/Patients';
 import Reminders from './pages/Reminders';
+import Activity from "./pages/Activity";
 
 function App() {
     return (
@@ -24,7 +25,7 @@ function App() {
                     <Route index element={<Dashboard />} />
                     <Route path="patients" element={<Patients />} />
                     <Route path="reminders" element={<Reminders />} />
-                    <Route path="activity" element={<div>Activity Page</div>} />
+                    <Route path="activity" element={<Activity/>} />
                     <Route path="location" element={<div>Location Page</div>} />
                 </Route>
 
