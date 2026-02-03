@@ -23,6 +23,35 @@ export function format3(id) {
     return String(id).padStart(3, "0");
 }
 
+export function formatDate(dateStr) {
+    if (!dateStr) return "—";
+    const d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+export function formatDateTime(dateStr) {
+    if (!dateStr) return "—";
+    const d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+}
+
+export function parseMedicalHistory(medicalConditions) {
+    if (!medicalConditions) return {};
+    try {
+        return typeof medicalConditions === "string" ? JSON.parse(medicalConditions) : medicalConditions;
+    } catch {
+        return typeof medicalConditions === "string" ? { chronicConditions: medicalConditions } : {};
+    }
+}
+
 const AVATAR_COLORS = ["#0066cc", "#2f80ed", "#334155", "#0f766e", "#6d28d9", "#b45309", "#0ea5e9"];
 export function getAvatarColor(id) {
     const n = Number(id);

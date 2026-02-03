@@ -4,6 +4,7 @@ import { getDashboardStats } from "../services/dashboardService";
 import { getPatients, getPatientById, archivePatient } from "../services/patients";
 import { useNavigate, Link } from "react-router-dom";
 import PatientFormModal from "../components/PatientFormModal";
+import PatientDetailsModal from "../components/PatientDetailsModal";
 import * as patientHelpers from "../utils/patientHelpers";
 import "./Dashboard.css";
 import "./Patients.css";

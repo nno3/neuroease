@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getPatients, getArchivedPatients, getPatientById, archivePatient, unarchivePatient } from "../services/patients";
 import "./Patients.css";
 import PatientFormModal from "../components/PatientFormModal";
+import PatientDetailsModal from "../components/PatientDetailsModal";
 import { useSearchParams } from "react-router-dom";
 import { ArchiveIcon, UsersIcon, CheckIcon } from "lucide-react";
 import {
@@ -166,9 +167,9 @@ export default function Patients() {
         const res = await unarchivePatient(patientId, {
             notes: notes?.trim() ? notes.trim() : "Reactivated by caregiver",
         });
-        showToast("success", res?.message || "Patient restored successfully.");
-        await refreshAll();
-        closeDetails();
+            showToast("success", res?.message || "Patient restored successfully.");
+            await refreshAll();
+            closeDetails();
     };
 
     const openAdd = () => {
@@ -193,9 +194,9 @@ export default function Patients() {
                 setFormOpen(true);
             })
             .catch(() => {
-                setFormMode("edit");
-                setFormPatient(patient);
-                setFormOpen(true);
+        setFormMode("edit");
+        setFormPatient(patient);
+        setFormOpen(true);
             });
     };
 
