@@ -32,6 +32,9 @@ app.use('/api/activity', activityRoutes);
 const locationRoutes = require('./src/routes/locationRoutes');
 app.use('/api/location', locationRoutes);
 
+const safeZoneRoutes = require('./src/routes/safeZoneRoutes');
+app.use('/api/safe-zones', safeZoneRoutes);
+
 // Health check route
 app.get('/api/health', (req, res) => {
     res.json({
