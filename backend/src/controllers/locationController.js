@@ -1,4 +1,23 @@
-const { User, Patient, LocationLog } = require('../models');
+const { User, Patient, LocationLog, SafeZone, LocationAlert } = require('../models');
+
+/** Distance in meters between two (lat, lng) points (Haversine). */
+function haversineMeters(lat1, lng1, lat2, lng2) {
+    const R = 6371000; // Earth radius in meters
+    const toRad = (x) => (x * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+/** True if (lat, lng) is inside the zone (distance <= radius in meters). */
+function isInsideZone(lat, lng, zone) {
+    const dist = haversineMeters(lat, lng, zone.centerLat, zone.centerLng);
+    return dist <= zone.radius;
+}
 
 /**
  * Ensure the authenticated caregiver is assigned to the given patient (by patient User id).
@@ -70,12 +89,38 @@ const locationController = {
                 });
             }
 
+            // Geofence: load active safe zones and previous location to detect exit
+            const zones = await SafeZone.findAll({
+                where: { patientId: pid, isActive: true },
+            });
+            const previousLog = await LocationLog.findOne({
+                where: { patientId: pid },
+                order: [['timestamp', 'DESC']],
+            });
+            const previousInside =
+                zones.length > 0 &&
+                previousLog &&
+                zones.some((z) => isInsideZone(previousLog.latitude, previousLog.longitude, z));
+            const currentInside =
+                zones.length > 0 && zones.some((z) => isInsideZone(lat, lng, z));
+
             const log = await LocationLog.create({
                 patientId: pid,
                 latitude: lat,
                 longitude: lng,
                 timestamp: ts,
             });
+
+            // If patient was inside a zone and is now outside, create one alert (avoid duplicate for same breach)
+            if (previousInside && !currentInside) {
+                await LocationAlert.create({
+                    patientId: pid,
+                    latitude: lat,
+                    longitude: lng,
+                    timestamp: ts,
+                    message: 'Left safe zone',
+                });
+            }
 
             return res.status(201).json({
                 success: true,
@@ -151,6 +196,38 @@ const locationController = {
             return res.status(500).json({
                 success: false,
                 message: 'Failed to retrieve location',
+            });
+        }
+    },
+
+    /**
+     * GET /api/location/alerts?patientId=
+     * Returns location alerts (safe-zone breaches) for the patient. For dashboard API.
+     */
+    alerts: async (req, res) => {
+        try {
+            const patientId =
+                req.query.patientId != null ? parseInt(req.query.patientId, 10) : NaN;
+            if (Number.isNaN(patientId)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Missing or invalid patientId query parameter',
+                });
+            }
+            const check = await ensurePatientAssigned(req, patientId);
+            if (!check.allowed) {
+                return res.status(403).json({ success: false, message: check.message });
+            }
+            const list = await LocationAlert.findAll({
+                where: { patientId },
+                order: [['timestamp', 'DESC']],
+            });
+            return res.json({ success: true, data: list });
+        } catch (err) {
+            console.error('Location alerts error:', err);
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to retrieve location alerts',
             });
         }
     },

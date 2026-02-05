@@ -10,5 +10,6 @@ router.use(requireCaregiver);
 
 router.post('/update', locationController.update);
 router.get('/latest', locationController.latest);
+router.get('/alerts', locationController.alerts);
 
 module.exports = router;
