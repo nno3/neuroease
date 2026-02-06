@@ -334,6 +334,7 @@ const patientController = {
         address, gender, phoneNumber,
         preferredCommunication, accessibilityNeeds, careNotes,
         emergencyContactName, emergencyContactRelationship, emergencyContactPhone,
+        locationConsent,
       } = req.body;
 
       const patientProfile = patientUser.Patient;
@@ -389,6 +390,7 @@ const patientController = {
         if (emergencyContactName !== undefined) updates.emergencyContactName = emergencyContactName != null ? String(emergencyContactName).trim() || null : null;
         if (emergencyContactRelationship !== undefined) updates.emergencyContactRelationship = emergencyContactRelationship != null ? String(emergencyContactRelationship).trim() || null : null;
         if (emergencyContactPhone !== undefined) updates.emergencyContactPhone = emergencyContactPhone != null ? String(emergencyContactPhone).trim() || null : null;
+        if (locationConsent !== undefined) updates.locationConsent = Boolean(locationConsent);
 
         if (Object.keys(updates).length) {
           await patientProfile.update(updates);

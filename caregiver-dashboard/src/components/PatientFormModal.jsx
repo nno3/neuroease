@@ -241,6 +241,7 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
             emergencyContactName: profile?.emergencyContactName ?? "",
             emergencyContactRelationship: profile?.emergencyContactRelationship ?? "",
             emergencyContactPhone: profile?.emergencyContactPhone ?? "",
+            locationConsent: Boolean(profile?.locationConsent),
 
             diagnosis: (() => {
                 const d = profile?.diagnosis ?? medicalHistory?.diagnosis ?? "";
@@ -472,6 +473,7 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                 emergencyContactRelationship: form.emergencyContactRelationship.trim() || null,
                 emergencyContactPhone: form.emergencyContactPhone.trim() || null,
                 emergencyContact: form.emergencyContact.trim() || null,
+                ...(isEdit && { locationConsent: form.locationConsent }),
             };
 
             if (!isEdit) {
@@ -964,6 +966,19 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                                     placeholder="Name — Phone (one per line)"
                                 />
                             </div>
+                            {isEdit && (
+                                <div className="pfm-field pfm-span2">
+                                    <label className="pfm-label">Location sharing</label>
+                                    <label className="pfm-checkbox-wrap">
+                                        <input
+                                            type="checkbox"
+                                            checked={Boolean(form.locationConsent)}
+                                            onChange={(e) => setField("locationConsent", e.target.checked)}
+                                        />
+                                        <span>Allow location sharing (required for Location page and safe zones)</span>
+                                    </label>
+                                </div>
+                            )}
                         </div>
                     </div>
 

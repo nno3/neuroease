@@ -42,11 +42,16 @@ async function getLocationConsent(patientUserId) {
     return profile ? Boolean(profile.locationConsent) : false;
 }
 
+/**
+ * In all location APIs, patientId is the patient's USER id (users.id), not the
+ * Patient profile table id (patients.id). The dashboard patient list uses the
+ * same id: each item's top-level "id" is the user id to pass as patientId.
+ */
 const locationController = {
     /**
      * POST /api/location/update
      * Body: { patientId, latitude, longitude, timestamp }
-     * Stores in location_logs. Validates caregiver–patient relationship and location consent.
+     * patientId = patient's User id (users.id). Stores in location_logs.
      */
     update: async (req, res) => {
         try {
@@ -144,7 +149,7 @@ const locationController = {
 
     /**
      * GET /api/location/latest?patientId=
-     * Returns the most recent valid location for the patient. 404 if none.
+     * patientId = patient's User id. Returns the most recent location; 404 if none.
      */
     latest: async (req, res) => {
         try {
@@ -164,9 +169,9 @@ const locationController = {
 
             const hasConsent = await getLocationConsent(patientId);
             if (!hasConsent) {
-                return res.status(403).json({
+                return res.status(404).json({
                     success: false,
-                    message: 'Location sharing is not enabled for this patient.',
+                    message: 'No location data available for this patient.',
                 });
             }
 
@@ -202,7 +207,7 @@ const locationController = {
 
     /**
      * GET /api/location/alerts?patientId=
-     * Returns location alerts (safe-zone breaches) for the patient. For dashboard API.
+     * patientId = patient's User id. Returns location alerts (safe-zone breaches).
      */
     alerts: async (req, res) => {
         try {
