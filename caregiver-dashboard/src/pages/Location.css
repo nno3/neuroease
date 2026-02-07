@@ -44,13 +44,41 @@
     cursor: pointer;
 }
 
-.loc-btn:hover:not(:disabled) {
+.loc-btn:not(.loc-btn-primary):hover:not(:disabled) {
     background: #f8fafc;
 }
 
 .loc-btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+}
+
+.loc-btn-primary {
+    background: #4a90e2;
+    color: #fff;
+    border: 1px solid #4a90e2;
+    padding: 10px 16px;
+    font-weight: 600;
+}
+
+.loc-btn-primary:hover:not(:disabled) {
+    background: #3b7bc9;
+    border-color: #3b7bc9;
+    color: #fff;
+}
+
+.loc-hint {
+    margin-bottom: 12px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    color: #475569;
+}
+
+.loc-hint-warning {
+    background: #fef9c3;
+    border: 1px solid #fde047;
+    color: #713f12;
 }
 
 .loc-panel {
@@ -210,4 +238,272 @@
 .loc-custom-marker {
     background: none !important;
     border: none !important;
+}
+
+.loc-map-hint {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #e2e8f0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.loc-add-zone {
+    margin-top: 16px;
+    border-radius: 14px;
+    background: #fff;
+    border: 1px solid #eef2f7;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+}
+
+.loc-add-zone-visible {
+    animation: loc-add-zone-in 0.4s ease-out;
+}
+
+@keyframes loc-add-zone-in {
+    0% {
+        box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.4);
+    }
+    100% {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+}
+
+.loc-modal-style .loc-modal-header {
+    padding: 18px;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+    background: #fff;
+}
+
+.loc-modal-style .loc-modal-title {
+    font-size: 18px;
+    font-weight: 900;
+    color: #1a1a1a;
+    margin: 0;
+}
+
+.loc-modal-style .loc-modal-subtitle {
+    margin-top: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #6c757d;
+}
+
+.loc-modal-style .loc-modal-close {
+    background: #f8f9fa;
+    border: none;
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 20px;
+    font-weight: 900;
+    color: #495057;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.loc-modal-style .loc-modal-close:hover {
+    background-color: #e9ecef;
+    color: #1a1a1a;
+}
+
+.loc-modal-style .loc-modal-body {
+    padding: 18px;
+}
+
+.loc-btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #64748b;
+    cursor: pointer;
+}
+
+.loc-btn-icon:hover {
+    background: #f1f5f9;
+    color: #334155;
+}
+
+.loc-btn-icon-danger:hover {
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
+.loc-add-zone-step {
+    margin: 0 0 4px 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #334155;
+}
+
+.loc-add-zone-hint {
+    margin: 0 0 12px 0;
+    font-size: 13px;
+    color: #64748b;
+}
+
+.loc-search-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.loc-input {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    font-size: 14px;
+    outline: none;
+}
+
+.loc-input:focus {
+    border-color: #4a90e2;
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.15);
+}
+
+.loc-search-result {
+    padding: 12px;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 12px;
+}
+
+.loc-search-result-label {
+    margin: 0 0 4px 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.loc-search-result-name {
+    margin: 0 0 10px 0;
+    font-size: 13px;
+    color: #334155;
+}
+
+.loc-add-zone-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-end;
+}
+
+.loc-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.loc-field .loc-label {
+    margin: 0;
+}
+
+.loc-field-hint {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+
+.loc-add-zone-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.loc-zones-list {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #eef2f7;
+}
+
+.loc-zones-list-title {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #334155;
+}
+
+.loc-zones-ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.loc-zone-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    font-size: 13px;
+}
+
+.loc-zone-name {
+    font-weight: 700;
+    color: #334155;
+}
+
+.loc-zone-size {
+    color: #64748b;
+}
+
+.loc-zone-actions {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.loc-zone-edit {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.loc-input-sm,
+.loc-select-sm {
+    padding: 6px 10px;
+    font-size: 13px;
+}
+
+.loc-btn-sm {
+    padding: 6px 12px;
+    font-size: 13px;
 }
