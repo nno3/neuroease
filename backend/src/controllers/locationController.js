@@ -1,3 +1,4 @@
+const { Op } = require('sequelize');
 const { User, Patient, LocationLog, SafeZone, LocationAlert } = require('../models');
 
 /** Distance in meters between two (lat, lng) points (Haversine). */
@@ -207,32 +208,155 @@ const locationController = {
 
     /**
      * GET /api/location/alerts?patientId=
-     * patientId = patient's User id. Returns location alerts (safe-zone breaches).
+     * If patientId present: alerts for that patient only.
+     * If patientId omitted: recent alerts for all of the caregiver's patients (last 7 days), with patient name.
      */
     alerts: async (req, res) => {
         try {
-            const patientId =
+            const patientIdParam =
                 req.query.patientId != null ? parseInt(req.query.patientId, 10) : NaN;
-            if (Number.isNaN(patientId)) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Missing or invalid patientId query parameter',
+
+            if (!Number.isNaN(patientIdParam)) {
+                const check = await ensurePatientAssigned(req, patientIdParam);
+                if (!check.allowed) {
+                    return res.status(403).json({ success: false, message: check.message });
+                }
+                const patientUser = await User.findByPk(patientIdParam, { attributes: ['id', 'isArchived'] });
+                if (patientUser && patientUser.isArchived) {
+                    return res.json({ success: true, data: [] });
+                }
+                const list = await LocationAlert.findAll({
+                    where: { patientId: patientIdParam },
+                    order: [['timestamp', 'DESC']],
                 });
+                return res.json({ success: true, data: list });
             }
-            const check = await ensurePatientAssigned(req, patientId);
-            if (!check.allowed) {
-                return res.status(403).json({ success: false, message: check.message });
+
+            const caregiver = await User.findByPk(req.user.userId);
+            if (!caregiver) {
+                return res.status(404).json({ success: false, message: 'Caregiver not found' });
             }
+            const assigned = await caregiver.getPatients();
+            const assignedIds = assigned.filter((p) => !p.isArchived).map((p) => p.id);
+            if (assignedIds.length === 0) {
+                return res.json({ success: true, data: [] });
+            }
+
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
             const list = await LocationAlert.findAll({
-                where: { patientId },
+                where: {
+                    patientId: { [Op.in]: assignedIds },
+                    timestamp: { [Op.gte]: sevenDaysAgo },
+                },
+                include: [{ model: User, as: 'patient', attributes: ['id', 'name'] }],
                 order: [['timestamp', 'DESC']],
+                limit: 50,
             });
-            return res.json({ success: true, data: list });
+
+            const data = list.map((a) => ({
+                id: a.id,
+                patientId: a.patientId,
+                patientName: a.patient?.name ?? `Patient ${a.patientId}`,
+                latitude: a.latitude,
+                longitude: a.longitude,
+                timestamp: a.timestamp,
+                message: a.message,
+            }));
+
+            return res.json({ success: true, data });
         } catch (err) {
             console.error('Location alerts error:', err);
             return res.status(500).json({
                 success: false,
                 message: 'Failed to retrieve location alerts',
+            });
+        }
+    },
+
+    /**
+     * GET /api/location/status
+     * For dashboard: returns both recent breach alerts and patients currently outside any safe zone.
+     */
+    status: async (req, res) => {
+        try {
+            const caregiver = await User.findByPk(req.user.userId);
+            if (!caregiver) {
+                return res.status(404).json({ success: false, message: 'Caregiver not found' });
+            }
+            const assigned = await caregiver.getPatients();
+            const activePatients = assigned.filter((p) => !p.isArchived);
+            const assignedIds = activePatients.map((p) => p.id);
+            if (assignedIds.length === 0) {
+                return res.json({ success: true, data: { alerts: [], currentlyOutside: [] } });
+            }
+
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+            const [alertRows, patientProfiles] = await Promise.all([
+                LocationAlert.findAll({
+                    where: {
+                        patientId: { [Op.in]: assignedIds },
+                        timestamp: { [Op.gte]: sevenDaysAgo },
+                    },
+                    include: [{ model: User, as: 'patient', attributes: ['id', 'name'] }],
+                    order: [['timestamp', 'DESC']],
+                    limit: 50,
+                }),
+                Patient.findAll({ where: { userId: { [Op.in]: assignedIds } } }),
+            ]);
+
+            const alerts = alertRows.map((a) => ({
+                id: a.id,
+                patientId: a.patientId,
+                patientName: a.patient?.name ?? `Patient ${a.patientId}`,
+                latitude: a.latitude,
+                longitude: a.longitude,
+                timestamp: a.timestamp,
+                message: a.message,
+            }));
+
+            const consentUserIds = new Set(
+                patientProfiles.filter((p) => p.locationConsent).map((p) => p.userId)
+            );
+
+            const currentlyOutside = [];
+            for (const uid of consentUserIds) {
+                const [latestLog, zones] = await Promise.all([
+                    LocationLog.findOne({
+                        where: { patientId: uid },
+                        order: [['timestamp', 'DESC']],
+                    }),
+                    SafeZone.findAll({ where: { patientId: uid, isActive: true } }),
+                ]);
+                if (!latestLog || zones.length === 0) continue;
+                const lat = Number(latestLog.latitude);
+                const lng = Number(latestLog.longitude);
+                const insideAny = zones.some((z) => {
+                    const dist = haversineMeters(lat, lng, Number(z.centerLat), Number(z.centerLng));
+                    return dist <= Number(z.radius);
+                });
+                if (!insideAny) {
+                    const patientUser = activePatients.find((p) => p.id === uid);
+                    currentlyOutside.push({
+                        patientId: uid,
+                        patientName: patientUser?.name ?? `Patient ${uid}`,
+                        timestamp: latestLog.timestamp,
+                    });
+                }
+            }
+
+            return res.json({
+                success: true,
+                data: { alerts, currentlyOutside },
+            });
+        } catch (err) {
+            console.error('Location status error:', err);
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to retrieve location status',
             });
         }
     },

@@ -1,4 +1,6 @@
-const KPICard = ({ title, value, icon, description, color, valueColor, iconBg }) => {
+const KPICard = ({ title, value, icon, description, color, valueColor, iconBg, highlightWhenPositive }) => {
+    const num = typeof value === "number" ? value : parseInt(String(value).replace(/\D/g, ""), 10) || 0;
+    const isHighlight = highlightWhenPositive && num > 0;
     return (
         <div style={{
             background: 'white',
@@ -7,7 +9,11 @@ const KPICard = ({ title, value, icon, description, color, valueColor, iconBg })
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
             transition: 'transform 0.2s, box-shadow 0.2s',
             flex: '1',
-            minWidth: '200px'
+            minWidth: '200px',
+            ...(isHighlight && {
+                borderLeft: '4px solid #ef4444',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08), 0 0 0 1px rgba(239, 68, 68, 0.15)',
+            }),
         }}>
             <div style={{
                 display: 'flex',

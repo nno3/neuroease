@@ -55,8 +55,12 @@ function haversineMeters(lat1, lng1, lat2, lng2) {
 
 /** True if (lat, lng) is inside the zone (distance <= radius in meters). */
 function isInsideZone(lat, lng, zone) {
-    const dist = haversineMeters(lat, lng, zone.centerLat, zone.centerLng);
-    return dist <= zone.radius;
+    const centerLat = Number(zone.centerLat);
+    const centerLng = Number(zone.centerLng);
+    const radius = Number(zone.radius);
+    if (Number.isNaN(centerLat) || Number.isNaN(centerLng) || Number.isNaN(radius)) return false;
+    const dist = haversineMeters(Number(lat), Number(lng), centerLat, centerLng);
+    return dist <= radius;
 }
 
 function MapFitBounds({ locations, zones }) {
@@ -346,6 +350,42 @@ export default function Location() {
     const hasData = locations.length > 0 || zones.length > 0;
     const showMap = !loading && idsToFetch.length > 0;
 
+    const recentAlertsList = useMemo(() => {
+        const list = [];
+        idsToFetch.forEach((pid) => {
+            (alertsByPatient[pid] ?? []).forEach((a) => {
+                const patientName = patientList.find((p) => p.id === pid)?.name ?? `Patient ${format3(pid)}`;
+                list.push({
+                    ...a,
+                    patientId: pid,
+                    patientName,
+                });
+            });
+        });
+        list.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        return list.slice(0, 10);
+    }, [idsToFetch, alertsByPatient, patientList]);
+
+    const currentlyOutsideList = useMemo(() => {
+        return locations
+            .filter((loc) => {
+                const patientZones = zones.filter((z) => z.patientId === loc.patientId);
+                const hasNoZones = patientZones.length === 0;
+                const isInsideAnyZone =
+                    !hasNoZones &&
+                    patientZones.some((z) => isInsideZone(loc.latitude, loc.longitude, z));
+                return hasNoZones || !isInsideAnyZone;
+            })
+            .map((loc) => ({
+                patientId: loc.patientId,
+                patientName: loc.patientName,
+                timestamp: loc.timestamp,
+                isCurrentlyOutside: true,
+            }));
+    }, [locations, zones]);
+
+    const hasAnyAlertsOrOutside = recentAlertsList.length > 0 || currentlyOutsideList.length > 0;
+
     return (
         <div className="loc-page">
             <div className="loc-header">
@@ -408,11 +448,50 @@ export default function Location() {
 
                 {noPatientsWithConsent && (
                     <div className="loc-hint loc-hint-warning">
-                        Select a patient who has <strong>location sharing</strong> enabled to view or add safe zones. You can turn this on in Patients → Edit patient → Care &amp; Emergency → &quot;Allow location sharing&quot;.
+                        Select a patient who has <strong>location sharing</strong> enabled to view or add safe zones. Patients enable this in their app; you can see their status in patient details.
                     </div>
                 )}
 
                 {error && <div className="loc-error">{error}</div>}
+
+                {hasAnyAlertsOrOutside && (
+                    <div className="loc-alerts-banner">
+                        <AlertTriangle size={20} className="loc-alerts-banner-icon" aria-hidden />
+                        <div className="loc-alerts-banner-content">
+                            <strong className="loc-alerts-banner-title">Location alerts &amp; status</strong>
+                            <ul className="loc-alerts-list">
+                                {currentlyOutsideList.map((loc) => (
+                                    <li key={`outside-${loc.patientId}`} className="loc-alert-item">
+                                        <span className="loc-alert-patient">{loc.patientName}</span>
+                                        <span className="loc-alert-message">Currently outside safe zone</span>
+                                        <span className="loc-alert-time">
+                                            {loc.timestamp
+                                                ? new Date(loc.timestamp).toLocaleString(undefined, {
+                                                    dateStyle: "short",
+                                                    timeStyle: "short",
+                                                })
+                                                : ""}
+                                        </span>
+                                    </li>
+                                ))}
+                                {recentAlertsList.map((a) => (
+                                    <li key={a.id} className="loc-alert-item">
+                                        <span className="loc-alert-patient">{a.patientName}</span>
+                                        <span className="loc-alert-message">{a.message ?? "Left safe zone"}</span>
+                                        <span className="loc-alert-time">
+                                            {a.timestamp
+                                                ? new Date(a.timestamp).toLocaleString(undefined, {
+                                                    dateStyle: "short",
+                                                    timeStyle: "short",
+                                                })
+                                                : ""}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+                )}
 
                 <div className="loc-map-wrap">
                     {loading && (
@@ -431,7 +510,7 @@ export default function Location() {
                         <div className="loc-empty">
                             <MapPin size={48} />
                             <p>No patient with location sharing selected.</p>
-                            <p className="loc-empty-hint">Choose a patient who has location sharing enabled, or enable it in Patients → Edit → Care &amp; Emergency.</p>
+                            <p className="loc-empty-hint">Choose a patient who has location sharing enabled. Patients enable this in their app; you can see their status in patient details.</p>
                         </div>
                     )}
                     {showMap && (

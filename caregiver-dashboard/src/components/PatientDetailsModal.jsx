@@ -202,6 +202,15 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarch
                                         {profile?.address?.trim() || "—"}
                                     </div>
                                 </div>
+                                <div className="pm-detail-field pm-detail-span2">
+                                    <span className="pm-detail-label">Location sharing</span>
+                                    <div className="pm-detail-value">
+                                        {profile?.locationConsent ? "On" : "Off"}
+                                        <span className="pm-detail-muted" style={{ display: "block", marginTop: "2px", fontSize: "12px", color: "#64748b" }}>
+                                            Set by patient in their app
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
 
                             {(() => {

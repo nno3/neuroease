@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import DashboardStats from "../components/Dashboard/DashboardStats";
 import { getDashboardStats } from "../services/dashboardService";
+import { getLocationStatusForCaregiver } from "../services/locationService";
 import { getPatients, getPatientById, archivePatient } from "../services/patients";
 import { useNavigate, Link } from "react-router-dom";
+import { AlertTriangle } from "lucide-react";
 import PatientFormModal from "../components/PatientFormModal";
 import PatientDetailsModal from "../components/PatientDetailsModal";
 import * as patientHelpers from "../utils/patientHelpers";
@@ -13,6 +15,9 @@ const Dashboard = () => {
     const navigate = useNavigate();
     const [stats, setStats] = useState(null);
     const [patients, setPatients] = useState([]);
+    const [locationAlerts, setLocationAlerts] = useState([]);
+    const [currentlyOutside, setCurrentlyOutside] = useState([]);
+    const [alertBannerDismissed, setAlertBannerDismissed] = useState(false);
     const [detailsPatient, setDetailsPatient] = useState(null);
     const [formOpen, setFormOpen] = useState(false);
     const [formMode, setFormMode] = useState("create");
@@ -27,22 +32,37 @@ const Dashboard = () => {
     };
 
     useEffect(() => {
-        Promise.allSettled([getPatients(), getDashboardStats()]).then(([patientsRes, statsRes]) => {
-            const activeList =
-                patientsRes.status === "fulfilled" ? (patientsRes.value?.data?.patients ?? []) : [];
+        Promise.allSettled([getPatients(), getDashboardStats(), getLocationStatusForCaregiver()]).then(
+            ([patientsRes, statsRes, statusRes]) => {
+                const activeList =
+                    patientsRes.status === "fulfilled" ? (patientsRes.value?.data?.patients ?? []) : [];
 
-            const otherStats =
-                statsRes.status === "fulfilled"
-                    ? statsRes.value
-                    : { reminderCompliance: 0, activeAlerts: 0, gamesPlayedToday: 0 };
+                const otherStats =
+                    statsRes.status === "fulfilled"
+                        ? statsRes.value
+                        : { reminderCompliance: 0, activeAlerts: 0, gamesPlayedToday: 0 };
 
-            setPatients(activeList);
+                const data = statusRes.status === "fulfilled"
+                    ? statusRes.value?.data?.data ?? statusRes.value?.data ?? {}
+                    : {};
+                const alertList = Array.isArray(data.alerts) ? data.alerts : [];
+                const outsideList = Array.isArray(data.currentlyOutside) ? data.currentlyOutside : [];
 
-            setStats({
-                ...otherStats,
-                activePatients: activeList.length,
-            });
-        });
+                setPatients(activeList);
+                setLocationAlerts(alertList);
+                setCurrentlyOutside(outsideList);
+
+                const alertPatientIds = new Set(alertList.map((a) => a.patientId));
+                outsideList.forEach((o) => alertPatientIds.add(o.patientId));
+                const activeAlertsCount = alertPatientIds.size;
+
+                setStats({
+                    ...otherStats,
+                    activePatients: activeList.length,
+                    activeAlerts: activeAlertsCount,
+                });
+            }
+        );
     }, []);
 
     const visiblePatients = patients.slice(0, 3);
@@ -119,36 +139,55 @@ const Dashboard = () => {
                 </button>
             </div>
 
-            {/* Alert Banner - From wireframe */}
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '16px 20px',
-                borderRadius: '8px',
-                marginBottom: '24px',
-                gap: '12px',
-                backgroundColor: '#FFF3CD',
-                borderLeft: '4px solid #FFC107',
-                color: '#856404'
-            }}>
-                <span style={{fontSize: '24px'}}>⚠️</span>
-                <div style={{flex: 1}}>
-                    <strong style={{display: 'block', marginBottom: '4px'}}>
-                        2 Active Alerts
-                    </strong>
-                    <p style={{margin: 0}}>Margaret Thompson left safe zone • John Smith missed medication</p>
+            {/* Active location alerts banner (breach events + currently outside) */}
+            {(locationAlerts.length > 0 || currentlyOutside.length > 0) && !alertBannerDismissed && (
+                <div className="dp-alert-banner">
+                    <AlertTriangle size={24} className="dp-alert-banner-icon" aria-hidden />
+                    <div className="dp-alert-banner-content">
+                        <strong className="dp-alert-banner-title">
+                            {locationAlerts.length + currentlyOutside.length} active location alert
+                            {locationAlerts.length + currentlyOutside.length !== 1 ? "s" : ""}
+                        </strong>
+                        <p className="dp-alert-banner-text">
+                            {[
+                                ...currentlyOutside.slice(0, 5).map((o) => {
+                                    const time = o.timestamp
+                                        ? new Date(o.timestamp).toLocaleString(undefined, {
+                                            dateStyle: "short",
+                                            timeStyle: "short",
+                                        })
+                                        : "";
+                                    return `${o.patientName ?? "Patient"} currently outside safe zone${time ? ` (${time})` : ""}`;
+                                }),
+                                ...locationAlerts.slice(0, 5).map((a) => {
+                                    const time = a.timestamp
+                                        ? new Date(a.timestamp).toLocaleString(undefined, {
+                                            dateStyle: "short",
+                                            timeStyle: "short",
+                                        })
+                                        : "";
+                                    return `${a.patientName ?? "Patient"} left safe zone${time ? ` at ${time}` : ""}`;
+                                }),
+                            ]
+                                .slice(0, 5)
+                                .join(" • ")}
+                            {(currentlyOutside.length + locationAlerts.length) > 5 &&
+                                ` • +${currentlyOutside.length + locationAlerts.length - 5} more`}
+                        </p>
+                        <Link to="/location" className="dp-alert-banner-link">
+                            View on Location page →
+                        </Link>
+                    </div>
+                    <button
+                        type="button"
+                        className="dp-alert-banner-dismiss"
+                        onClick={() => setAlertBannerDismissed(true)}
+                        aria-label="Dismiss alert banner"
+                    >
+                        ×
+                    </button>
                 </div>
-                <button style={{
-                    background: 'none',
-                    border: 'none',
-                    fontSize: '24px',
-                    cursor: 'pointer',
-                    color: 'inherit',
-                    opacity: 0.6
-                }}>
-                    ×
-                </button>
-            </div>
+            )}
 
             {/* Stats */}
             <DashboardStats stats={stats}/>

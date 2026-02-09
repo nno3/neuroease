@@ -23,3 +23,13 @@ export function deleteSafeZone(zoneId) {
 export function getLocationAlerts(patientId) {
     return api.get(`/location/alerts?patientId=${encodeURIComponent(patientId)}`);
 }
+
+/** Recent location alerts for all of the caregiver's patients (last 7 days). For dashboard. */
+export function getLocationAlertsForCaregiver() {
+    return api.get("/location/alerts");
+}
+
+/** Dashboard: alerts + patients currently outside any safe zone. */
+export function getLocationStatusForCaregiver() {
+    return api.get("/location/status");
+}

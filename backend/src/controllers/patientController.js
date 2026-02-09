@@ -390,7 +390,10 @@ const patientController = {
         if (emergencyContactName !== undefined) updates.emergencyContactName = emergencyContactName != null ? String(emergencyContactName).trim() || null : null;
         if (emergencyContactRelationship !== undefined) updates.emergencyContactRelationship = emergencyContactRelationship != null ? String(emergencyContactRelationship).trim() || null : null;
         if (emergencyContactPhone !== undefined) updates.emergencyContactPhone = emergencyContactPhone != null ? String(emergencyContactPhone).trim() || null : null;
-        if (locationConsent !== undefined) updates.locationConsent = Boolean(locationConsent);
+        // locationConsent is set only by the patient (via patient app); caregivers cannot change it
+        if (locationConsent !== undefined && req.user.userType === 'patient' && req.user.userId === patientId) {
+          updates.locationConsent = Boolean(locationConsent);
+        }
 
         if (Object.keys(updates).length) {
           await patientProfile.update(updates);

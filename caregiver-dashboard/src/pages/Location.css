@@ -134,6 +134,72 @@
     font-weight: 700;
 }
 
+.loc-alerts-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    border-radius: 12px;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-left: 4px solid #f59e0b;
+    color: #92400e;
+}
+
+.loc-alerts-banner-icon {
+    flex-shrink: 0;
+    color: #d97706;
+}
+
+.loc-alerts-banner-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.loc-alerts-banner-title {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #92400e;
+}
+
+.loc-alerts-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.loc-alert-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.loc-alert-item:last-child {
+    border-bottom: none;
+}
+
+.loc-alert-patient {
+    font-weight: 700;
+    color: #92400e;
+}
+
+.loc-alert-message {
+    color: #b45309;
+}
+
+.loc-alert-time {
+    margin-left: auto;
+    font-size: 12px;
+    color: #b45309;
+}
+
 .loc-map-wrap {
     position: relative;
     min-height: 420px;

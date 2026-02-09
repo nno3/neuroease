@@ -46,6 +46,7 @@ const DashboardStats = ({ stats }) => {
                 description="Requiring attention"
                 color="#ef4444"
                 iconBg="#FFEBEE"
+                highlightWhenPositive
             />
         </div>
     );
