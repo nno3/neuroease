@@ -1,21 +1,49 @@
-import { NavLink } from 'react-router-dom';
-const linkStyle = ({ isActive }) => ({
-    color: "#e2e8f0",
-    textDecoration: "none",
-    padding: "10px 12px",
-    borderRadius: 10,
-    background: isActive ? "rgba(255,255,255,0.10)" : "transparent",
-});
+import { NavLink } from "react-router-dom";
+import {
+    LayoutDashboard,
+    Users,
+    Bell,
+    Activity,
+    MapPin,
+    Settings,
+} from "lucide-react";
+import "./Sidebar.css";
+
+const navItems = [
+    { to: "/", label: "Dashboard", icon: LayoutDashboard },
+    { to: "/patients", label: "Patients", icon: Users },
+    { to: "/reminders", label: "Reminders", icon: Bell },
+    { to: "/activity", label: "Activity", icon: Activity },
+    { to: "/location", label: "Location", icon: MapPin },
+];
+
 const Sidebar = () => {
     return (
-        <aside style={{ width: '220px', background: '#1e293b', color: '#fff', padding: '20px' }}>
-            <h2 style={{ marginTop: 6, marginBottom: 18 }}>NeuroEase</h2>
-            <nav style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <NavLink to="/" style={linkStyle}>Dashboard</NavLink>
-                <NavLink to="/patients" style={linkStyle}>Patients</NavLink>
-                <NavLink to="/reminders" style={linkStyle}>Reminders</NavLink>
-                <NavLink to="/activity" style={linkStyle}>Activity</NavLink>
-                <NavLink to="/location" style={linkStyle}>Location</NavLink>
+        <aside className="sidebar">
+            <div className="sidebar-brand">
+                <h2 className="sidebar-brand-title">NeuroEase</h2>
+            </div>
+            <nav className="sidebar-nav">
+                {navItems.map(({ to, label, icon: Icon }) => (
+                    <NavLink
+                        key={to}
+                        to={to}
+                        end={to === "/"}
+                        className={({ isActive }) => `sidebar-link ${isActive ? "is-active" : ""}`}
+                    >
+                        <Icon size={20} className="sidebar-link-icon" aria-hidden />
+                        <span>{label}</span>
+                    </NavLink>
+                ))}
+            </nav>
+            <nav className="sidebar-nav sidebar-nav-bottom">
+                <NavLink
+                    to="/settings"
+                    className={({ isActive }) => `sidebar-link ${isActive ? "is-active" : ""}`}
+                >
+                    <Settings size={20} className="sidebar-link-icon" aria-hidden />
+                    <span>Settings</span>
+                </NavLink>
             </nav>
         </aside>
     );
