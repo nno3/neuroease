@@ -9,6 +9,8 @@ import Patients from './pages/Patients';
 import Reminders from './pages/Reminders';
 import Activity from "./pages/Activity";
 import Location from "./pages/Location";
+import Settings from "./pages/Settings";
+import VerifyEmail from "./pages/VerifyEmail";
 
 function App() {
     return (
@@ -16,6 +18,7 @@ function App() {
             <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+                <Route path="/verify-email" element={<VerifyEmail />} />
 
                 {/* Protected routes */}
                 <Route path="/" element={
@@ -28,6 +31,7 @@ function App() {
                     <Route path="reminders" element={<Reminders />} />
                     <Route path="activity" element={<Activity/>} />
                     <Route path="location" element={<Location />} />
+                    <Route path="settings" element={<Settings />} />
                 </Route>
 
                 {/* Catch all - redirect to home */}
