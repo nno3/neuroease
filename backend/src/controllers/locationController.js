@@ -117,7 +117,7 @@ const locationController = {
                 timestamp: ts,
             });
 
-            // If patient was inside a zone and is now outside, create one alert (avoid duplicate for same breach)
+            // If patient was inside a zone and is now outside, create alert
             if (previousInside && !currentInside) {
                 await LocationAlert.create({
                     patientId: pid,
@@ -125,6 +125,16 @@ const locationController = {
                     longitude: lng,
                     timestamp: ts,
                     message: 'Left safe zone',
+                });
+            }
+            // If patient was outside and is now inside, record return (for caregiver visibility)
+            if (!previousInside && currentInside && previousLog) {
+                await LocationAlert.create({
+                    patientId: pid,
+                    latitude: lat,
+                    longitude: lng,
+                    timestamp: ts,
+                    message: 'Returned to safe zone',
                 });
             }
 

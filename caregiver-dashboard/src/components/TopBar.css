@@ -40,16 +40,22 @@
     cursor: pointer;
 }
 
-.avatar {
+.avatar,
+.topbar-avatar-img {
     width: 36px;
     height: 36px;
     border-radius: 50%;
+    object-fit: cover;
+}
+
+.avatar {
     background-color: #3b82f6;
     color: white;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 600;
+    font-size: 0.85rem;
 }
 
 .username {

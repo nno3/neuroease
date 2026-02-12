@@ -1,24 +1,23 @@
 import { Outlet } from "react-router-dom";
-import Sidebar from './Sidebar';
-import TopBar from './TopBar';
+import Sidebar from "./Sidebar";
+import TopBar from "./TopBar";
+import "./Layout.css";
 
 const Layout = () => {
     const handleAddPatient = () => {
-        alert('Add Patient clicked (wire this later)');
+        alert("Add Patient clicked (wire this later)");
     };
 
     return (
-        <div style={{ display: 'flex', minHeight: '100vh' }}>
+        <div className="layout">
             <Sidebar />
-
-            <div style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
+            <div className="layout-main">
                 <TopBar
                     title="Dashboard Overview"
                     onPrimaryAction={handleAddPatient}
                 />
-
-                <main style={{padding: '24px', backgroundColor: '#f1f5f9', flex: 1}}>
-                    <Outlet /> {/* This renders the child routes */}
+                <main className="layout-content">
+                    <Outlet />
                 </main>
             </div>
         </div>
