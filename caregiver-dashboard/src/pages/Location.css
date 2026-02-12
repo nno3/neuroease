@@ -134,70 +134,172 @@
     font-weight: 700;
 }
 
-.loc-alerts-banner {
+/* Location alerts — same colourful card style as Patient Activity */
+.loc-alerts-section {
+    margin-bottom: 18px;
+}
+
+.loc-alerts-section-title {
     display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 14px 16px;
-    margin-bottom: 14px;
-    border-radius: 12px;
-    background: #fffbeb;
-    border: 1px solid #fde68a;
-    border-left: 4px solid #f59e0b;
-    color: #92400e;
-}
-
-.loc-alerts-banner-icon {
-    flex-shrink: 0;
-    color: #d97706;
-}
-
-.loc-alerts-banner-content {
-    flex: 1;
-    min-width: 0;
-}
-
-.loc-alerts-banner-title {
-    display: block;
-    margin-bottom: 8px;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 6px 0;
     font-size: 14px;
     font-weight: 700;
-    color: #92400e;
+    color: #334155;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
 }
 
-.loc-alerts-list {
+.loc-alerts-section-title svg {
+    flex-shrink: 0;
+    color: #64748b;
+}
+
+.loc-alert-filter-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.loc-alert-filter-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #475569;
+}
+
+.loc-alert-filters {
+    display: flex;
+    gap: 8px;
+}
+
+.loc-alert-filter-btn {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid #e2e8f0;
+    background: #e2e8f0;
+    color: #475569;
+    cursor: pointer;
+}
+
+.loc-alert-filter-btn:hover {
+    background: #cbd5e1;
+    border-color: #cbd5e1;
+    color: #334155;
+}
+
+.loc-alert-filter-btn-active {
+    background: #4a90e2;
+    color: #fff;
+    border-color: #4a90e2;
+}
+
+.loc-alert-filter-btn-active:hover {
+    background: #3a7bc8;
+    border-color: #3a7bc8;
+    color: #fff;
+}
+
+.loc-alerts-intro {
+    margin: 0 0 12px 0;
+    font-size: 12px;
+    color: #64748b;
+    line-height: 1.45;
+}
+
+.loc-alerts-empty {
+    margin: 0;
+    padding: 12px;
+    font-size: 13px;
+    color: #64748b;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.loc-alert-list {
+    list-style: none;
     margin: 0;
     padding: 0;
-    list-style: none;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
 }
 
-.loc-alert-item {
+.loc-alert-card {
     display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 8px;
-    padding: 6px 0;
-    font-size: 13px;
-    border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #fef3c7;
+    background: #fffbeb;
 }
 
-.loc-alert-item:last-child {
+.loc-alert-card:last-child {
     border-bottom: none;
 }
 
-.loc-alert-patient {
-    font-weight: 700;
+.loc-alert-card-icon {
+    flex-shrink: 0;
+    color: #d97706;
+    margin-top: 2px;
+}
+
+.loc-alert-card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.loc-alert-card-patient {
+    font-size: 12px;
+    font-weight: 600;
     color: #92400e;
 }
 
-.loc-alert-message {
+.loc-alert-card-message {
+    font-size: 13px;
+    font-weight: 600;
+    color: #92400e;
+}
+
+.loc-alert-card-time {
+    font-size: 12px;
     color: #b45309;
 }
 
-.loc-alert-time {
-    margin-left: auto;
+.loc-alert-card-duration {
     font-size: 12px;
-    color: #b45309;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+/* Returned to safe zone — green card */
+.loc-alert-card-returned {
+    background: #f0fdf4;
+    border-bottom-color: #dcfce7;
+}
+
+.loc-alert-card-returned .loc-alert-card-patient,
+.loc-alert-card-returned .loc-alert-card-message {
+    color: #166534;
+}
+
+.loc-alert-card-returned .loc-alert-card-time {
+    color: #15803d;
+}
+
+.loc-alert-card-returned .loc-alert-card-duration {
+    color: #166534;
+}
+
+.loc-alert-card-icon-returned {
+    color: #16a34a;
 }
 
 .loc-map-wrap {

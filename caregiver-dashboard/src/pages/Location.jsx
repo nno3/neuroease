@@ -1,8 +1,9 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { MapContainer, TileLayer, Circle, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { MapPin, RefreshCw, AlertTriangle, Plus, Search, Pencil, Trash2, X } from "lucide-react";
+import { MapPin, RefreshCw, AlertTriangle, CheckCircle2, Plus, Search, Pencil, Trash2, X } from "lucide-react";
 import { getPatients } from "../services/patients";
 import {
     getLatestLocation,
@@ -39,6 +40,58 @@ function createMarkerIcon(color) {
 }
 const iconInside = createMarkerIcon("#22c55e");
 const iconOutside = createMarkerIcon("#ef4444");
+
+const isReturnAlert = (a) => (a.message || "").toLowerCase().includes("returned");
+
+/** Format duration in ms as "Xm" or "Xh Ym" for display. */
+function formatDurationOutside(ms) {
+    if (ms == null || ms < 0 || !Number.isFinite(ms)) return null;
+    const mins = Math.round(ms / 60000);
+    if (mins < 60) return `${mins} min`;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m ? `${h}h ${m}m` : `${h}h`;
+}
+
+const LOC_ALERT_FILTERS = [
+    { value: "day", label: "Today" },
+    { value: "week", label: "This week" },
+    { value: "month", label: "This month" },
+];
+
+function filterAlertsByRange(items, range) {
+    if (!Array.isArray(items) || items.length === 0) return [];
+    const now = new Date();
+    let start;
+    if (range === "day") {
+        start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (range === "week") {
+        start = new Date(now);
+        start.setDate(start.getDate() - 7);
+    } else {
+        start = new Date(now);
+        start.setMonth(start.getMonth() - 1);
+    }
+    return items.filter((a) => {
+        const t = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        return t >= start.getTime();
+    });
+}
+
+/** For a "Returned" alert, find the most recent "Left" for the same patient before it; return duration in ms. */
+function getDurationOutsideMs(alerts, returnedAlert) {
+    const retTime = returnedAlert.timestamp ? new Date(returnedAlert.timestamp).getTime() : null;
+    if (retTime == null) return null;
+    const pid = returnedAlert.patientId;
+    const leftsBefore = alerts
+        .filter((a) => a.patientId === pid && !isReturnAlert(a) && a.timestamp)
+        .map((a) => ({ ...a, t: new Date(a.timestamp).getTime() }))
+        .filter((a) => a.t < retTime)
+        .sort((a, b) => b.t - a.t);
+    const left = leftsBefore[0];
+    if (!left) return null;
+    return retTime - left.t;
+}
 
 /** Distance in meters between two (lat, lng) points (Haversine). */
 function haversineMeters(lat1, lng1, lat2, lng2) {
@@ -88,8 +141,13 @@ function MapClickHandler({ onMapClick, enabled }) {
 }
 
 export default function Location() {
+    const [searchParams, setSearchParams] = useSearchParams();
+    const urlPatientId = searchParams.get("patientId");
     const [patients, setPatients] = useState([]);
-    const [patientId, setPatientId] = useState("all");
+    const [patientId, setPatientId] = useState(() => {
+        const id = urlPatientId != null ? String(urlPatientId).trim() : "";
+        return id && /^\d+$/.test(id) ? id : "all";
+    });
     const [locations, setLocations] = useState([]);
     const [zones, setZones] = useState([]);
     const [alertsByPatient, setAlertsByPatient] = useState({});
@@ -107,6 +165,7 @@ export default function Location() {
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResult, setSearchResult] = useState(null);
     const [searchLoading, setSearchLoading] = useState(false);
+    const [alertFilter, setAlertFilter] = useState("week");
 
     const addZonePanelRef = useRef(null);
 
@@ -251,6 +310,11 @@ export default function Location() {
     }, []);
 
     useEffect(() => {
+        const id = urlPatientId != null ? String(urlPatientId).trim() : "";
+        if (id && /^\d+$/.test(id)) setPatientId(id);
+    }, [urlPatientId]);
+
+    useEffect(() => {
         if (addZoneMode && canManageZones && addZonePanelRef.current) {
             addZonePanelRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
         }
@@ -386,6 +450,29 @@ export default function Location() {
 
     const hasAnyAlertsOrOutside = recentAlertsList.length > 0 || currentlyOutsideList.length > 0;
 
+    /** Combined list: currently outside (always shown) + history alerts filtered by period, sorted by time desc. */
+    const combinedAlertsList = useMemo(() => {
+        const outsideItems = currentlyOutsideList.map((loc) => ({
+            type: "outside",
+            key: `outside-${loc.patientId}`,
+            patientId: loc.patientId,
+            patientName: loc.patientName,
+            timestamp: loc.timestamp,
+            message: "Currently outside safe zone",
+        }));
+        const filteredHistory = filterAlertsByRange(
+            recentAlertsList.map((a) => ({ type: "alert", key: String(a.id), ...a })),
+            alertFilter
+        );
+        const items = [...outsideItems, ...filteredHistory];
+        items.sort((a, b) => {
+            const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+            const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+            return tb - ta;
+        });
+        return items;
+    }, [currentlyOutsideList, recentAlertsList, alertFilter]);
+
     return (
         <div className="loc-page">
             <div className="loc-header">
@@ -424,91 +511,140 @@ export default function Location() {
             </div>
 
             <div className="loc-panel">
-                <div className="loc-controls">
-                    <div className="loc-control">
-                        <label className="loc-label">Patient</label>
-                        <select
-                            className="loc-select"
-                            value={patientId}
-                            onChange={(e) => {
-                                setPatientId(e.target.value);
-                                resetAddZone();
-                                setEditingZoneId(null);
-                            }}
-                        >
-                            <option value="all">All patients</option>
-                            {patientList.map((p) => (
-                                <option key={p.id} value={String(p.id)}>
-                                    {p.name ?? "Patient"} (ID {format3(p.id)})
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                </div>
 
-                {noPatientsWithConsent && (
-                    <div className="loc-hint loc-hint-warning">
-                        Select a patient who has <strong>location sharing</strong> enabled to view or add safe zones. Patients enable this in their app; you can see their status in patient details.
-                    </div>
-                )}
-
-                {error && <div className="loc-error">{error}</div>}
-
-                {hasAnyAlertsOrOutside && (
-                    <div className="loc-alerts-banner">
-                        <AlertTriangle size={20} className="loc-alerts-banner-icon" aria-hidden />
-                        <div className="loc-alerts-banner-content">
-                            <strong className="loc-alerts-banner-title">Location alerts &amp; status</strong>
-                            <ul className="loc-alerts-list">
-                                {currentlyOutsideList.map((loc) => (
-                                    <li key={`outside-${loc.patientId}`} className="loc-alert-item">
-                                        <span className="loc-alert-patient">{loc.patientName}</span>
-                                        <span className="loc-alert-message">Currently outside safe zone</span>
-                                        <span className="loc-alert-time">
-                                            {loc.timestamp
-                                                ? new Date(loc.timestamp).toLocaleString(undefined, {
-                                                    dateStyle: "short",
-                                                    timeStyle: "short",
-                                                })
-                                                : ""}
-                                        </span>
-                                    </li>
+                {patientList.length > 0 && (
+                    <div className="loc-alerts-section">
+                        <h3 className="loc-alerts-section-title">
+                            <AlertTriangle size={18} aria-hidden/> Location alerts
+                        </h3>
+                        <div className="loc-alert-filter-bar">
+                            <span className="loc-alert-filter-label">Alert period:</span>
+                            <div className="loc-alert-filters">
+                                {LOC_ALERT_FILTERS.map((f) => (
+                                    <button
+                                        key={f.value}
+                                        type="button"
+                                        className={`loc-alert-filter-btn ${alertFilter === f.value ? "loc-alert-filter-btn-active" : ""}`}
+                                        onClick={() => setAlertFilter(f.value)}
+                                    >
+                                        {f.label}
+                                    </button>
                                 ))}
-                                {recentAlertsList.map((a) => (
-                                    <li key={a.id} className="loc-alert-item">
-                                        <span className="loc-alert-patient">{a.patientName}</span>
-                                        <span className="loc-alert-message">{a.message ?? "Left safe zone"}</span>
-                                        <span className="loc-alert-time">
-                                            {a.timestamp
-                                                ? new Date(a.timestamp).toLocaleString(undefined, {
-                                                    dateStyle: "short",
-                                                    timeStyle: "short",
-                                                })
-                                                : ""}
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
+                            </div>
                         </div>
+                        <p className="loc-alerts-intro">
+                            All events are kept: when they left the zone and when they returned, so you can spot
+                            patterns and how long they were out.
+                        </p>
+
+                        <div className="loc-control">
+                            <label className="loc-label">Patient</label>
+                            <select
+                                className="loc-select"
+                                value={patientId}
+                                onChange={(e) => {
+                                    setPatientId(e.target.value);
+                                    resetAddZone();
+                                    setEditingZoneId(null);
+                                }}
+                            >
+                                <option value="all">All patients</option>
+                                {patientList.map((p) => (
+                                    <option key={p.id} value={String(p.id)}>
+                                        {p.name ?? "Patient"} (ID {format3(p.id)})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {patientList.length > 0 && (
+                            <div className="loc-controls">
+                            </div>
+                        )}
+
+                        {noPatientsWithConsent && (
+                            <div className="loc-hint loc-hint-warning">
+                                Select a patient who has <strong>location sharing</strong> enabled to view or add safe zones. Patients enable this in their app; you can see their status in patient details.
+                            </div>
+                        )}
+
+                        {error && <div className="loc-error">{error}</div>}
+
+                        {noPatientsWithConsent ? (
+                            <p className="loc-alerts-empty">Select a patient with location sharing enabled to see
+                                location alerts.</p>
+                        ) : combinedAlertsList.length === 0 ? (
+                            <p className="loc-alerts-empty">No alerts in this period. Try &quot;This
+                                week&quot; or &quot;This month&quot; for more history.</p>
+                        ) : (
+                            <ul className="loc-alert-list">
+                                {combinedAlertsList.map((item) => {
+                                    const returned = item.type === "alert" && isReturnAlert(item);
+                                    const atTime = item.timestamp
+                                        ? new Date(item.timestamp).toLocaleString(undefined, {
+                                            dateStyle: "short",
+                                            timeStyle: "short"
+                                        })
+                                        : "—";
+                                    const durationMs =
+                                        item.type === "alert" && returned
+                                            ? getDurationOutsideMs(recentAlertsList, item)
+                                            : null;
+                                    const durationStr = durationMs != null ? formatDurationOutside(durationMs) : null;
+                                    return (
+                                        <li
+                                            key={item.key}
+                                            className={`loc-alert-card ${returned ? "loc-alert-card-returned" : ""}`}
+                                        >
+                                            {returned ? (
+                                                <CheckCircle2 size={16}
+                                                              className="loc-alert-card-icon loc-alert-card-icon-returned"
+                                                              aria-hidden/>
+                                            ) : (
+                                                <AlertTriangle size={16} className="loc-alert-card-icon" aria-hidden/>
+                                            )}
+                                            <div className="loc-alert-card-content">
+                                                <span className="loc-alert-card-patient">{item.patientName}</span>
+                                                <span
+                                                    className="loc-alert-card-message">{item.message ?? "Left safe zone"}</span>
+                                                <span className="loc-alert-card-time">
+                                                {item.type === "outside"
+                                                    ? atTime !== "—"
+                                                        ? `Last update: ${atTime}`
+                                                        : "—"
+                                                    : returned
+                                                        ? `Returned at ${atTime}`
+                                                        : `Left at ${atTime}`}
+                                            </span>
+                                                {item.type === "alert" && returned && durationStr && (
+                                                    <span
+                                                        className="loc-alert-card-duration">Was out for {durationStr}</span>
+                                                )}
+                                            </div>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
                     </div>
                 )}
 
                 <div className="loc-map-wrap">
                     {loading && (
                         <div className="loc-loading">
-                            <RefreshCw size={24} className="loc-spin" />
+                            <RefreshCw size={24} className="loc-spin"/>
                             <span>Loading map data…</span>
                         </div>
                     )}
                     {!loading && targetIds.length === 0 && (
                         <div className="loc-empty">
-                            <MapPin size={48} />
+                            <MapPin size={48}/>
                             <p>Select a patient above to view location and safe zones.</p>
                         </div>
                     )}
                     {!loading && targetIds.length > 0 && noPatientsWithConsent && (
                         <div className="loc-empty">
-                            <MapPin size={48} />
+                            <MapPin size={48}/>
                             <p>No patient with location sharing selected.</p>
                             <p className="loc-empty-hint">Choose a patient who has location sharing enabled. Patients enable this in their app; you can see their status in patient details.</p>
                         </div>
