@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { User, Reminder, ActivityLog } = require('../models');
+const { User, Reminder, ActivityLog, GameSession } = require('../models');
 
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MS_DAY = 24 * 60 * 60 * 1000;
@@ -532,6 +532,205 @@ const activityController = {
         }
     },
 
+    /**
+     * GET /api/activity/games-today
+     * Returns count of game sessions played today by the caregiver's assigned (non-archived) patients.
+     */
+    getGamesPlayedToday: async (req, res) => {
+        try {
+            const caregiver = await User.findByPk(req.user.userId);
+            if (!caregiver) return res.status(404).json({ success: false, message: "Caregiver not found" });
+
+            const assignedPatients = await caregiver.getPatients({
+                where: { isArchived: false },
+                attributes: ["id"],
+            });
+            const assignedIds = assignedPatients.map((p) => p.id);
+            if (assignedIds.length === 0) {
+                return res.json({ success: true, data: { count: 0 } });
+            }
+
+            const now = new Date();
+            const todayStart = startOfDay(now);
+            const todayEnd = endOfDay(now);
+
+            const count = await GameSession.count({
+                where: {
+                    patientId: { [Op.in]: assignedIds },
+                    playedAt: { [Op.between]: [todayStart, todayEnd] },
+                },
+            });
+
+            return res.json({ success: true, data: { count } });
+        } catch (error) {
+            console.error("Games played today error:", error);
+            return res.status(500).json({ success: false, message: "Error fetching games count" });
+        }
+    },
+
+    /**
+     * GET /api/activity/patient-summaries?patientId=optional
+     * Returns per-patient activity summary for today: reminders (total/completed/pending/overdue), games played today, lastActive.
+     */
+    getPatientSummaries: async (req, res) => {
+        try {
+            const caregiver = await User.findByPk(req.user.userId);
+            if (!caregiver) return res.status(404).json({ success: false, message: 'Caregiver not found' });
+
+            const assignedPatients = await caregiver.getPatients({
+                where: { isArchived: false },
+                attributes: ['id', 'name'],
+            });
+            const assignedIds = assignedPatients.map((p) => p.id);
+            const patientNameById = new Map(assignedPatients.map((p) => [p.id, p.name]));
+
+            if (assignedIds.length === 0) {
+                return res.json({ success: true, data: { summaries: [] } });
+            }
+
+            const patientIdFilter = req.query.patientId;
+            let targetIds = assignedIds;
+            if (patientIdFilter) {
+                const pid = parseInt(String(patientIdFilter), 10);
+                if (!Number.isFinite(pid) || !assignedIds.includes(pid)) {
+                    return res.status(400).json({ success: false, message: 'Invalid or unauthorized patientId' });
+                }
+                targetIds = [pid];
+            }
+
+            const now = new Date();
+            const todayStart = startOfDay(now);
+            const todayEnd = endOfDay(now);
+            const fromRaw = dateKey(todayStart);
+            const toRaw = dateKey(todayEnd);
+
+            const where = {
+                patientId: { [Op.in]: targetIds },
+                scheduledTime: { [Op.lte]: todayEnd },
+                [Op.or]: [{ endTime: null }, { endTime: { [Op.gte]: todayStart } }],
+            };
+            const reminders = await Reminder.findAll({
+                where,
+                attributes: ['id', 'patientId', 'scheduledTime', 'endTime', 'recurrence', 'isCompleted'],
+            });
+
+            let logsByKey = new Map();
+            if (ActivityLog) {
+                const logs = await ActivityLog.findAll({
+                    where: { occursAt: { [Op.between]: [todayStart, todayEnd] } },
+                    attributes: ['reminderId', 'occursAt', 'status'],
+                });
+                logs.forEach((l) => {
+                    const k = `${l.reminderId}|${new Date(l.occursAt).toISOString()}`;
+                    logsByKey.set(k, l.status);
+                });
+            }
+
+            const reminderCountsByPatient = new Map();
+            targetIds.forEach((id) => {
+                reminderCountsByPatient.set(id, { total: 0, completed: 0, pending: 0, overdue: 0 });
+            });
+
+            reminders.forEach((reminder) => {
+                forEachOccurrenceInRange(reminder, todayStart, todayEnd, (occursAt) => {
+                    const pid = reminder.patientId;
+                    if (!reminderCountsByPatient.has(pid)) return;
+                    const counts = reminderCountsByPatient.get(pid);
+                    counts.total += 1;
+                    const logKey = `${reminder.id}|${occursAt.toISOString()}`;
+                    const statusFromLog = logsByKey.get(logKey);
+                    const status = statusFromLog || computeFallbackStatus(reminder, occursAt, now);
+                    if (status === 'completed') counts.completed += 1;
+                    else if (status === 'overdue') counts.overdue += 1;
+                    else counts.pending += 1;
+                });
+            });
+
+            const gameCountByPatient = new Map();
+            const lastActiveByPatient = new Map();
+            targetIds.forEach((id) => {
+                gameCountByPatient.set(id, 0);
+                lastActiveByPatient.set(id, null);
+            });
+            const sessions = await GameSession.findAll({
+                where: { patientId: { [Op.in]: targetIds } },
+                attributes: ['patientId', 'playedAt'],
+                order: [['playedAt', 'DESC']],
+            });
+            sessions.forEach((s) => {
+                const pid = s.patientId;
+                const d = new Date(s.playedAt);
+                if (d >= todayStart && d <= todayEnd) {
+                    gameCountByPatient.set(pid, (gameCountByPatient.get(pid) || 0) + 1);
+                }
+                const current = lastActiveByPatient.get(pid);
+                if (!current || d > new Date(current)) lastActiveByPatient.set(pid, s.playedAt);
+            });
+
+            const summaries = targetIds.map((pid) => {
+                const reminderCounts = reminderCountsByPatient.get(pid) || { total: 0, completed: 0, pending: 0, overdue: 0 };
+                return {
+                    patientId: pid,
+                    patientName: patientNameById.get(pid) || `Patient ${pid}`,
+                    remindersToday: reminderCounts,
+                    gamesPlayedToday: gameCountByPatient.get(pid) || 0,
+                    lastActive: lastActiveByPatient.get(pid) ? new Date(lastActiveByPatient.get(pid)).toISOString() : null,
+                    hasOverdue: (reminderCounts.overdue || 0) > 0,
+                };
+            });
+
+            return res.json({ success: true, data: { summaries, date: fromRaw } });
+        } catch (error) {
+            console.error('Patient summaries error:', error);
+            return res.status(500).json({ success: false, message: 'Error fetching patient summaries' });
+        }
+    },
+
+    /**
+     * GET /api/activity/recent-games?limit=20
+     * Returns recent game sessions for caregiver's assigned patients (for dashboard activity feed).
+     */
+    getRecentGameSessions: async (req, res) => {
+        try {
+            const limit = Math.min(50, Math.max(1, parseInt(String(req.query.limit ?? "20"), 10) || 20));
+            const caregiver = await User.findByPk(req.user.userId);
+            if (!caregiver) return res.status(404).json({ success: false, message: "Caregiver not found" });
+
+            const assignedPatients = await caregiver.getPatients({
+                where: { isArchived: false },
+                attributes: ["id", "name"],
+            });
+            const assignedIds = assignedPatients.map((p) => p.id);
+            const patientNameById = new Map(assignedPatients.map((p) => [p.id, p.name]));
+
+            if (assignedIds.length === 0) {
+                return res.json({ success: true, data: { items: [] } });
+            }
+
+            const sessions = await GameSession.findAll({
+                where: { patientId: { [Op.in]: assignedIds } },
+                order: [["playedAt", "DESC"]],
+                limit,
+                attributes: ["id", "patientId", "gameType", "score", "duration", "accuracy", "playedAt"],
+            });
+
+            const items = sessions.map((s) => ({
+                timestamp: s.playedAt,
+                patientId: s.patientId,
+                patientName: patientNameById.get(s.patientId) || `Patient ${s.patientId}`,
+                activityType: "game",
+                gameType: s.gameType,
+                score: s.score,
+                duration: s.duration,
+                accuracy: s.accuracy != null ? s.accuracy : null,
+            }));
+
+            return res.json({ success: true, data: { items } });
+        } catch (error) {
+            console.error("Recent game sessions error:", error);
+            return res.status(500).json({ success: false, message: "Error fetching recent games" });
+        }
+    },
 };
 
 module.exports = activityController;

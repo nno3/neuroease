@@ -422,3 +422,84 @@
     text-decoration:none;
 }
 .dp-empty-cta:hover{ filter:brightness(0.96); }
+
+/* Patient Activity summary cards */
+.dp-pa-empty {
+    margin: 0;
+    font-size: 14px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.dp-pa-grid {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+
+.dp-card.dp-card-pa {
+    display: flex;
+    flex-direction: column;
+}
+
+.dp-card-pa-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f1f3f5;
+    position: relative;
+}
+
+.dp-card-pa-head {
+    flex: 1;
+    min-width: 0;
+}
+
+.dp-card-pa-head .dp-card-name {
+    margin-bottom: 8px;
+}
+
+.dp-card-pa-head .dp-card-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.dp-card-pa-alert {
+    flex-shrink: 0;
+    color: #f59e0b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dp-card-pa-metrics {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.dp-card-pa-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+}
+
+.dp-card-pa-label {
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.dp-card-pa-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.dp-card-pa-actions {
+    margin-top: auto;
+}
+

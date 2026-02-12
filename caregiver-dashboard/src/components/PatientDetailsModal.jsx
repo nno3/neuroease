@@ -11,9 +11,9 @@ import {
 
 /**
  * View-details modal for a single patient. Parent must import Patients.css for pm-* classes.
- * Props: patient, onClose, onEdit, onUnarchive (optional; (patientId, notes) => Promise)
+ * Props: patient, onClose, onEdit, onUnarchive (optional), onOpenActivity (optional; opens patient activity modal)
  */
-export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarchive }) {
+export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarchive, onOpenActivity }) {
     const [restoreNotes, setRestoreNotes] = useState("");
     const [actionLoading, setActionLoading] = useState(false);
     const [actionError, setActionError] = useState("");
@@ -84,9 +84,16 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarch
                     </div>
                     <div className="pm-details-header-actions">
                         {!patient.isArchived && (
-                            <button type="button" className="pm-btn pm-btn-outline" onClick={openEditFromDetails}>
-                                Edit Profile
-                            </button>
+                            <>
+                                {onOpenActivity && (
+                                    <button type="button" className="pm-btn pm-btn-outline pm-btn-activity" onClick={onOpenActivity}>
+                                        Patient activity
+                                    </button>
+                                )}
+                                <button type="button" className="pm-btn pm-btn-outline" onClick={openEditFromDetails}>
+                                    Edit Profile
+                                </button>
+                            </>
                         )}
                         <button type="button" className="pm-details-close" onClick={onClose} aria-label="Close">
                             ×

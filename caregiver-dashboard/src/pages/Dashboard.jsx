@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import DashboardStats from "../components/Dashboard/DashboardStats";
+import ActivitySummaryVisual from "../components/Dashboard/ActivitySummaryVisual";
 import { getDashboardStats } from "../services/dashboardService";
 import { getLocationStatusForCaregiver } from "../services/locationService";
 import { getPatients, getPatientById, archivePatient } from "../services/patients";
@@ -7,6 +7,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { AlertTriangle } from "lucide-react";
 import PatientFormModal from "../components/PatientFormModal";
 import PatientDetailsModal from "../components/PatientDetailsModal";
+import PatientActivityModal from "../components/PatientActivityModal";
 import * as patientHelpers from "../utils/patientHelpers";
 import "./Dashboard.css";
 import "./Patients.css";
@@ -19,6 +20,7 @@ const Dashboard = () => {
     const [currentlyOutside, setCurrentlyOutside] = useState([]);
     const [alertBannerDismissed, setAlertBannerDismissed] = useState(false);
     const [detailsPatient, setDetailsPatient] = useState(null);
+    const [activityModalPatient, setActivityModalPatient] = useState(null);
     const [formOpen, setFormOpen] = useState(false);
     const [formMode, setFormMode] = useState("create");
     const [formPatient, setFormPatient] = useState(null);
@@ -32,40 +34,46 @@ const Dashboard = () => {
     };
 
     useEffect(() => {
-        Promise.allSettled([getPatients(), getDashboardStats(), getLocationStatusForCaregiver()]).then(
-            ([patientsRes, statsRes, statusRes]) => {
-                const activeList =
-                    patientsRes.status === "fulfilled" ? (patientsRes.value?.data?.patients ?? []) : [];
+        Promise.allSettled([
+            getPatients(),
+            getDashboardStats(),
+            getLocationStatusForCaregiver(),
+        ]).then(([patientsRes, statsRes, statusRes]) => {
+            const activeList =
+                patientsRes.status === "fulfilled" ? (patientsRes.value?.data?.patients ?? []) : [];
 
-                const otherStats =
-                    statsRes.status === "fulfilled"
-                        ? statsRes.value
-                        : { reminderCompliance: 0, activeAlerts: 0, gamesPlayedToday: 0 };
+            const otherStats =
+                statsRes.status === "fulfilled"
+                    ? statsRes.value
+                    : { reminderCompliance: 0, activeAlerts: 0, gamesPlayedToday: 0 };
 
-                const data = statusRes.status === "fulfilled"
-                    ? statusRes.value?.data?.data ?? statusRes.value?.data ?? {}
-                    : {};
-                const alertList = Array.isArray(data.alerts) ? data.alerts : [];
-                const outsideList = Array.isArray(data.currentlyOutside) ? data.currentlyOutside : [];
+            const data = statusRes.status === "fulfilled"
+                ? statusRes.value?.data?.data ?? statusRes.value?.data ?? {}
+                : {};
+            const alertList = Array.isArray(data.alerts) ? data.alerts : [];
+            const outsideList = Array.isArray(data.currentlyOutside) ? data.currentlyOutside : [];
 
-                setPatients(activeList);
-                setLocationAlerts(alertList);
-                setCurrentlyOutside(outsideList);
+            setPatients(activeList);
+            setLocationAlerts(alertList);
+            setCurrentlyOutside(outsideList);
 
-                const alertPatientIds = new Set(alertList.map((a) => a.patientId));
-                outsideList.forEach((o) => alertPatientIds.add(o.patientId));
-                const activeAlertsCount = alertPatientIds.size;
+            const alertPatientIds = new Set(alertList.map((a) => a.patientId));
+            outsideList.forEach((o) => alertPatientIds.add(o.patientId));
+            const activeAlertsCount = alertPatientIds.size;
 
-                setStats({
-                    ...otherStats,
-                    activePatients: activeList.length,
-                    activeAlerts: activeAlertsCount,
-                });
-            }
-        );
+            setStats({
+                ...otherStats,
+                activePatients: activeList.length,
+                activeAlerts: activeAlertsCount,
+            });
+        });
     }, []);
 
     const visiblePatients = patients.slice(0, 3);
+
+    const openActivityModal = (patient) => {
+        setActivityModalPatient(patient);
+    };
 
     const openDetails = (p) => {
         setDetailsPatient(p);
@@ -189,10 +197,18 @@ const Dashboard = () => {
                 </div>
             )}
 
-            {/* Stats */}
-            <DashboardStats stats={stats}/>
+            {/* Today at a glance — interactive summary (replaces top KPI row) */}
+            <div className="dp-panel">
+                <div className="dp-header">
+                    <div>
+                        <h3 className="dp-title">Today at a glance</h3>
+                        <p className="dp-subtitle">Patients, reminders, games, and location — tap a card to see more</p>
+                    </div>
+                </div>
+                <ActivitySummaryVisual stats={stats} activeAlerts={stats?.activeAlerts ?? 0} />
+            </div>
 
-            {/* My Patients section (now real, consistent) */}
+            {/* My Patients section */}
 
             <div className="dp-panel">
                 <div className="dp-header">
@@ -294,6 +310,18 @@ const Dashboard = () => {
                     patient={detailsPatient}
                     onClose={closeDetails}
                     onEdit={openEditFromDetails}
+                    onOpenActivity={() => {
+                        closeDetails();
+                        openActivityModal(detailsPatient);
+                    }}
+                />
+            )}
+
+            {activityModalPatient && (
+                <PatientActivityModal
+                    patient={activityModalPatient}
+                    onClose={() => setActivityModalPatient(null)}
+                    onViewDetails={() => openDetails(activityModalPatient)}
                 />
             )}
 
@@ -312,34 +340,6 @@ const Dashboard = () => {
                     setFormOpen(false);
                 }}
             />
-
-            {/* Recent Activity */}
-            <div style={{
-                background: 'white',
-                padding: '24px',
-                borderRadius: '12px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
-            }}>
-                <h3 style={{
-                    fontSize: '20px',
-                    fontWeight: '600',
-                    marginBottom: '20px',
-                    color: '#2c3e50'
-                }}>
-                    Recent Activity
-                </h3>
-
-                <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '12px'
-                }}>
-                    {}
-                    <p style={{color: '#64748b', fontSize: '14px'}}>
-                        Recent activity will be displayed here.
-                    </p>
-                </div>
-            </div>
         </div>
     );
 };

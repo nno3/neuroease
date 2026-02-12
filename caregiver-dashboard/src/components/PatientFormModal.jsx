@@ -395,9 +395,12 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
             errs.dateOfBirth = "Date of birth is required.";
         } else {
             const d = parseISODate(form.dateOfBirth);
+            const today = new Date();
+            const maxAge = 130;
+            const minDob = new Date(today.getFullYear() - maxAge, today.getMonth(), today.getDate());
             if (!d) errs.dateOfBirth = "Enter a valid date of birth.";
-            else if (d > new Date()) errs.dateOfBirth = "Date of birth cannot be in the future.";
-            else if (d < new Date("1900-01-01")) errs.dateOfBirth = "Date of birth must be after 01/01/1900.";
+            else if (d > today) errs.dateOfBirth = "Date of birth cannot be in the future.";
+            else if (d < minDob) errs.dateOfBirth = "Patient age cannot exceed 130 years.";
             else dobDate = d;
         }
 

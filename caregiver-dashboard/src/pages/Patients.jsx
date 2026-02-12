@@ -3,6 +3,7 @@ import { getPatients, getArchivedPatients, getPatientById, archivePatient, unarc
 import "./Patients.css";
 import PatientFormModal from "../components/PatientFormModal";
 import PatientDetailsModal from "../components/PatientDetailsModal";
+import PatientActivityModal from "../components/PatientActivityModal";
 import { useSearchParams } from "react-router-dom";
 import { ArchiveIcon, UsersIcon, CheckIcon } from "lucide-react";
 import {
@@ -24,6 +25,7 @@ export default function Patients() {
 
     const [detailsOpen, setDetailsOpen] = useState(false);
     const [selectedPatient, setSelectedPatient] = useState(null);
+    const [activityModalPatient, setActivityModalPatient] = useState(null);
 
     const [formOpen, setFormOpen] = useState(false);
     const [formMode, setFormMode] = useState("create");
@@ -367,6 +369,21 @@ export default function Patients() {
                     onClose={closeDetails}
                     onEdit={openEditFromDetails}
                     onUnarchive={handleUnarchiveFromModal}
+                    onOpenActivity={() => {
+                        setDetailsOpen(false);
+                        setActivityModalPatient(selectedPatient);
+                    }}
+                />
+            )}
+            {activityModalPatient && (
+                <PatientActivityModal
+                    patient={activityModalPatient}
+                    onClose={() => setActivityModalPatient(null)}
+                    onViewDetails={() => {
+                        setActivityModalPatient(null);
+                        setSelectedPatient(activityModalPatient);
+                        setDetailsOpen(true);
+                    }}
                 />
             )}
             <PatientFormModal
