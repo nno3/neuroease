@@ -66,16 +66,12 @@ export const AuthProvider = ({ children }) => {
 
                 return { success: true };
             } else {
-                console.log('Login failed data:', {
-                    message: data.message,
-                    errors: data.errors,
-                    fullData: data
-                });
-                // Pass through backend errors
+                const errorMsg = data.errors?.[0] || data.message || 'Login failed. Please check your credentials.';
                 return {
                     success: false,
-                    error: data.errors?.[0] || data.message || 'Login failed. Please check your credentials.',
-                    errors: data.errors || []
+                    error: errorMsg,
+                    errors: data.errors || [],
+                    code: data.code
                 };
             }
         } catch (error) {
@@ -114,12 +110,20 @@ export const AuthProvider = ({ children }) => {
     };
     const token = localStorage.getItem("token");
 
+    const updateUser = (userData) => {
+        if (userData) {
+            setUser(userData);
+            localStorage.setItem("user", JSON.stringify(userData));
+        }
+    };
+
     return (
         <AuthContext.Provider value={{
             user,
             token,
             login,
             logout,
+            updateUser,
             loading,
             isAuthenticated: !!user
         }}>

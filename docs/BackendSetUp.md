@@ -82,6 +82,18 @@ DB_PORT=5432
 DB_NAME=neuroease_db
 DB_USER=neuroease_user
 DB_PASSWORD=neuroease_password
+
+Email verification:
+- Base URL for the verification link in emails. Use http (not https) for localhost so the link works when clicked.
+SMTP (optional). If not set, the verification link is logged to the backend console instead of sending email.
+FRONTEND_URL=http://localhost:5173
+MAIL_FROM=neuroease.noreply@gmail.com
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=neuroease.noreply@gmail.com
+SMTP_PASS=lojsdfsmdvbmzmff
+
 ```
 
 >  note: Create a database matching DB_NAME (example neuroease) using pgAdmin or CLI.

@@ -5,14 +5,17 @@ const {verifyToken} = require('../middleware/auth');
 const {requireAny} = require('../middleware/roles');
 const router = express.Router();
 
-//Public routes
-// POST /api/auth/register
-router.post('/register',validateRegister, authController.register);
-// POST /api/auth/login
-router.post('/login',validateLogin, authController.login);
+// Public routes
+router.post('/register', validateRegister, authController.register);
+router.post('/login', validateLogin, authController.login);
+router.get('/verify-email', authController.verifyEmail);
+router.post('/verify-email', authController.verifyEmail);
+router.post('/resend-verification', authController.resendVerification);
 
 // Protected routes (require authentication)
-router.get('/profile', verifyToken, requireAny, authController.getProfile); // GET /api/auth/profile
-router.post('/logout', verifyToken, requireAny, authController.logout); // POST /api/auth/logout
+router.get('/profile', verifyToken, requireAny, authController.getProfile);
+router.put('/profile', verifyToken, requireAny, authController.updateProfile);
+router.delete('/profile', verifyToken, requireAny, authController.deleteAccount);
+router.post('/logout', verifyToken, requireAny, authController.logout);
 
 module.exports = router;

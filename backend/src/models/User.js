@@ -29,6 +29,21 @@ const User = sequelize.define('User', {
         allowNull: false,
         field: 'user_type' // Maps to user_type column in database
     },
+    isEmailVerified: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+        field: 'is_email_verified'
+    },
+    emailVerificationToken: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        field: 'email_verification_token'
+    },
+    emailVerificationTokenExpires: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: 'email_verification_token_expires'
+    },
     isArchived: {
         type: DataTypes.BOOLEAN,
         defaultValue: false,
@@ -60,6 +75,10 @@ const User = sequelize.define('User', {
         allowNull: true
     },
     unarchiveNotes: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    avatar: {
         type: DataTypes.TEXT,
         allowNull: true
     }

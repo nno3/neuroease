@@ -27,14 +27,14 @@ const Register = () => {
         setSuccess('');
 
         try {
-            // Call your backend registration API
+            const normalizedEmail = (email || '').trim().toLowerCase();
             const response = await fetch('http://localhost:5001/api/auth/register', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    email: email,
+                    email: normalizedEmail,
                     password: password,
                     name: name,
                     userType: 'caregiver'
@@ -44,18 +44,11 @@ const Register = () => {
             const data = await response.json();
 
             if (response.ok && data.success) {
-                setSuccess('Registration successful! You will be redirected to login.');
-
-                // Clear form
-                setEmail('');
+                setSuccess(`Registration successful! We sent a verification link to ${normalizedEmail}. Please check your email and click the link to verify your account, then you can log in.`);
                 setPassword('');
-                setName('');
                 setConfirmPassword('');
-
-                // Redirect to login after 2 seconds
-                setTimeout(() => {
-                    navigate('/login');
-                }, 2000);
+                setName('');
+                setEmail(normalizedEmail);
             } else {
                 // Display backend validation errors
                 const errorMessage = data.errors && data.errors.length > 0
@@ -118,7 +111,10 @@ const Register = () => {
                         marginBottom: '20px',
                         fontSize: '14px'
                     }}>
-                        {success}
+                        <p style={{ margin: '0 0 10px 0' }}>{success}</p>
+                        <Link to="/login" style={{ color: '#166534', fontWeight: '600', textDecoration: 'underline' }}>
+                            Go to login →
+                        </Link>
                     </div>
                 )}
 
