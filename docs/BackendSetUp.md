@@ -83,10 +83,8 @@ DB_NAME=neuroease_db
 DB_USER=neuroease_user
 DB_PASSWORD=neuroease_password
 
-Email verification:
-- Base URL for the verification link in emails. Use http (not https) for localhost so the link works when clicked.
-SMTP (optional). If not set, the verification link is logged to the backend console instead of sending email.
 FRONTEND_URL=http://localhost:5173
+SMTP – required to send real emails. If unset, the link is only printed in the backend console (for local dev).
 MAIL_FROM=neuroease.noreply@gmail.com
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
@@ -95,6 +93,16 @@ SMTP_USER=neuroease.noreply@gmail.com
 SMTP_PASS=lojsdfsmdvbmzmff
 
 ```
+
+### Email verification
+
+New users get a verification link by email and must open it before they can log in.
+
+- **FRONTEND_URL** – Base URL of the caregiver dashboard. The link in the email is `FRONTEND_URL/verify-email?token=...`. Use `http://localhost:5173` (not https) for local dev so the link works when clicked.
+- **SMTP** – Needed to actually send emails. If you don’t set it, the app still runs and the verification link is logged in the backend console on each signup (you can copy and open it). For real inbox delivery you must set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`.
+- Links expire after 24 hours; users can request a new one from the login page.
+
+For implementation details on email verification and sending email with Node and React, see [7], [8].
 
 >  note: Create a database matching DB_NAME (example neuroease) using pgAdmin or CLI.
 
@@ -377,3 +385,8 @@ This supports retention needs while reducing routine processing and operational 
 [5] M. Jones, J. Bradley, and N. Sakimura, “JSON Web Token (JWT),” RFC 7519, IETF, May 2015. [Online]. Available: [https://datatracker.ietf.org/doc/html/rfc7519](https://datatracker.ietf.org/doc/html/rfc7519). Accessed: Dec. 22, 2025.
 
 [6] OWASP, “Testing JSON Web Tokens,” OWASP Web Security Testing Guide. [Online]. Available: [https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/06-Session_Management_Testing/10-Testing_JSON_Web_Tokens](https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/06-Session_Management_Testing/10-Testing_JSON_Web_Tokens). Accessed: Dec. 22, 2025.
+
+[7] “Building an email verification and notification feature in React + Node.js apps,” Medium. [Online]. Available: https://medium.com/@python-javascript-php-html-css/building-an-email-verification-and-notification-feature-in-react-node-js-apps-53f372006fc5. [Accessed: Feb. 12, 2026].
+
+[8] D. Ozokoye, “How to send emails with React using Nodemailer,” SendLayer Blog, Dec. 16, 2025. [Online]. Available: https://sendlayer.com/blog/how-to-send-emails-with-react/. [Accessed: Feb. 12, 2026].
+

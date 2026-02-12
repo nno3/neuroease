@@ -1,6 +1,6 @@
 /**
- * Sends verification email via SMTP. Users receive actual emails in their inbox
- * when SMTP is configured in .env. See docs/EmailVerification.md.
+ * Sends verification email via SMTP. Users receive actual emails when SMTP is
+ * configured in .env. See docs/BackendSetUp.md (Email verification section).
  *
  * Env: SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS, MAIL_FROM, FRONTEND_URL
  */
@@ -67,7 +67,7 @@ async function sendVerificationEmail(email, name, token) {
         }
     }
 
-    console.warn('SMTP not configured. Users will NOT receive verification emails. Set SMTP_* and MAIL_FROM in .env — see docs/EmailVerification.md');
+    console.warn('SMTP not configured. Users will NOT receive verification emails. Set SMTP_* and MAIL_FROM in .env — see docs/BackendSetUp.md');
     console.log('--- Verification link (no email sent) ---');
     console.log('To:', email);
     console.log('Verify link:', verifyUrl);
