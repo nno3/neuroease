@@ -1,0 +1,136 @@
+/* Mobile-first base styles for NeuroEase Patient App */
+:root {
+  --pa-bg: #f8fafc;
+  --pa-surface: #ffffff;
+  --pa-text: #1e293b;
+  --pa-text-muted: #64748b;
+  --pa-primary: #1e3a5f;
+  --pa-primary-light: #2d4a6f;
+  --pa-border: #e2e8f0;
+  --pa-touch-min: 44px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--pa-bg);
+  color: var(--pa-text);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Minimum touch target size for accessibility */
+button,
+a[role="button"],
+input[type="submit"],
+input[type="button"] {
+  min-height: var(--pa-touch-min);
+  min-width: var(--pa-touch-min);
+}
+
+button:not(.pa-icon-btn),
+.pa-btn {
+  padding: 12px 20px;
+  font-size: 1rem;
+}
+
+a {
+  color: var(--pa-primary);
+}
+
+/* Allow zoom; avoid tiny fixed fonts */
+input,
+select,
+textarea,
+button {
+  font-size: 1rem;
+}
+
+/* Shared page and component styles */
+.pa-page {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.pa-page--center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80vh;
+}
+
+.pa-card {
+  width: 100%;
+  max-width: 360px;
+  padding: 24px;
+  background: var(--pa-surface);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.pa-title {
+  margin: 0 0 8px 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--pa-text);
+}
+
+.pa-heading {
+  margin: 0 0 12px 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--pa-text);
+}
+
+.pa-muted {
+  margin: 0 0 20px 0;
+  font-size: 1rem;
+  color: var(--pa-text-muted);
+}
+
+.pa-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--pa-touch-min);
+  padding: 12px 20px;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.pa-btn--primary {
+  background: var(--pa-primary);
+  color: white;
+}
+
+.pa-btn--primary:hover {
+  background: var(--pa-primary-light);
+}
+
+.pa-btn--secondary {
+  background: var(--pa-border);
+  color: var(--pa-text);
+}
+
+.pa-btn--secondary:hover {
+  background: #cbd5e1;
+}

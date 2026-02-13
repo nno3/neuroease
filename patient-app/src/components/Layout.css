@@ -1,0 +1,24 @@
+.pa-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.pa-header {
+  flex-shrink: 0;
+  padding: 16px 20px;
+  background: var(--pa-primary);
+  color: white;
+}
+
+.pa-header-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.pa-main {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
