@@ -81,8 +81,29 @@ const User = sequelize.define('User', {
     avatar: {
         type: DataTypes.TEXT,
         allowNull: true
+    },
+    // Patient invite (one-time activation)
+    inviteToken: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        field: 'invite_token'
+    },
+    inviteTokenExpires: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: 'invite_token_expires'
+    },
+    // Patient magic link (login)
+    magicLinkToken: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        field: 'magic_link_token'
+    },
+    magicLinkTokenExpires: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: 'magic_link_token_expires'
     }
-
 }, {
     tableName: 'users',
         hooks: {

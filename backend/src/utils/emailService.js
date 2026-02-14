@@ -7,6 +7,7 @@
 const nodemailer = require('nodemailer');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const PATIENT_APP_URL = process.env.PATIENT_APP_URL || 'http://localhost:5174';
 const MAIL_FROM = process.env.MAIL_FROM || 'noreply@neuroease.com';
 
 function getTransporter() {
@@ -75,4 +76,90 @@ async function sendVerificationEmail(email, name, token) {
     return { sent: true };
 }
 
-module.exports = { sendVerificationEmail };
+/**
+ * Send patient invite email (activate account). Link opens patient app /activate?token=...
+ */
+async function sendPatientInviteEmail(email, name, token) {
+    const activateUrl = `${PATIENT_APP_URL}/activate?token=${encodeURIComponent(token)}`;
+    const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: sans-serif; line-height: 1.5; color: #334155;">
+  <p>Hi ${name || 'there'},</p>
+  <p>Your caregiver has set up NeuroEase for you. Open the link below to activate your account and start using the app:</p>
+  <p><a href="${activateUrl}" style="color: #4A90E2; font-weight: 600;">Activate my account</a></p>
+  <p>Or copy and paste this URL into your browser:</p>
+  <p style="word-break: break-all;">${activateUrl}</p>
+  <p>This link expires in 7 days. If you didn't expect this email, you can ignore it.</p>
+  <p>— NeuroEase</p>
+</body>
+</html>`;
+    const transporter = getTransporter();
+    if (transporter) {
+        try {
+            await transporter.sendMail({
+                from: MAIL_FROM,
+                to: email,
+                subject: 'Activate your NeuroEase account',
+                html,
+                text: `Hi ${name || 'there'},\n\nOpen this link to activate your account: ${activateUrl}\n\nThis link expires in 7 days.\n\n— NeuroEase`,
+            });
+            return { sent: true };
+        } catch (err) {
+            console.error('Send patient invite email error:', err);
+            return { sent: false, error: err.message };
+        }
+    }
+    console.warn('SMTP not configured. Patient invite link (no email sent):');
+    console.log('--- Patient invite link ---');
+    console.log('To:', email);
+    console.log('Activate link:', activateUrl);
+    console.log('---');
+    return { sent: true, inviteLink: activateUrl };
+}
+
+/**
+ * Send patient magic link (login). Link opens patient app /login?token=...
+ */
+async function sendPatientMagicLinkEmail(email, name, token) {
+    const loginUrl = `${PATIENT_APP_URL}/login?token=${encodeURIComponent(token)}`;
+    const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: sans-serif; line-height: 1.5; color: #334155;">
+  <p>Hi ${name || 'there'},</p>
+  <p>Use the link below to log in to NeuroEase:</p>
+  <p><a href="${loginUrl}" style="color: #4A90E2; font-weight: 600;">Log in to NeuroEase</a></p>
+  <p>Or copy and paste this URL into your browser:</p>
+  <p style="word-break: break-all;">${loginUrl}</p>
+  <p>This link expires in 15 minutes. If you didn't request this, you can ignore this email.</p>
+  <p>— NeuroEase</p>
+</body>
+</html>`;
+    const transporter = getTransporter();
+    if (transporter) {
+        try {
+            await transporter.sendMail({
+                from: MAIL_FROM,
+                to: email,
+                subject: 'Log in to NeuroEase',
+                html,
+                text: `Hi ${name || 'there'},\n\nLog in here: ${loginUrl}\n\nThis link expires in 15 minutes.\n\n— NeuroEase`,
+            });
+            return { sent: true };
+        } catch (err) {
+            console.error('Send magic link email error:', err);
+            return { sent: false, error: err.message };
+        }
+    }
+    console.warn('SMTP not configured. Magic link (no email sent):');
+    console.log('--- Magic link (login) ---');
+    console.log('To:', email);
+    console.log('Login link:', loginUrl);
+    console.log('---');
+    return { sent: true };
+}
+
+module.exports = { sendVerificationEmail, sendPatientInviteEmail, sendPatientMagicLinkEmail };

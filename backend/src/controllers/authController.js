@@ -2,9 +2,11 @@ const crypto = require('crypto');
 const { Op } = require('sequelize');
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
-const { sendVerificationEmail } = require('../utils/emailService');
+const { sendVerificationEmail, sendPatientInviteEmail, sendPatientMagicLinkEmail } = require('../utils/emailService');
 
 const VERIFICATION_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+const INVITE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const MAGIC_LINK_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes
 
 const authController = {
     register: async (req, res) => {
@@ -347,6 +349,176 @@ const authController = {
                 ? `Failed to send verification email: ${error.message}`
                 : 'Failed to send verification email. Please try again later.';
             return res.status(500).json({ success: false, message: msg });
+        }
+    },
+
+    /**
+     * Patient: activate account with invite token (from email link). No password.
+     */
+    activatePatient: async (req, res) => {
+        try {
+            const token = (req.body.token || req.query.token || '').trim();
+            if (!token) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'This link is invalid. Ask your caregiver to send a new invite.'
+                });
+            }
+            const user = await User.findOne({
+                where: {
+                    inviteToken: token,
+                    inviteTokenExpires: { [Op.gt]: new Date() },
+                    userType: 'patient'
+                }
+            });
+            if (!user) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'This link has expired or is invalid. Ask your caregiver to send a new invite.',
+                    code: 'INVALID_OR_EXPIRED_INVITE'
+                });
+            }
+            await user.update({
+                inviteToken: null,
+                inviteTokenExpires: null,
+                isEmailVerified: true
+            });
+            const jwtToken = jwt.sign(
+                { userId: user.id, userType: user.userType },
+                process.env.JWT_SECRET,
+                { expiresIn: '7d' }
+            );
+            res.json({
+                success: true,
+                message: 'Account activated. You are now logged in.',
+                data: {
+                    user: {
+                        id: user.id,
+                        email: user.email,
+                        name: user.name,
+                        userType: user.userType
+                    },
+                    token: jwtToken
+                }
+            });
+        } catch (error) {
+            console.error('Activate patient error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Something went wrong. Please try again or ask your caregiver for a new invite.'
+            });
+        }
+    },
+
+    /**
+     * Patient: request magic link (email only). Sends email with login link.
+     */
+    patientRequestLogin: async (req, res) => {
+        try {
+            const email = (req.body.email || '').trim().toLowerCase();
+            if (!email) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Email is required.'
+                });
+            }
+            const user = await User.findOne({
+                where: { email, userType: 'patient' }
+            });
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'No patient account found with this email. Ask your caregiver to send you an invite first.'
+                });
+            }
+            if (user.inviteToken && user.inviteTokenExpires > new Date()) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Your account is not activated yet. Use the link in the invite email from your caregiver to activate first.'
+                });
+            }
+            const magicToken = crypto.randomBytes(32).toString('hex');
+            const magicExpires = new Date(Date.now() + MAGIC_LINK_EXPIRY_MS);
+            await user.update({
+                magicLinkToken: magicToken,
+                magicLinkTokenExpires: magicExpires
+            });
+            const emailResult = await sendPatientMagicLinkEmail(user.email, user.name, magicToken);
+            if (!emailResult.sent && emailResult.error) {
+                console.error('Magic link email failed:', emailResult.error);
+                const msg = process.env.NODE_ENV === 'development'
+                    ? `Failed to send login email: ${emailResult.error}`
+                    : 'Failed to send login link. Please try again later.';
+                return res.status(500).json({ success: false, message: msg });
+            }
+            res.json({
+                success: true,
+                message: 'Check your email for a link to log in. The link expires in 15 minutes.'
+            });
+        } catch (error) {
+            console.error('Patient request login error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Something went wrong. Please try again later.'
+            });
+        }
+    },
+
+    /**
+     * Patient: verify magic link token and return JWT (login).
+     */
+    patientVerifyLink: async (req, res) => {
+        try {
+            const token = (req.body.token || req.query.token || '').trim();
+            if (!token) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'This link is invalid. Request a new login link.',
+                    code: 'INVALID_OR_EXPIRED_LINK'
+                });
+            }
+            const user = await User.findOne({
+                where: {
+                    magicLinkToken: token,
+                    magicLinkTokenExpires: { [Op.gt]: new Date() },
+                    userType: 'patient'
+                }
+            });
+            if (!user) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'This link has expired. Request a new login link from the app.',
+                    code: 'INVALID_OR_EXPIRED_LINK'
+                });
+            }
+            await user.update({
+                magicLinkToken: null,
+                magicLinkTokenExpires: null
+            });
+            const jwtToken = jwt.sign(
+                { userId: user.id, userType: user.userType },
+                process.env.JWT_SECRET,
+                { expiresIn: '7d' }
+            );
+            res.json({
+                success: true,
+                message: 'You are now logged in.',
+                data: {
+                    user: {
+                        id: user.id,
+                        email: user.email,
+                        name: user.name,
+                        userType: user.userType
+                    },
+                    token: jwtToken
+                }
+            });
+        } catch (error) {
+            console.error('Patient verify link error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Something went wrong. Please request a new login link.'
+            });
         }
     },
 

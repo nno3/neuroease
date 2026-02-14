@@ -12,6 +12,13 @@ router.get('/verify-email', authController.verifyEmail);
 router.post('/verify-email', authController.verifyEmail);
 router.post('/resend-verification', authController.resendVerification);
 
+// Patient passwordless: activate (invite link) and magic link login
+router.post('/activate', authController.activatePatient);
+router.get('/activate', authController.activatePatient);
+router.post('/patient/request-login', authController.patientRequestLogin);
+router.post('/patient/verify-link', authController.patientVerifyLink);
+router.get('/patient/verify-link', authController.patientVerifyLink);
+
 // Protected routes (require authentication)
 router.get('/profile', verifyToken, requireAny, authController.getProfile);
 router.put('/profile', verifyToken, requireAny, authController.updateProfile);

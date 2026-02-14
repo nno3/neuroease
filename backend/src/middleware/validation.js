@@ -133,7 +133,8 @@ const patientRegistrationSchema = yup.object({
             /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
             'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)'
         )
-        .required('Password is required'),
+        .nullable()
+        .default(undefined),
     name: yup.string()
         .min(2, 'Name must be at least 2 characters')
         .max(50, 'Name cannot exceed 50 characters')

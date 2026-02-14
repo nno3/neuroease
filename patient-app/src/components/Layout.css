@@ -6,6 +6,10 @@
 
 .pa-header {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 16px 20px;
   background: var(--pa-primary);
   color: white;
@@ -15,6 +19,21 @@
   margin: 0;
   font-size: 1.25rem;
   font-weight: 700;
+}
+
+.pa-header-logout {
+  padding: 8px 14px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: white;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.pa-header-logout:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .pa-main {

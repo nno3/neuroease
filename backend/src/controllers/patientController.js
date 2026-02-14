@@ -1,4 +1,8 @@
+const crypto = require('crypto');
 const { User, Patient } = require('../models');
+const { sendPatientInviteEmail } = require('../utils/emailService');
+
+const INVITE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 //helpers for medical history / conditions
 
@@ -164,12 +168,21 @@ const patientController = {
         });
       }
 
-      // Create patient user account
+      // Patient accounts are passwordless; use a random password if none provided (never shown to user)
+      const patientPassword = (password && String(password).trim())
+        ? String(password).trim()
+        : crypto.randomBytes(24).toString('hex');
+      const inviteToken = crypto.randomBytes(32).toString('hex');
+      const inviteTokenExpires = new Date(Date.now() + INVITE_EXPIRY_MS);
+
       const patientUser = await User.create({
         email: normalizedEmail,
-        password,
+        password: patientPassword,
         name,
-        userType: 'patient'
+        userType: 'patient',
+        isEmailVerified: false,
+        inviteToken,
+        inviteTokenExpires
       });
 
       // Create patient profile
@@ -193,9 +206,14 @@ const patientController = {
       const caregiver = await User.findByPk(req.user.userId);
       await caregiver.addPatient(patientUser);
 
-      return res.status(201).json({
+      const emailResult = await sendPatientInviteEmail(patientUser.email, patientUser.name, inviteToken);
+      if (!emailResult.sent && emailResult.error) {
+        console.error('Patient invite email failed:', emailResult.error);
+      }
+
+      const responsePayload = {
         success: true,
-        message: 'Patient registered and assigned successfully',
+        message: 'Patient created. An invite email has been sent for them to activate their account.',
         data: {
           patient: {
             id: patientUser.id,
@@ -205,7 +223,11 @@ const patientController = {
             profile: patientProfile
           }
         }
-      });
+      };
+      if (emailResult.inviteLink) {
+        responsePayload.data.inviteLink = emailResult.inviteLink;
+      }
+      return res.status(201).json(responsePayload);
     } catch (error) {
       console.error('CREATE PATIENT ERROR DETAILS:', error);
 
@@ -283,6 +305,58 @@ const patientController = {
     }
   },
 
+  // POST /api/patients/:id/send-invite - Resend invite email (caregiver only)
+  sendInvite: async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.id, 10);
+      if (Number.isNaN(patientId)) {
+        return res.status(400).json({ success: false, message: 'Invalid patient id' });
+      }
+      const caregiver = await User.findByPk(req.user.userId);
+      const assignedPatients = await caregiver.getPatients();
+      const patientIds = assignedPatients.map((p) => p.id);
+      if (!patientIds.includes(patientId)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Patient not assigned to you',
+        });
+      }
+      const patientUser = await User.findByPk(patientId);
+      if (!patientUser || patientUser.userType !== 'patient') {
+        return res.status(404).json({ success: false, message: 'Patient not found' });
+      }
+      if (patientUser.isArchived) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot send invite for an archived patient',
+        });
+      }
+      const inviteToken = crypto.randomBytes(32).toString('hex');
+      const inviteTokenExpires = new Date(Date.now() + INVITE_EXPIRY_MS);
+      await patientUser.update({ inviteToken, inviteTokenExpires });
+      const emailResult = await sendPatientInviteEmail(patientUser.email, patientUser.name, inviteToken);
+      if (!emailResult.sent && emailResult.error) {
+        console.error('Resend invite email failed:', emailResult.error);
+        return res.status(500).json({
+          success: false,
+          message: process.env.NODE_ENV === 'development'
+            ? `Failed to send invite email: ${emailResult.error}`
+            : 'Failed to send invite email. Please try again later.',
+        });
+      }
+      res.json({
+        success: true,
+        message: 'Invite email sent. The patient can use the link to activate their account.',
+      });
+    } catch (error) {
+      console.error('Send invite error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to send invite',
+      });
+    }
+  },
+
   // PUT /api/patients/:id - Update patient information
   updatePatient: async (req, res) => {
     try {
@@ -330,6 +404,7 @@ const patientController = {
       }
 
       const {
+        email: emailRaw,
         name, dateOfBirth, emergencyContact, medicalConditions, medicalHistory,
         address, gender, phoneNumber,
         preferredCommunication, accessibilityNeeds, careNotes,
@@ -338,6 +413,32 @@ const patientController = {
       } = req.body;
 
       const patientProfile = patientUser.Patient;
+
+      // Allow caregiver to fix patient email (e.g. typo). If patient has pending invite, resend to new email.
+      if (emailRaw !== undefined && emailRaw !== null) {
+        const newEmail = String(emailRaw).trim().toLowerCase();
+        if (!newEmail) {
+          return res.status(400).json({ success: false, message: 'Email cannot be empty.' });
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+          return res.status(400).json({ success: false, message: 'Invalid email format.' });
+        }
+        const existing = await User.findOne({ where: { email: newEmail } });
+        if (existing && existing.id !== patientId) {
+          return res.status(409).json({ success: false, message: 'Another patient or user already has this email.' });
+        }
+        const hadInvitePending = !!(patientUser.inviteToken && patientUser.inviteTokenExpires > new Date());
+        await patientUser.update({ email: newEmail });
+        if (hadInvitePending) {
+          const inviteToken = crypto.randomBytes(32).toString('hex');
+          const inviteTokenExpires = new Date(Date.now() + INVITE_EXPIRY_MS);
+          await patientUser.update({ inviteToken, inviteTokenExpires });
+          const emailResult = await sendPatientInviteEmail(patientUser.email, patientUser.name, inviteToken);
+          if (!emailResult.sent && emailResult.error) {
+            console.error('Invite email after email update failed:', emailResult.error);
+          }
+        }
+      }
 
       const historyProvided = medicalHistory !== undefined;
       let historyObj = historyProvided ? parseMedicalHistory(medicalHistory) : null;
