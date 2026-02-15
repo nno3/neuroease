@@ -1,4 +1,5 @@
 /* Mobile-first base styles for NeuroEase Patient App */
+/* Accessibility: WCAG AA contrast, 44px touch targets, zoom support, focus indicators */
 :root {
   --pa-bg: #f8fafc;
   --pa-surface: #ffffff;
@@ -8,6 +9,8 @@
   --pa-primary-light: #2d4a6f;
   --pa-border: #e2e8f0;
   --pa-touch-min: 44px;
+  --pa-focus-ring: 2px solid var(--pa-primary);
+  --pa-focus-offset: 2px;
 }
 
 *,
@@ -21,8 +24,10 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
+/* Allow zoom: use rem for font sizes; no max-scale blocking zoom in viewport */
 body {
   margin: 0;
+  font-size: 1rem;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: var(--pa-bg);
   color: var(--pa-text);
@@ -51,6 +56,10 @@ button:not(.pa-icon-btn),
 
 a {
   color: var(--pa-primary);
+}
+a:focus-visible {
+  outline: var(--pa-focus-ring);
+  outline-offset: var(--pa-focus-offset);
 }
 
 /* Allow zoom; avoid tiny fixed fonts */
@@ -163,6 +172,19 @@ button {
   outline: none;
   border-color: var(--pa-primary);
   box-shadow: 0 0 0 2px rgba(30, 58, 95, 0.2);
+}
+.pa-input:focus-visible {
+  outline: 2px solid var(--pa-primary);
+  outline-offset: 2px;
+}
+
+/* Visible focus for all interactive elements (keyboard/screen reader) */
+button:focus-visible,
+.pa-btn:focus-visible,
+a.pa-btn:focus-visible,
+[role="button"]:focus-visible {
+  outline: var(--pa-focus-ring);
+  outline-offset: var(--pa-focus-offset);
 }
 
 .pa-error {

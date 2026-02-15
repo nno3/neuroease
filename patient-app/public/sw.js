@@ -1,5 +1,5 @@
 /* Minimal service worker for PWA installability. */
-const CACHE_NAME = "neuroease-patient-v1";
+const CACHE_NAME = "neuroease-patient-v2";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();

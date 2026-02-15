@@ -84,7 +84,7 @@ DB_USER=neuroease_user
 DB_PASSWORD=neuroease_password
 
 FRONTEND_URL=http://localhost:5173
-PATIENT_APP_URL=http://localhost:5174
+PATIENT_APP_URL=http://localhost:5175
 SMTP – required to send real emails. If unset, the link is only printed in the backend console (for local dev).
 MAIL_FROM=neuroease.noreply@gmail.com
 SMTP_HOST=smtp.gmail.com
@@ -100,7 +100,7 @@ SMTP_PASS=lojsdfsmdvbmzmff
 New users get a verification link by email and must open it before they can log in.
 
 - **FRONTEND_URL** – Base URL of the caregiver dashboard. The link in the email is `FRONTEND_URL/verify-email?token=...`. Use `http://localhost:5173` (not https) for local dev so the link works when clicked.
-- **PATIENT_APP_URL** – Base URL of the patient app. Used in patient invite and magic-link emails (`PATIENT_APP_URL/activate?token=...` and `PATIENT_APP_URL/login?token=...`). Use `http://localhost:5174` for local dev.
+- **PATIENT_APP_URL** – Base URL of the patient app. Used in patient invite and magic-link emails (`PATIENT_APP_URL/activate?token=...` and `PATIENT_APP_URL/login?token=...`). Use `http://localhost:5175` for local dev.
 - **SMTP** – Needed to actually send emails. If you don’t set it, the app still runs and the verification link is logged in the backend console on each signup (you can copy and open it). For real inbox delivery you must set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`.
 - Links expire after 24 hours; users can request a new one from the login page.
 

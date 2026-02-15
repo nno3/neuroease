@@ -7,5 +7,6 @@ export const getArchivedPatients = () => api.get("/patients/archived"); // archi
 export const createPatient = (payload) => api.post("/patients", payload);
 
 export const updatePatient = (id, payload) => api.put(`/patients/${id}`, payload);
+export const sendInvite = (id) => api.post(`/patients/${id}/send-invite`);
 export const archivePatient = (id, payload) => api.post(`/patients/${id}/archive`, payload);
 export const unarchivePatient = (id, payload) => api.post(`/patients/${id}/unarchive`, payload);

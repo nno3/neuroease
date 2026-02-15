@@ -1,4 +1,4 @@
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import "./Layout.css";
 
@@ -13,7 +13,10 @@ export default function Layout() {
 
   return (
     <div className="pa-layout">
-      <header className="pa-header">
+      <a href="#pa-main" className="pa-skip-link">
+        Skip to main content
+      </a>
+      <header className="pa-header" role="banner">
         <h1 className="pa-header-title">NeuroEase</h1>
         {user && (
           <button
@@ -26,9 +29,26 @@ export default function Layout() {
           </button>
         )}
       </header>
-      <main className="pa-main">
+      <main id="pa-main" className="pa-main" role="main">
         <Outlet />
       </main>
+      {user && (
+        <nav className="pa-bottom-nav" aria-label="Main navigation">
+          <NavLink
+            to="/"
+            className={({ isActive }) => `pa-bottom-nav-link ${isActive ? "is-active" : ""}`}
+            end
+          >
+            Home
+          </NavLink>
+          <NavLink
+            to="/reminders"
+            className={({ isActive }) => `pa-bottom-nav-link ${isActive ? "is-active" : ""}`}
+          >
+            Reminders
+          </NavLink>
+        </nav>
+      )}
     </div>
   );
 }

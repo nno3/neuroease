@@ -11,12 +11,14 @@ import {
 
 /**
  * View-details modal for a single patient. Parent must import Patients.css for pm-* classes.
- * Props: patient, onClose, onEdit, onUnarchive (optional), onOpenActivity (optional; opens patient activity modal)
+ * Props: patient, onClose, onEdit, onUnarchive (optional), onOpenActivity (optional), onResendInvite (optional)
  */
-export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarchive, onOpenActivity }) {
+export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarchive, onOpenActivity, onResendInvite }) {
     const [restoreNotes, setRestoreNotes] = useState("");
     const [actionLoading, setActionLoading] = useState(false);
     const [actionError, setActionError] = useState("");
+    const [inviteLoading, setInviteLoading] = useState(false);
+    const [inviteError, setInviteError] = useState("");
 
     if (!patient) return null;
 
@@ -40,6 +42,19 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarch
     const openEditFromDetails = () => {
         onClose?.();
         onEdit?.(patient);
+    };
+
+    const handleResendInvite = async () => {
+        if (!patient?.id || !onResendInvite) return;
+        setInviteError("");
+        setInviteLoading(true);
+        try {
+            await onResendInvite(patient.id);
+        } catch (err) {
+            setInviteError(err?.message || "Failed to send invite.");
+        } finally {
+            setInviteLoading(false);
+        }
     };
 
     const parseMh = (p) => {
@@ -88,6 +103,16 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarch
                                 {onOpenActivity && (
                                     <button type="button" className="pm-btn pm-btn-outline pm-btn-activity" onClick={onOpenActivity}>
                                         Patient activity
+                                    </button>
+                                )}
+                                {onResendInvite && (
+                                    <button
+                                        type="button"
+                                        className="pm-btn pm-btn-outline"
+                                        onClick={handleResendInvite}
+                                        disabled={inviteLoading}
+                                    >
+                                        {inviteLoading ? "Sending…" : "Resend invite"}
                                     </button>
                                 )}
                                 <button type="button" className="pm-btn pm-btn-outline" onClick={openEditFromDetails}>
@@ -159,6 +184,13 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarch
                         </>
                     ) : (
                         <>
+                            {inviteError && (
+                                <div className="pm-details-grid">
+                                    <div className="pm-detail-field pm-detail-span2">
+                                        <div className="pm-inline-error">{inviteError}</div>
+                                    </div>
+                                </div>
+                            )}
                             <div className="pm-details-grid">
                                 <div className="pm-details-section-header">
                                     <h3>Personal Information</h3>

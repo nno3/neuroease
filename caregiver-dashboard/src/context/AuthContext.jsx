@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { API_BASE } from '../services/apiClient';
 
 const AuthContext = createContext();
 
@@ -29,34 +30,29 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (email, password) => {
         try {
-            // Check if we're using quick login
-            if (!email && !password) {
-                return quickLogin();
+            // Require credentials; no silent mock fallback
+            if (!email || !password) {
+                return {
+                    success: false,
+                    error: 'Email and password are required.',
+                    errors: []
+                };
             }
 
-            console.log('Attempting login with:', { email: email.substring(0, 10) + '...' });
-
-            // API login
-            const response = await fetch('http://localhost:5001/api/auth/login', {
+            const response = await fetch(`${API_BASE}/auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    email: email,
+                    email: email.trim(),
                     password: password
                 })
             });
 
-            const data = await response.json();
-            console.log('Login response:', {
-                status: response.status,
-                ok: response.ok,
-                data: data
-            });
+            const data = await response.json().catch(() => ({}));
 
             if (response.ok && data.success) {
-                // Store user data and token
                 const userData = data.data.user;
                 const token = data.data.token;
 
@@ -65,41 +61,23 @@ export const AuthProvider = ({ children }) => {
                 localStorage.setItem('user', JSON.stringify(userData));
 
                 return { success: true };
-            } else {
-                const errorMsg = data.errors?.[0] || data.message || 'Login failed. Please check your credentials.';
-                return {
-                    success: false,
-                    error: errorMsg,
-                    errors: data.errors || [],
-                    code: data.code
-                };
             }
+
+            const errorMsg = data.errors?.[0] || data.message || 'Login failed. Please check your credentials.';
+            return {
+                success: false,
+                error: errorMsg,
+                errors: data.errors || [],
+                code: data.code
+            };
         } catch (error) {
             console.error('Login error:', error);
-
-            // Fallback to quick login for development
-            console.warn('API not available, using quick login for development');
-            return quickLogin();
+            return {
+                success: false,
+                error: 'Could not reach the server. Is the backend running at ' + (API_BASE || 'the API URL') + '?',
+                errors: []
+            };
         }
-    };
-
-    // Quick login function for development
-    const quickLogin = () => {
-        const mockUser = {
-            id: 1,
-            name: 'Dr. Sarah Johnson',
-            email: 'caregiver@neuroease.com',
-            role: 'caregiver',
-            userType: 'caregiver'
-        };
-
-        const mockToken = 'mock-jwt-token-for-development';
-
-        setUser(mockUser);
-        localStorage.setItem('token', mockToken);
-        localStorage.setItem('user', JSON.stringify(mockUser));
-
-        return { success: true };
     };
 
     const logout = () => {

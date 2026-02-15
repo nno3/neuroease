@@ -477,8 +477,9 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                 emergencyContact: form.emergencyContact.trim() || null,
             };
 
+            let inviteLink = null;
             if (!isEdit) {
-                await createPatient({
+                const createRes = await createPatient({
                     name: form.name.trim(),
                     email: form.email.trim(),
                     password: form.password,
@@ -489,9 +490,11 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                     medicalHistory,
                     ...carePayload,
                 });
+                inviteLink = createRes?.data?.inviteLink ?? null;
             } else {
                 await updatePatient(patient.id, {
                     name: form.name.trim(),
+                    email: form.email.trim(),
                     dateOfBirth: form.dateOfBirth || null,
                     address: form.address.trim(),
                     gender: form.gender.trim() || null,
@@ -502,7 +505,7 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
             }
 
             const apiMsg = isEdit ? "Patient updated successfully." : "Patient created successfully.";
-            onSaved?.({ message: apiMsg });
+            onSaved?.({ message: apiMsg, inviteLink });
             onClose?.();
         } catch (err) {
             setError(err?.message || (isEdit ? "Unable to update patient." : "Unable to create patient."));
@@ -563,12 +566,15 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                         <div className="pfm-field">
                             <label className="pfm-label">Email {!isEdit ? "*" : ""}</label>
                             <input
+                                type="email"
                                 className={`pfm-input ${fieldErrors.email ? "is-error" : ""}`}
                                 value={form.email}
                                 onChange={(e) => setField("email", e.target.value)}
-                                disabled={isEdit}
-                                    placeholder="e.g. margaret.thompson@email.com"
+                                placeholder="e.g. margaret.thompson@email.com"
                             />
+                            {isEdit && (
+                                <div className="pfm-help pfm-help-muted">If you change the email, use &quot;Resend invite&quot; in the patient details to send the activation link to the new address.</div>
+                            )}
                             {fieldErrors.email && <div className="pfm-help">{fieldErrors.email}</div>}
                         </div>
 

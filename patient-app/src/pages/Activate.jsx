@@ -41,6 +41,9 @@ export default function Activate() {
     <div className="pa-page pa-page--center">
       <div className="pa-card">
         <h1 className="pa-title">Activate your account</h1>
+        <p className="pa-muted" style={{ fontSize: "0.875rem", marginBottom: "1rem" }}>
+          Use the link from your caregiver&apos;s email. This page calls the backend to activate you.
+        </p>
         {status === "activating" && (
           <>
             <p className="pa-muted">Opening your account…</p>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getPatients, getArchivedPatients, getPatientById, archivePatient, unarchivePatient } from "../services/patients";
+import { getPatients, getArchivedPatients, getPatientById, archivePatient, unarchivePatient, sendInvite } from "../services/patients";
 import "./Patients.css";
 import PatientFormModal from "../components/PatientFormModal";
 import PatientDetailsModal from "../components/PatientDetailsModal";
@@ -373,6 +373,10 @@ export default function Patients() {
                         setDetailsOpen(false);
                         setActivityModalPatient(selectedPatient);
                     }}
+                    onResendInvite={async (id) => {
+                        await sendInvite(id);
+                        showToast("success", "Invite email sent. The patient can use the link to activate their account.");
+                    }}
                 />
             )}
             {activityModalPatient && (
@@ -391,8 +395,8 @@ export default function Patients() {
                 mode={formMode}
                 patient={formPatient}
                 onClose={() => setFormOpen(false)}
-                onSaved={({ message }) => {
-                    showToast("success", message);
+                onSaved={({ message, inviteLink }) => {
+                    showToast("success", inviteLink ? `${message} Activate link: ${inviteLink}` : message);
                     refreshAll();
                     setFormOpen(false);
                 }}

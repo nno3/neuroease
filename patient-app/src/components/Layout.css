@@ -1,7 +1,28 @@
 .pa-layout {
+  position: relative;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+/* Skip link: visible on focus for keyboard users */
+.pa-skip-link {
+  position: absolute;
+  top: -100px;
+  left: 16px;
+  padding: 12px 16px;
+  background: var(--pa-primary);
+  color: white;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 8px;
+  z-index: 100;
+  transition: top 0.2s ease;
+}
+.pa-skip-link:focus {
+  top: 16px;
+  outline: 3px solid white;
+  outline-offset: 2px;
 }
 
 .pa-header {
@@ -22,8 +43,10 @@
 }
 
 .pa-header-logout {
-  padding: 8px 14px;
-  font-size: 0.9rem;
+  min-height: var(--pa-touch-min);
+  min-width: var(--pa-touch-min);
+  padding: 10px 16px;
+  font-size: 1rem;
   font-weight: 500;
   color: white;
   background: rgba(255, 255, 255, 0.2);
@@ -31,13 +54,56 @@
   border-radius: 8px;
   cursor: pointer;
 }
-
 .pa-header-logout:hover {
   background: rgba(255, 255, 255, 0.3);
+}
+.pa-header-logout:focus-visible {
+  outline: 3px solid white;
+  outline-offset: 2px;
 }
 
 .pa-main {
   flex: 1;
   padding: 20px;
   overflow-y: auto;
+}
+
+/* Bottom nav: 44px touch targets, high contrast */
+.pa-bottom-nav {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  padding: 8px 0;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  background: var(--pa-surface);
+  border-top: 1px solid var(--pa-border);
+}
+
+.pa-bottom-nav-link {
+  flex: 1;
+  max-width: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--pa-touch-min);
+  padding: 12px 16px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--pa-text-muted);
+  text-decoration: none;
+  border-radius: 8px;
+  margin: 0 4px;
+}
+.pa-bottom-nav-link:hover {
+  color: var(--pa-primary);
+  background: var(--pa-bg);
+}
+.pa-bottom-nav-link.is-active {
+  color: var(--pa-primary);
+  background: var(--pa-bg);
+}
+.pa-bottom-nav-link:focus-visible {
+  outline: 2px solid var(--pa-primary);
+  outline-offset: 2px;
 }

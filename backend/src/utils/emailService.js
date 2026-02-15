@@ -7,7 +7,7 @@
 const nodemailer = require('nodemailer');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
-const PATIENT_APP_URL = process.env.PATIENT_APP_URL || 'http://localhost:5174';
+const PATIENT_APP_URL = process.env.PATIENT_APP_URL || 'http://localhost:5175';
 const MAIL_FROM = process.env.MAIL_FROM || 'noreply@neuroease.com';
 
 function getTransporter() {

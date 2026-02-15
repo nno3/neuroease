@@ -343,6 +343,13 @@
     color: #c62828;
 }
 
+.pfm-help-muted {
+    margin-top: 4px;
+    font-size: 12px;
+    font-weight: 400;
+    color: #64748b;
+}
+
 .pfm-datewrap {
     position: relative;
     display: flex;

@@ -25,6 +25,7 @@ router.post('/:id/restore', requireCaregiver, patientController.restorePatientAs
 
 
 router.post('/:id/archive', requireCaregiver, patientController.archivePatient);
+router.post('/:id/send-invite', requireCaregiver, patientController.sendInvite);
 
 //Unarchived a patient
 router.post('/:id/unarchive', requireCaregiver, patientController.unarchivePatient);

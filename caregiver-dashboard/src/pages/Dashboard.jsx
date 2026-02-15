@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import ActivitySummaryVisual from "../components/Dashboard/ActivitySummaryVisual";
 import { getDashboardStats } from "../services/dashboardService";
 import { getLocationStatusForCaregiver } from "../services/locationService";
-import { getPatients, getPatientById, archivePatient } from "../services/patients";
+import { getPatients, getPatientById, archivePatient, sendInvite } from "../services/patients";
 import { useNavigate, Link } from "react-router-dom";
 import { AlertTriangle } from "lucide-react";
 import PatientFormModal from "../components/PatientFormModal";
@@ -314,6 +314,9 @@ const Dashboard = () => {
                         closeDetails();
                         openActivityModal(detailsPatient);
                     }}
+                    onResendInvite={async (id) => {
+                        await sendInvite(id);
+                    }}
                 />
             )}
 
@@ -330,7 +333,10 @@ const Dashboard = () => {
                 mode={formMode}
                 patient={formPatient}
                 onClose={() => setFormOpen(false)}
-                onSaved={() => {
+                onSaved={({ inviteLink }) => {
+                    if (inviteLink) {
+                        alert(`Patient created. Copy this activate link to open in the patient app:\n\n${inviteLink}`);
+                    }
                     refreshPatients();
                     setFormOpen(false);
                 }}

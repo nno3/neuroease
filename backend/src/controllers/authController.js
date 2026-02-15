@@ -414,6 +414,7 @@ const authController = {
      * Patient: request magic link (email only). Sends email with login link.
      */
     patientRequestLogin: async (req, res) => {
+        console.log('[auth] POST /api/auth/patient/request-login hit');
         try {
             const email = (req.body.email || '').trim().toLowerCase();
             if (!email) {
