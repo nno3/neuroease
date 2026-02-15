@@ -391,3 +391,129 @@ Sprint 4 reminder scheduling functionality is now largely complete, with core CR
 - Fixed a dashboard runtime error related to helper imports, improving overall system stability.
 
 Sprint 5: Activity Monitoring & Reporting Charts (Phase 2)  largely complete, with backend aggregation, live activity logging, and visual analytics implemented and verified. Remaining work focuses on final chart review feedback and continued integration testing across caregiver workflows.
+
+## Week 17 [w/c 02/02/2026]
+
+- Moved to `Done` and completed rest of issues on Sprint 5
+- Started Sprint 6 work on location and safe zones, implementing backend APIs and caregiver-facing map UI.
+
+*Location Tracking API (Issue #19)*
+
+- Implemented the Location Tracking API with consent and caregiver access control:
+  - Added endpoints to receive and store patient location updates with proper ownership checks.
+  - Ensured only assigned caregivers can access a patient’s location data.
+  - Integrated consent flags so location sharing respects patient preferences.
+  - Supporting commit: `cbdeb123`
+
+*Safe Zones CRUD API*
+
+- Added full Safe Zones API for caregivers:
+  - Create, read, update, and delete safe zones per patient.
+  - Stored zone geometry (centre, radius) and metadata in the database.
+  - Enforced caregiver–patient assignment on all safe zone operations.
+  - Supporting commit: `a3123af2`
+
+*Geofencing and Location Alerts*
+
+- Implemented geofencing logic to evaluate whether a patient is inside or outside their safe zones on each location update.
+  - Added logic to detect transitions (entering/leaving zones) and persist alert records.
+  - Wired geofencing checks to run on location update so alerts are generated in real time.
+  - Supporting commits: `43cac074`, `e7a15a1a`
+
+*Caregiver Map UI and Location Page*
+
+- Built the caregiver-facing location page with map integration:
+  - Display of patient location and safe zones on the map.
+  - Caregiver-friendly controls to add, edit, and remove safe zones (radius, centre).
+  - Clear visual distinction between zones and current position.
+  - Supporting commits: `b00e01cb`, `d5a56fd8`
+- Added CSS and layout improvements to the location page (Issue #20). Commit: `d5a56fd8`
+
+*Dashboard and Documentation*
+
+- Displayed location alerts (e.g. “left safe zone”) on the dashboard and Location page so caregivers see at-a-glance status.
+- Documented map implementation and setup in the project docs. Commits: `89b2ff66`, `9d4eaebc`
+
+*Stability and Merge*
+
+- Resolved merge conflicts after integrating `feature/activity-monitoring` into `develop` (commits: `69320a48`, `c7966f37`).
+- Applied UI tweaks to the activity graph (bar label positioning, date visibility) to improve readability. Commits: `a09bd082`, `6d87db90`.
+
+## Week 18 [w/c 09/02/2026]
+
+- Finalised dashboard and documentation ahead of the patient app sprint; improved patient details and caregiver experience.
+
+*Dashboard and Patient Details*
+
+- Delivered final dashboard refinements before shifting focus to the mobile patient app:
+  - Aligned dashboard layout and behaviour with the rest of the caregiver workflow.
+  - Improved Patient Details by adding an activity summary section (e.g. recent adherence, reminder completion) so caregivers get a quick view of patient engagement.
+  - Supporting commits: `de84bdd9`, `4dcc6361`
+
+*Documentation and Backend Setup*
+
+- Expanded BackendSetUp.md with clearer instructions for environment variables, database setup, email configuration (SMTP, PATIENT_APP_URL, FRONTEND_URL), and API usage. Commit: `7e4b2c94`
+
+*Email Verification for Signups*
+
+- Implemented email verification for new caregiver signups:
+  - Backend sends a verification link after registration; users must open it before they can log in.
+  - Login returns a clear error when the account is not yet verified, with option to resend the verification email from the login page.
+  - Supporting commit: `72a8aa4b`
+
+*Settings and Navigation*
+
+- Added a Settings section in the dashboard so caregivers can manage account preferences and related options. Commit: `e05774d2`
+- Improved the sidebar layout and navigation for consistency before moving on to the patient app. Commit: `051942e6`
+
+*Location Page Improvements*
+
+- Further improved the location page layout, controls, and integration with safe zones and alerts. Commit: `ff45acf4`
+
+**Started Sprint 7: Patient PWA. Delivered project scaffold, routing, passwordless login and activation, web app manifest, post-login shell, logout, and base accessibility.**
+
+*Patient PWA Scaffold and Routing (First issue of Sprint 7)*
+
+- Created the patient app as a React + Vite PWA in the `patient-app` directory:
+  - Set up routing for login, activate, home, and reminders.
+  - Added protected routes so only authenticated patients see the main app.
+  - Established a simple layout and styling foundation for subsequent features.
+  - Supporting commit: `4eb28810`
+
+*Web App Manifest*
+
+- Added a web app manifest (name, short_name, icons, start_url, display: standalone) to support “Add to Home Screen” and standalone launch. Commit: `d63612d7`
+- Served the manifest with `Content-Type: application/manifest+json` in the Vite dev server to resolve a Chrome “Manifest: Syntax error” warning; formatted the manifest as valid JSON. Later adjusted dev server and cache behaviour as needed.
+
+*Patient Login and Activate (Passwordless Email Links) – Issue #25*
+
+- Implemented full passwordless authentication for patients:
+  - **Activate (invite link):** Caregiver invites create a patient user and send an email with a link to `/activate?token=...`. The activate page calls the backend to validate the token, activate the account, and log the user in.
+  - **Request login link:** On the login page, the patient enters their email; the backend sends a magic link to `/login?token=...`. Opening that link verifies the token and logs the user in.
+  - Backend endpoints: `POST/GET /api/auth/activate`, `POST /api/auth/patient/request-login`, `POST /api/auth/patient/verify-link`, with correct ownership and expiry checks.
+  - Supporting commit: `a025a74d`
+
+*Debugging: API Endpoint Not Found and Activation*
+
+- During testing, the patient app showed “API endpoint not found” when requesting a login link or opening the activate link. Investigation showed:
+  - The backend catch-all 404 returns that message when no route matches; the request was reaching the server but the route was not registered (e.g. backend not restarted after adding patient auth routes), or the request URL was wrong.
+  - **Double /api in URL:** When `VITE_API_BASE` was set to e.g. `http://localhost:5001/api`, the app was building URLs as `API_BASE + path`, producing `/api/api/auth/...` and triggering 404. Fixed by normalising the API base in the client (strip trailing `/api` when building the request URL) so activation and login requests hit the correct endpoints.
+  - **Stale UI (placeholder “Issue 1.3”):** Some browsers continued to show an old placeholder activation/login UI from cache. Addressed by: running the patient app on a different port (5175) so the browser had no cached content for that origin; unregistering service workers in development; and ensuring the dev server sends cache-control headers. The patient app was later set to run on port 5175 by default so invite and magic-link emails work without cache issues. Documented that clearing site data for the patient app origin resolves the issue if it recurs.
+
+*Testing on Phone (Network Access)*
+
+- Enabled testing the patient app on a phone on the same Wi‑Fi:
+  - Set Vite dev server to `host: true` so it binds to the network and displays a Network URL (e.g. `http://192.168.x.x:5175`).
+  - For activation and magic links to work on the phone, `PATIENT_APP_URL` in the backend must be set to the machine’s network URL (e.g. `http://192.168.x.x:5175`), not `localhost`, so links in emails open the app on the phone correctly. Documented this in BackendSetUp.md.
+
+*Post-Login Shell, Logout, and Base Accessibility*
+
+- Implemented the post-login shell and baseline accessibility (interim report requirements):
+  - **Shell:** After login, the user sees a consistent shell: header with app name “NeuroEase”, main content area, and bottom navigation (Home, Reminders). Implemented in `Layout.jsx` with `ProtectedRoute` wrapping authenticated routes.
+  - **Logout:** “Log out” in the header calls the auth context’s `logout()` (clears stored token and user state), then redirects to `/login` with `replace: true`, so the session is fully cleared.
+  - **Accessibility:** Applied WCAG AA–oriented contrast (e.g. dark text on light background, primary colour on white). Set a minimum touch target size of 44×44px via CSS variable `--pa-touch-min` for buttons, nav links, and form controls. Ensured the viewport allows zoom (`user-scalable=yes`, `maximum-scale=5.0`); used `rem` for font sizes and avoided blocking zoom. Added visible focus indicators (`:focus-visible`) on buttons, links, and inputs; added a “Skip to main content” link to `#pa-main` for logical focus order on login, activate, and shell.
+  - Supporting commit: `204aab7c`
+
+*Verification*
+
+- Confirmed: logged-in users see the same shell on Home and Reminders; logout clears the session and redirects to login; key interactive elements meet the minimum touch target and contrast; page zoom does not break layout; tab/focus order is logical on login, activate, and the main shell.
