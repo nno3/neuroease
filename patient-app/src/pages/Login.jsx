@@ -1,3 +1,7 @@
+/**
+ * Patient login – two flows: (1) URL has ?token=... (magic link) → verify and redirect to home;
+ * (2) no token → show email form, "Send login link", then show success or error message.
+ */
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -12,7 +16,6 @@ export default function Login() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
 
-  // Magic link: open with ?token=... → verify and log in
   useEffect(() => {
     if (!token) return;
     setStatus("verifying");

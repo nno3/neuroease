@@ -1,3 +1,9 @@
+/**
+ * Activity controller – summary (chart-ready aggregates) and log (paginated occurrences).
+ * Summary: expands each reminder into occurrences in the date range (once/daily/weekly, respecting
+ * endTime), then counts by day and type. Status comes from ActivityLog if present, else inferred
+ * (overdue/pending/completed). Date query params accept YYYY-MM-DD or DD/MM/YYYY.
+ */
 const { Op } = require('sequelize');
 const { User, Reminder, ActivityLog, GameSession } = require('../models');
 
@@ -8,18 +14,12 @@ function isValidDateOnly(str) {
     return typeof str === 'string' && DATE_ONLY_RE.test(str);
 }
 
+/** Parse date string (YYYY-MM-DD or DD/MM/YYYY) to Date; endOfDay sets time to 23:59:59.999 */
 function parseDateOnly(str, { endOfDay = false } = {}) {
-    console.log('Parsing date string:', str); // Add this for debugging
-
-    if (!str || typeof str !== 'string') {
-        console.log('Invalid input: not a string or empty');
-        return null;
-    }
-
-    // Try multiple date formats
+    if (!str || typeof str !== 'string') return null;
     let dateStr = str.trim();
 
-    // First try YYYY-MM-DD (what we expect)
+    // Prefer YYYY-MM-DD (API standard)
     if (DATE_ONLY_RE.test(dateStr)) {
         const time = endOfDay ? '23:59:59.999' : '00:00:00.000';
         const d = new Date(`${dateStr}T${time}`);
@@ -28,20 +28,15 @@ function parseDateOnly(str, { endOfDay = false } = {}) {
         }
     }
 
-    // Try DD/MM/YYYY (what might be coming from the frontend display)
+    // DD/MM/YYYY (e.g. from frontend date picker display)
     const ddMmYyyyRe = /^(\d{2})\/(\d{2})\/(\d{4})$/;
     if (ddMmYyyyRe.test(dateStr)) {
         const parts = dateStr.split('/');
-        // Convert DD/MM/YYYY to YYYY-MM-DD
         const isoStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
         const time = endOfDay ? '23:59:59.999' : '00:00:00.000';
         const d = new Date(`${isoStr}T${time}`);
-        if (!Number.isNaN(d.getTime())) {
-            return d;
-        }
+        if (!Number.isNaN(d.getTime())) return d;
     }
-
-    console.log('Date string does not match any expected pattern:', dateStr);
     return null;
 }
 
@@ -71,10 +66,11 @@ function normalizeType(t) {
 }
 
 /**
- * Expand reminder into occurrences in [rangeStart, rangeEnd]
- * - once / daily / weekly
- * - respects endTime (if set)
- * - keeps original hour/min/sec
+ * Expand a single reminder into all its occurrence timestamps within [rangeStart, rangeEnd].
+ * - once: at most one (scheduledTime) if it falls in range and before endTime.
+ * - daily: same time each day; stops at endTime or rangeEnd; cap 5000 iterations.
+ * - weekly: same weekday and time each week; same end/range rules; cap 800.
+ * Used by getActivitySummary to count completed/pending/overdue per day for charts.
  */
 function forEachOccurrenceInRange(reminder, rangeStart, rangeEnd, fn) {
     const base = new Date(reminder.scheduledTime);

@@ -1,3 +1,4 @@
+/** Reminders list – placeholder; will be wired to GET /api/reminders/patient/:id in a later issue. */
 export default function Reminders() {
   return (
     <div className="pa-page">

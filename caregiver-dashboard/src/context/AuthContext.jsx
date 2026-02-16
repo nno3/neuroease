@@ -1,3 +1,8 @@
+/**
+ * Caregiver auth context – holds user state and login/logout. On mount, restores
+ * user from localStorage if token and user data exist. login() calls backend and
+ * stores token + user; logout() clears them and redirects to /login.
+ */
 import { createContext, useContext, useState, useEffect } from 'react';
 import { API_BASE } from '../services/apiClient';
 
@@ -7,7 +12,6 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Check for existing token on mount
     useEffect(() => {
         const checkAuth = () => {
             try {

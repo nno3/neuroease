@@ -1,6 +1,9 @@
+/**
+ * Central model registry – loads all Sequelize models and runs associate() so relationships
+ * (User–Patient, Reminder–User, etc.) are set up without circular dependency issues.
+ */
 const sequelize = require('../config/database');
 
-// Import all models
 const User = require('./User');
 const Patient = require('./Patient');
 const Reminder = require('./Reminder');

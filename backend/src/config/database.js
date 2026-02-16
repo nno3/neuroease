@@ -1,3 +1,6 @@
+/**
+ * Sequelize instance for PostgreSQL. Uses DB_* from .env. Exported for models and server.
+ */
 const { Sequelize } = require('sequelize');
 require('dotenv').config();
 

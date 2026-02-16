@@ -1,3 +1,10 @@
+/**
+ * Location controller – store updates, run geofence checks, return latest position and alerts.
+ * On each update we load the patient's safe zones and previous location; if they were inside
+ * a zone and are now outside we create a "left" alert; if they were outside and re-enter we
+ * can record return. Distance is Haversine (meters). patientId in all APIs is the patient's
+ * User id (users.id), not the Patient profile id.
+ */
 const { Op } = require('sequelize');
 const { User, Patient, LocationLog, SafeZone, LocationAlert } = require('../models');
 
@@ -95,7 +102,7 @@ const locationController = {
                 });
             }
 
-            // Geofence: load active safe zones and previous location to detect exit
+            // Geofence: compare previous position vs current against safe zones to detect leave/return
             const zones = await SafeZone.findAll({
                 where: { patientId: pid, isActive: true },
             });
@@ -117,7 +124,7 @@ const locationController = {
                 timestamp: ts,
             });
 
-            // If patient was inside a zone and is now outside, create alert
+            // Transition: inside -> outside = "left safe zone" alert; outside -> inside = return (for UI)
             if (previousInside && !currentInside) {
                 await LocationAlert.create({
                     patientId: pid,

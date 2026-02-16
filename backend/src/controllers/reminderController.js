@@ -1,6 +1,9 @@
+/**
+ * Reminder controller – create, list by patient, update, delete.
+ * Caregivers may only manage reminders for assigned patients; patients only their own.
+ */
 const { Reminder, User } = require('../models');
 
-// Create reminder
 const createReminder = async (req, res) => {
     try {
         const { patientId, title, message, reminderType, scheduledTime, recurrence, endTime } = req.body;

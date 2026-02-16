@@ -1,3 +1,7 @@
+/**
+ * Auth middleware – verifies JWT from Authorization: Bearer <token> and attaches req.user (userId, userType).
+ * Used by all protected routes; returns 401 if missing or invalid.
+ */
 const jwt = require('jsonwebtoken');
 
 const verifyToken = (req, res, next) => {

@@ -1,3 +1,8 @@
+/**
+ * User model – caregivers and patients. Stores credentials, email verification,
+ * and for patients: invite token (activate) and magic-link token (login).
+ * Passwords hashed with bcrypt; validatePassword() used at login.
+ */
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const bcrypt = require('bcrypt');

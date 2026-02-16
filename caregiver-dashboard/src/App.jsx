@@ -1,4 +1,8 @@
-import {Routes, Route, Navigate} from 'react-router-dom';
+/**
+ * Caregiver dashboard – root router. AuthProvider wraps the app; protected routes
+ * use Layout (sidebar + outlet). Public: login, register, verify-email.
+ */
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -7,10 +11,10 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Patients from './pages/Patients';
 import Reminders from './pages/Reminders';
-import Activity from "./pages/Activity";
-import Location from "./pages/Location";
-import Settings from "./pages/Settings";
-import VerifyEmail from "./pages/VerifyEmail";
+import Activity from './pages/Activity';
+import Location from './pages/Location';
+import Settings from './pages/Settings';
+import VerifyEmail from './pages/VerifyEmail';
 
 function App() {
     return (
@@ -20,7 +24,7 @@ function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/verify-email" element={<VerifyEmail />} />
 
-                {/* Protected routes */}
+                {/* All routes below require logged-in caregiver */}
                 <Route path="/" element={
                     <ProtectedRoute>
                         <Layout />

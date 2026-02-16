@@ -1,3 +1,7 @@
+/**
+ * Ownership middleware – ensures the authenticated user can access the patient in req.params.patientId.
+ * Patient: only own id. Caregiver: only assigned patients. Used by reminder/activity routes that take patientId.
+ */
 const { User } = require('../models/User');
 
 const canAccessPatientData = async (req, res, next) => {
@@ -5,7 +9,7 @@ const canAccessPatientData = async (req, res, next) => {
         const requestingUser = await User.findByPk(req.user.userId);
 
         if (req.user.userType === 'patient') {
-            // Patients can only access their own data
+            // Patients may only access their own record
             if (req.user.userId !== parseInt(req.params.patientId)) {
                 return res.status(403).json({
                     success: false,

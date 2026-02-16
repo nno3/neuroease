@@ -1,3 +1,8 @@
+/**
+ * NeuroEase Backend – Express server entry point.
+ * Mounts API routes, connects to PostgreSQL via Sequelize, and handles 404/500.
+ * Environment: .env (PORT, DB_*, JWT_SECRET, SMTP_*, PATIENT_APP_URL, FRONTEND_URL).
+ */
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
@@ -7,17 +12,17 @@ const { sequelize, User } = require('./src/models');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
-// API request logging
+
+// Log every API request (method, URL, status) for debugging and auditing
 app.use(morgan('combined'));
 
-// Middleware
+// Allow frontend(s) on different origins to call this API; parse JSON and form bodies
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
-
-// Routes
-const authRoutes = require('./src/routes/authRoutes')
+// Mount route modules under /api/* (all require valid DB and env)
+const authRoutes = require('./src/routes/authRoutes');
 app.use('/api/auth', authRoutes);
 
 const patientRoutes = require('./src/routes/patientRoutes');
@@ -35,7 +40,7 @@ app.use('/api/location', locationRoutes);
 const safeZoneRoutes = require('./src/routes/safeZoneRoutes');
 app.use('/api/safe-zones', safeZoneRoutes);
 
-// Health check route
+// Quick check for deployment and monitoring
 app.get('/api/health', (req, res) => {
     res.json({
         success: true,
@@ -45,7 +50,7 @@ app.get('/api/health', (req, res) => {
         environment: process.env.NODE_ENV
     });
 });
-// Handle 404
+// No route matched – return consistent JSON so frontend can show a clear message
 app.use('*', (req, res) => {
     res.status(404).json({
         success: false,
@@ -62,18 +67,16 @@ app.use((error, req, res, next) => {
     });
 });
 
-// Initialize database and start server
+// Connect to DB, sync models (create/alter tables), then listen
 const startServer = async () => {
     try {
         console.log('Testing database connection...');
-
-        // Test database connection
         await sequelize.authenticate();
         console.log('PostgreSQL connection established successfully');
 
-        // Sync database tables (creates missing tables)
+        // alter: true updates columns if model changed; avoids dropping data
         console.log('Syncing database tables...');
-        await sequelize.sync({ alter: true }); // Updates schema without losing data
+        await sequelize.sync({ alter: true });
         console.log('Database tables synchronized');
 
         // Start server

@@ -1,9 +1,17 @@
+/**
+ * Add/Edit Patient modal – four tabs: Personal, Medical, Medical History, Care & Emergency.
+ * Medical history is stored as a structured object: diagnosis, chronicConditions (array of
+ * { diagnosis, dateDiagnosed }), pastConditions, etc. Emergency contacts are "Name - Phone"
+ * per line. Create sends to POST /api/patients; update to PUT /api/patients/:id. Validation
+ * matches backend (email, password strength, required fields). Archive is a separate flow at bottom.
+ */
 import { useEffect, useMemo, useState, forwardRef, useRef } from "react";
 import "./PatientFormModal.css";
 import { createPatient, updatePatient } from "../services/patients";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { Calendar, Plus, Trash2 } from "lucide-react";
+
 const TABS = ["Personal", "Medical", "Medical History", "Care & Emergency"];
 
 const DateInputWithButton = forwardRef(

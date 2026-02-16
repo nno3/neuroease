@@ -1,11 +1,19 @@
+/**
+ * Patient controller – CRUD for patients, caregiver–patient assignment,
+ * invite sending (passwordless activate link), archive/unarchive with audit.
+ * All routes enforce ownership: caregivers see only assigned patients; patients only themselves.
+ */
 const crypto = require('crypto');
 const { User, Patient } = require('../models');
 const { sendPatientInviteEmail } = require('../utils/emailService');
 
 const INVITE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-//helpers for medical history / conditions
-
+// --- Medical history helpers ---
+// The API and UI can send medical history as a JSON object (preferred) or a string (legacy).
+// chronicConditions may be an array of { diagnosis, dateDiagnosed } or an old string; we support
+// both so existing data and new structured forms both work. buildConditionsSummary produces a
+// single display string for lists and details.
 function parseMedicalHistory(raw) {
   if (!raw) return {};
   if (typeof raw === 'object') return raw;
@@ -70,7 +78,7 @@ function buildConditionsSummary(historyObj, fallback) {
 
 
 const patientController = {
-  // Get patient details (with ownership check)
+  /** Single patient by id; 403 if caregiver not assigned or patient accessing another */
   getPatientDetails: async (req, res) => {
     try {
       const patientId = parseInt(req.params.patientId, 10);

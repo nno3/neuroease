@@ -1,3 +1,6 @@
+/**
+ * Safe zone routes – mounted at /api/safe-zones. CRUD for geofence zones per patient; caregiver-only.
+ */
 const express = require('express');
 const safeZoneController = require('../controllers/safeZoneController');
 const { verifyToken } = require('../middleware/auth');

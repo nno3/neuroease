@@ -1,3 +1,7 @@
+/**
+ * Role middleware – restrict routes by userType (caregiver | patient).
+ * Must run after verifyToken so req.user is set. Used by patient and auth routes.
+ */
 const checkRole = (allowedRoles) => {
     return (req, res, next) => {
         if (!req.user) {

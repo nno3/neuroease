@@ -1,3 +1,6 @@
+/**
+ * Wraps routes that require a logged-in caregiver. If no user, redirects to /login.
+ */
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 

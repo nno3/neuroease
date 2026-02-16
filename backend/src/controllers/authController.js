@@ -1,14 +1,22 @@
+/**
+ * Auth controller – caregiver registration/login (email+password + verification),
+ * and patient passwordless flows. Patients use two separate token types: (1) inviteToken –
+ * set when caregiver creates/sends invite, consumed by /activate to activate account;
+ * (2) magicLinkToken – set when patient requests "Send login link", consumed by
+ * /patient/verify-link to log in. Both are single-use and time-limited.
+ */
 const crypto = require('crypto');
 const { Op } = require('sequelize');
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const { sendVerificationEmail, sendPatientInviteEmail, sendPatientMagicLinkEmail } = require('../utils/emailService');
 
-const VERIFICATION_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
-const INVITE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-const MAGIC_LINK_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes
+const VERIFICATION_EXPIRY_MS = 24 * 60 * 60 * 1000;   // 24 hours
+const INVITE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;    // 7 days
+const MAGIC_LINK_EXPIRY_MS = 15 * 60 * 1000;         // 15 minutes
 
 const authController = {
+    /** Caregiver sign-up: create user, set verification token, send email (or log link if no SMTP) */
     register: async (req, res) => {
         try {
             const { email, password, name, userType } = req.body;
@@ -84,6 +92,7 @@ const authController = {
     },
 
 
+    /** Caregiver login: validate credentials and email verification, return JWT */
     login: async (req, res) => {
         try {
             const { email, password } = req.body;
@@ -413,8 +422,8 @@ const authController = {
     /**
      * Patient: request magic link (email only). Sends email with login link.
      */
+    /** Patient: request magic link (email only). Rejects if account not yet activated. */
     patientRequestLogin: async (req, res) => {
-        console.log('[auth] POST /api/auth/patient/request-login hit');
         try {
             const email = (req.body.email || '').trim().toLowerCase();
             if (!email) {

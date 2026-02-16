@@ -1,3 +1,7 @@
+/**
+ * Patient app API client – builds request URL (avoids double /api when API_BASE has trailing /api),
+ * attaches JWT from localStorage, and parses JSON errors. Auth helpers for activate/login flow.
+ */
 import { API_BASE } from "../config";
 
 const STORAGE_KEY = "neuroease_patient";
@@ -24,11 +28,8 @@ export function clearStoredAuth() {
   } catch (_) {}
 }
 
-/**
- * Build request URL. Paths are like "/api/auth/activate".
- * If API_BASE is set (e.g. http://localhost:5001/api), strip trailing /api
- * so we don't end up with /api/api/... and get 404.
- */
+/** Build full URL: paths are like "/api/auth/activate". If API_BASE is set to e.g. http://host:5001/api
+ * (common in production), concatenating would give /api/api/... and 404; we strip trailing /api once. */
 function buildApiUrl(path) {
   const base = (API_BASE || "").replace(/\/api\/?$/, "");
   return base ? `${base}${path.startsWith("/") ? path : "/" + path}` : path;

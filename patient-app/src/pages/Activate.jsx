@@ -1,3 +1,7 @@
+/**
+ * Activate page – opened from caregiver invite link (/activate?token=...).
+ * Calls backend to validate token, activate account, then logs user in and redirects to home.
+ */
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";

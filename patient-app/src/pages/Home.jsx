@@ -1,3 +1,4 @@
+/** Logged-in home – placeholder content and link to Reminders. */
 import { Link } from "react-router-dom";
 
 export default function Home() {

@@ -1,8 +1,9 @@
+/**
+ * Patient auth service – activate (invite link), request magic link, verify magic link.
+ * All call apiRequest; activate and verifyMagicLink return { user, token } and caller stores via setStoredAuth.
+ */
 import { apiRequest, setStoredAuth, clearStoredAuth, getStoredAuth } from "./apiClient";
 
-/**
- * Activate account with invite token (from email link). Returns { user, token }.
- */
 export async function activate(token) {
   const data = await apiRequest("/api/auth/activate", {
     method: "POST",
@@ -15,9 +16,7 @@ export async function activate(token) {
   throw new Error(data.message || "Activation failed");
 }
 
-/**
- * Request magic link (email only). Sends email; does not return a session.
- */
+/** Backend sends magic link to email; patient opens link to log in (verifyMagicLink) */
 export async function requestLoginLink(email) {
   const data = await apiRequest("/api/auth/patient/request-login", {
     method: "POST",
@@ -27,9 +26,7 @@ export async function requestLoginLink(email) {
   return data;
 }
 
-/**
- * Verify magic link token and log in. Returns { user, token }.
- */
+/** Validate magic link token; returns { user, token }. Caller should call setStoredAuth and login(). */
 export async function verifyMagicLink(token) {
   const data = await apiRequest("/api/auth/patient/verify-link", {
     method: "POST",

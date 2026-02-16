@@ -1,10 +1,14 @@
+/**
+ * Patient app entry – mounts React app with router. In dev we unregister service
+ * workers so the browser doesn’t serve an old cached bundle; in production we
+ * register the PWA service worker for installability.
+ */
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import "./index.css";
 
-// In dev, unregister any old service workers so cached PWA doesn't serve stale "Issue 1.3" UI
 if (import.meta.env.DEV && "serviceWorker" in navigator) {
   navigator.serviceWorker.getRegistrations?.().then((regs) => {
     regs.forEach((r) => r.unregister());

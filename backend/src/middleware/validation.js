@@ -1,8 +1,10 @@
-const yup = require('yup');
 /**
- * Validation schema for user registration.
- * Ensures email, password, name and userType all meet the expected format.
+ * Request validation middleware using Yup – register, login, reminder, patient registration.
+ * Validators run before controllers; 400 with message on failure.
  */
+const yup = require('yup');
+
+/** Shared email validator: trim, lowercase, format check */
 const customEmailValidator = yup
     .string()
     .transform((value) => (value ? value.trim().toLowerCase() : value))

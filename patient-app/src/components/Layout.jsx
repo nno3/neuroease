@@ -1,3 +1,7 @@
+/**
+ * Logged-in shell: header (app name + logout), main content area, bottom nav (Home, Reminders).
+ * Skip link and focus order support accessibility; touch targets and contrast in CSS.
+ */
 import { Outlet, useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import "./Layout.css";

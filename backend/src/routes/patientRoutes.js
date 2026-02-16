@@ -1,3 +1,7 @@
+/**
+ * Patient routes – mounted at /api/patients.
+ * All routes require JWT; caregivers can create/assign/archive; patients can read/update own profile.
+ */
 const express = require('express');
 const patientController = require('../controllers/patientController');
 const { verifyToken } = require('../middleware/auth');
@@ -5,8 +9,6 @@ const { requireCaregiver, requireAny } = require('../middleware/roles');
 const { validatePatientRegistration } = require('../middleware/validation');
 
 const router = express.Router();
-
-// All routes require authentication
 router.use(verifyToken);
 
 // Caregiver assigns patient

@@ -1,9 +1,11 @@
+/**
+ * Caregiver dashboard API client – base URL from env; apiRequest adds Bearer token from
+ * localStorage and throws on non-OK response with server message. Used by auth and data services.
+ */
 export const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001/api';
 
 export async function apiRequest(endpoint, options = {}) {
     const token = localStorage.getItem('token');
-
-    // For development - add mock token if none exists
     let authToken = token;
     if (!authToken && process.env.NODE_ENV === 'development') {
         console.warn('No token found, using mock token for development');

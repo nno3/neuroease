@@ -1,3 +1,7 @@
+/**
+ * Patient auth context – no password; login() is called with (user, token) after
+ * activate or magic-link verification. State is persisted in localStorage via apiClient.
+ */
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { getStoredAuth, clearStoredAuth, setStoredAuth } from "../services/apiClient";
 
@@ -15,11 +19,13 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
+  /** Called after successful activate or magic-link verify; stores token and sets user */
   const login = (userData, token) => {
     setStoredAuth(userData, token);
     setUser(userData);
   };
 
+  /** Clear stored auth and user state (e.g. before redirect to /login) */
   const logout = () => {
     clearStoredAuth();
     setUser(null);
