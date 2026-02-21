@@ -11,6 +11,19 @@
   --pa-touch-min: 44px;
   --pa-focus-ring: 2px solid var(--pa-primary);
   --pa-focus-offset: 2px;
+  /* Category colors for reminders – simple, distinct */
+  --pa-reminder-medication-bg: #fef2f2;
+  --pa-reminder-medication-border: #dc2626;
+  --pa-reminder-medication-accent: #b91c1c;
+  --pa-reminder-appointment-bg: #eff6ff;
+  --pa-reminder-appointment-border: #2563eb;
+  --pa-reminder-appointment-accent: #1d4ed8;
+  --pa-reminder-task-bg: #fff7ed;
+  --pa-reminder-task-border: #ea580c;
+  --pa-reminder-task-accent: #c2410c;
+  --pa-reminder-completed-bg: #f0fdf4;
+  --pa-reminder-completed-border: #16a34a;
+  --pa-reminder-completed-accent: #15803d;
 }
 
 *,

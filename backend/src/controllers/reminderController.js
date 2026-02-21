@@ -102,7 +102,11 @@ const updateReminder = async (req, res) => {
             }
         }
 
-        await reminder.update(req.body);
+        const updates = { ...req.body };
+        if (updates.isCompleted === true && !updates.completedAt) {
+            updates.completedAt = new Date();
+        }
+        await reminder.update(updates);
 
         res.json({ success: true, message: "Reminder updated", data: reminder });
 

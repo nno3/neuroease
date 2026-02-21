@@ -235,6 +235,11 @@ CREATE INDEX idx_reminders_active ON reminders(patient_id, scheduled_time)
     WHERE is_completed = false;
 ```
 
+**Optional column for "completed late" (when the reminder was marked done):**
+```sql
+ALTER TABLE reminders ADD COLUMN completed_at TIMESTAMP NULL;
+```
+
 #### Game Sessions Table
 ```sql
 CREATE TABLE game_sessions (

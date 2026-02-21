@@ -23,6 +23,23 @@
   padding: 1rem 0;
 }
 
+.pa-reminders-section {
+  margin-top: 1.25rem;
+}
+
+.pa-reminders-section:first-of-type {
+  margin-top: 0.75rem;
+}
+
+.pa-reminders-section__title {
+  margin: 0 0 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--pa-text);
+  padding-bottom: 0.375rem;
+  border-bottom: 1px solid var(--pa-border);
+}
+
 .pa-reminders-list {
   list-style: none;
   margin: 0.5rem 0 0;
@@ -34,15 +51,43 @@
 
 .pa-reminders-card {
   display: flex;
-  align-items: flex-start;
-  gap: 1rem;
+  flex-direction: column;
+  gap: 0;
   padding: 1rem;
-  min-height: var(--pa-touch-min);
   background: var(--pa-surface);
   border: 1px solid var(--pa-border);
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
+
+.pa-reminders-card__main {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.pa-reminders-card__icon {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.pa-reminders-card__icon-svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--pa-text);
+}
+
+.pa-reminders-card--medication .pa-reminders-card__icon-svg { color: var(--pa-reminder-medication-accent); }
+.pa-reminders-card--appointment .pa-reminders-card__icon-svg { color: var(--pa-reminder-appointment-accent); }
+.pa-reminders-card--general .pa-reminders-card__icon-svg { color: var(--pa-reminder-task-accent); }
+.pa-reminders-card--completed .pa-reminders-card__icon-svg { color: var(--pa-reminder-completed-accent); }
 
 .pa-reminders-card__time {
   flex-shrink: 0;
@@ -50,6 +95,27 @@
   font-weight: 600;
   color: var(--pa-primary);
   min-width: 3.5rem;
+}
+
+/* Category colors: support information presentation (not meaning alone) per accessibility guidance */
+.pa-reminders-card--medication {
+  background: var(--pa-reminder-medication-bg);
+  border-color: var(--pa-reminder-medication-border);
+}
+
+.pa-reminders-card--appointment {
+  background: var(--pa-reminder-appointment-bg);
+  border-color: var(--pa-reminder-appointment-border);
+}
+
+.pa-reminders-card--general {
+  background: var(--pa-reminder-task-bg);
+  border-color: var(--pa-reminder-task-border);
+}
+
+.pa-reminders-card--completed {
+  background: var(--pa-reminder-completed-bg);
+  border-color: var(--pa-reminder-completed-border);
 }
 
 .pa-reminders-card__date {
@@ -96,6 +162,107 @@
   font-size: 0.8125rem;
   color: var(--pa-primary);
   font-weight: 500;
+}
+
+/* Footer: same position on every card for simple, predictable layout */
+.pa-reminders-card__footer {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--pa-border);
+  min-height: var(--pa-touch-min);
+  display: flex;
+  align-items: center;
+}
+
+.pa-reminders-card__action {
+  min-height: var(--pa-touch-min);
+  width: 100%;
+}
+
+.pa-reminders-card__action:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.pa-reminders-card--completed .pa-reminders-card__title {
+  text-decoration: line-through;
+  color: var(--pa-text-muted);
+}
+
+.pa-reminders-card--completed .pa-reminders-card__time,
+.pa-reminders-card--completed .pa-reminders-card__type,
+.pa-reminders-card--completed .pa-reminders-card__message {
+  color: var(--pa-text-muted);
+  opacity: 0.9;
+}
+
+/* Completion modal: "Great Job!" overlay */
+.pa-reminders-completion-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 1000;
+}
+
+.pa-reminders-completion-modal {
+  background: var(--pa-surface);
+  border-radius: 16px;
+  padding: 2rem 1.75rem;
+  max-width: 20rem;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.pa-reminders-completion-modal__icon {
+  width: 4rem;
+  height: 4rem;
+  color: #16a34a;
+  margin: 0 auto 1rem;
+  display: block;
+}
+
+.pa-reminders-completion-modal__title {
+  margin: 0 0 0.5rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--pa-text);
+}
+
+.pa-reminders-completion-modal__text {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--pa-text-muted);
+  font-weight: 400;
+}
+
+.pa-reminders-mark-error {
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+}
+
+/* Completed state: checkmark + label in footer */
+.pa-reminders-card__done {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #15803d;
+}
+
+.pa-reminders-card--completed-late .pa-reminders-card__done {
+  color: #b45309;
+}
+
+.pa-reminders-card__done-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
 }
 
 .pa-reminders-card:focus-within {

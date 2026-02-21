@@ -36,6 +36,10 @@ const Reminder = sequelize.define('Reminder', {
         type: DataTypes.BOOLEAN,
         defaultValue: false
     },
+    completedAt: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
     recurrence: {
         type: DataTypes.ENUM('once', 'daily', 'weekly'),
         defaultValue: 'once'

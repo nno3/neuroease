@@ -65,12 +65,18 @@
 .pa-main {
   flex: 1;
   padding: 20px;
+  padding-bottom: calc(72px + env(safe-area-inset-bottom));
   overflow-y: auto;
+  min-height: 0;
 }
 
-/* Bottom nav: 44px touch targets, high contrast */
+/* Bottom nav: fixed so it stays visible when scrolling; 44px touch targets, high contrast */
 .pa-bottom-nav {
-  flex-shrink: 0;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
   display: flex;
   justify-content: center;
   gap: 0;
