@@ -118,6 +118,31 @@
   border-color: var(--pa-reminder-completed-border);
 }
 
+/* Overdue: distinct styling for items past scheduled time, not completed */
+.pa-reminders-card--overdue:not(.pa-reminders-card--completed) {
+  background: var(--pa-reminder-overdue-bg);
+  border-color: var(--pa-reminder-overdue-border);
+  border-width: 2px;
+}
+
+.pa-reminders-card__overdue-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--pa-reminder-overdue-accent);
+  font-weight: 600;
+}
+
+.pa-reminders-card__overdue-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
+}
+
+.pa-reminders-section__title--overdue {
+  color: var(--pa-reminder-overdue-accent);
+}
+
 .pa-reminders-card__date {
   display: block;
   font-size: 0.8125rem;

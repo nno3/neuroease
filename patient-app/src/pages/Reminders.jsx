@@ -3,7 +3,7 @@
  * Shows loading state, empty state, and a readable list (time, title, type, recurrence).
  */
 import { useState, useEffect } from "react";
-import { CheckCircle2, Pill, CalendarDays, ClipboardList } from "lucide-react";
+import { CheckCircle2, Pill, CalendarDays, ClipboardList, AlertCircle } from "lucide-react";
 import "./Reminders.css";
 import { useAuth } from "../context/AuthContext";
 import { getRemindersForPatient, markReminderComplete } from "../services/reminders";
@@ -230,10 +230,19 @@ export default function Reminders() {
     );
   }
 
+  const now = new Date();
   const occurrences = buildOccurrences(reminders);
-  const todayList = occurrences.filter((o) => isScheduledToday(o.effectiveScheduledTime));
+  const todayRaw = occurrences.filter((o) => isScheduledToday(o.effectiveScheduledTime));
   const upcomingList = occurrences.filter((o) => isScheduledAfterToday(o.effectiveScheduledTime));
-  const hasAny = todayList.length > 0 || upcomingList.length > 0;
+  const overdueList = todayRaw.filter(
+    (o) => !isCompletedForOccurrence(o.reminder, o.effectiveScheduledTime) &&
+      new Date(o.effectiveScheduledTime).getTime() < now.getTime()
+  );
+  const dueTodayList = todayRaw.filter(
+    (o) => isCompletedForOccurrence(o.reminder, o.effectiveScheduledTime) ||
+      new Date(o.effectiveScheduledTime).getTime() >= now.getTime()
+  );
+  const hasAny = todayRaw.length > 0 || upcomingList.length > 0;
 
   if (!hasAny) {
     return (
@@ -253,9 +262,10 @@ export default function Reminders() {
     const r = occurrence.reminder;
     const effectiveTime = occurrence.effectiveScheduledTime;
     const completedForThisOccurrence = isCompletedForOccurrence(r, effectiveTime);
+    const isOverdue = section === "overdue";
     const typeClass = r.reminderType ? `pa-reminders-card--${r.reminderType}` : "";
     const IconComponent = REMINDER_TYPE_ICONS[r.reminderType] || ClipboardList;
-    const canMarkDone = section === "today" && !completedForThisOccurrence;
+    const canMarkDone = (section === "today" || section === "overdue") && !completedForThisOccurrence;
     const isUpcoming = section === "upcoming";
     const key = `${r.id}-${effectiveTime}`;
     const completedLate = completedForThisOccurrence && r.completedAt && new Date(r.completedAt) > new Date(effectiveTime);
@@ -263,7 +273,7 @@ export default function Reminders() {
     return (
       <li
         key={key}
-        className={`pa-reminders-card ${typeClass} ${completedForThisOccurrence ? "pa-reminders-card--completed" : ""} ${completedLate ? "pa-reminders-card--completed-late" : ""}`}
+        className={`pa-reminders-card ${typeClass} ${completedForThisOccurrence ? "pa-reminders-card--completed" : ""} ${completedLate ? "pa-reminders-card--completed-late" : ""} ${isOverdue ? "pa-reminders-card--overdue" : ""}`}
       >
         <div className="pa-reminders-card__main">
           <div className="pa-reminders-card__icon" aria-hidden>
@@ -278,6 +288,15 @@ export default function Reminders() {
           <div className="pa-reminders-card__body">
             <span className="pa-reminders-card__type">
               {REMINDER_TYPE_LABELS[r.reminderType] || r.reminderType}
+              {isOverdue && (
+                <>
+                  {" · "}
+                  <span className="pa-reminders-card__overdue-label" aria-label="Overdue">
+                    <AlertCircle className="pa-reminders-card__overdue-icon" aria-hidden />
+                    Overdue
+                  </span>
+                </>
+              )}
             </span>
             <h3 className="pa-reminders-card__title">{r.title}</h3>
             {r.message && (
@@ -345,13 +364,23 @@ export default function Reminders() {
           {markError}
         </p>
       )}
-      {todayList.length > 0 && (
+      {overdueList.length > 0 && (
+        <section className="pa-reminders-section" aria-labelledby="pa-reminders-overdue-heading">
+          <h3 id="pa-reminders-overdue-heading" className="pa-reminders-section__title pa-reminders-section__title--overdue">
+            Overdue
+          </h3>
+          <ul className="pa-reminders-list" role="list" aria-label="Overdue reminders">
+            {overdueList.map((r) => renderCard(r, "overdue"))}
+          </ul>
+        </section>
+      )}
+      {dueTodayList.length > 0 && (
         <section className="pa-reminders-section" aria-labelledby="pa-reminders-today-heading">
           <h3 id="pa-reminders-today-heading" className="pa-reminders-section__title">
-            Today
+            Due today
           </h3>
-          <ul className="pa-reminders-list" role="list" aria-label="Today's reminders">
-            {todayList.map((r) => renderCard(r, "today"))}
+          <ul className="pa-reminders-list" role="list" aria-label="Reminders due today">
+            {dueTodayList.map((r) => renderCard(r, "today"))}
           </ul>
         </section>
       )}

@@ -86,11 +86,42 @@ function formatReminderTime(d) {
     });
 }
 
-function reminderStatus(reminder) {
+/** Format completedAt for display: time only if same day as occurrence, else date + time. */
+function formatCompletedAt(completedAt, effectiveScheduledTime) {
+    if (!completedAt) return null;
+    const d = new Date(completedAt);
+    if (Number.isNaN(d.getTime())) return null;
+    const effective = new Date(effectiveScheduledTime);
+    const sameDay = d.getDate() === effective.getDate() && d.getMonth() === effective.getMonth() && d.getFullYear() === effective.getFullYear();
+    if (sameDay) {
+        return d.toLocaleString(undefined, { hour: "numeric", minute: "2-digit" });
+    }
+    return d.toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+}
+
+/** True if reminder is completed for this occurrence. Once: use isCompleted. Daily/weekly: completedAt on same calendar day. */
+function isCompletedForOccurrence(reminder, effectiveScheduledTime) {
+    if (!reminder) return false;
+    if (reminder.recurrence === "once") return !!reminder.isCompleted;
+    if (!reminder.completedAt) return false;
+    const completed = new Date(reminder.completedAt);
+    const effective = new Date(effectiveScheduledTime);
+    return (
+        completed.getDate() === effective.getDate() &&
+        completed.getMonth() === effective.getMonth() &&
+        completed.getFullYear() === effective.getFullYear()
+    );
+}
+
+function reminderStatusForOccurrence(reminder, effectiveScheduledTime) {
     const now = new Date();
-    const scheduled = new Date(reminder.scheduledTime);
-    if (reminder.recurrence === "once" && reminder.isCompleted) return "completed";
-    if (scheduled < now && (reminder.recurrence !== "once" || !reminder.isCompleted)) return "overdue";
+    const effective = new Date(effectiveScheduledTime);
+    const completed = isCompletedForOccurrence(reminder, effective);
+    if (completed) {
+        if (reminder.completedAt && new Date(reminder.completedAt) > effective) return "completed-late";
+        return "completed";
+    }
+    if (effective.getTime() < now.getTime()) return "overdue";
     return "pending";
 }
 
@@ -105,20 +136,37 @@ const ALERT_FILTERS = [
     { value: "month", label: "This month" },
 ];
 
+/** Monday of the week containing d (week = Mon–Sun). */
+function getWeekStart(d) {
+    const x = new Date(d);
+    const day = x.getDay();
+    const daysFromMonday = (day + 6) % 7;
+    x.setDate(x.getDate() - daysFromMonday);
+    x.setHours(0, 0, 0, 0);
+    return x;
+}
+
 function filterAlertsByRange(alerts, range) {
     if (!Array.isArray(alerts) || alerts.length === 0) return [];
     const now = new Date();
     let start;
+    let end;
     if (range === "day") {
         start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        end = new Date(start);
+        end.setDate(end.getDate() + 1);
     } else if (range === "week") {
-        start = new Date(now);
-        start.setDate(start.getDate() - 7);
+        start = getWeekStart(now);
+        end = new Date(start);
+        end.setDate(end.getDate() + 7);
     } else {
-        start = new Date(now);
-        start.setMonth(start.getMonth() - 1);
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
     }
-    return alerts.filter((a) => new Date(a.timestamp) >= start);
+    return alerts.filter((a) => {
+        const t = new Date(a.timestamp).getTime();
+        return t >= start.getTime() && t < end.getTime();
+    });
 }
 
 /** True if a reminder has an occurrence on the given date (same calendar day). */
@@ -168,23 +216,87 @@ function filterRemindersByRange(reminders, range) {
     if (!Array.isArray(reminders) || reminders.length === 0) return [];
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-    const todayEnd = new Date(todayStart);
-    todayEnd.setDate(todayEnd.getDate() + 1);
-    const weekEnd = new Date(todayStart);
+    const weekStart = getWeekStart(now);
+    const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 7);
-    const monthEnd = new Date(todayStart);
-    monthEnd.setMonth(monthEnd.getMonth() + 1);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
 
     if (range === "day") {
         return reminders.filter((r) => reminderOccursOnDate(r, now));
     }
     if (range === "week") {
-        return reminders.filter((r) => reminderOccursInRange(r, todayStart, weekEnd));
+        return reminders.filter((r) => reminderOccursInRange(r, weekStart, weekEnd));
     }
     if (range === "month") {
-        return reminders.filter((r) => reminderOccursInRange(r, todayStart, monthEnd));
+        return reminders.filter((r) => reminderOccursInRange(r, monthStart, monthEnd));
     }
     return reminders;
+}
+
+/** Build list of { reminder, effectiveScheduledTime } — one per occurrence in the range. Daily shows each day; weekly each matching weekday; once once. */
+function buildOccurrencesForRange(reminders, range) {
+    if (!Array.isArray(reminders) || reminders.length === 0) return [];
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const weekStart = getWeekStart(now);
+    const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
+    const hours = (r) => new Date(r.scheduledTime).getHours();
+    const minutes = (r) => new Date(r.scheduledTime).getMinutes();
+    const weekday = (r) => new Date(r.scheduledTime).getDay();
+
+    const result = [];
+    for (const r of reminders) {
+        const recurrence = r.recurrence || "once";
+        const h = hours(r);
+        const m = minutes(r);
+
+        if (recurrence === "once") {
+            const t = new Date(r.scheduledTime).getTime();
+            const inRange = (range === "day" && reminderOccursOnDate(r, now)) ||
+                (range === "week" && t >= weekStart.getTime() && t < weekEnd.getTime()) ||
+                (range === "month" && t >= monthStart.getTime() && t < monthEnd.getTime());
+            if (inRange) result.push({ reminder: r, effectiveScheduledTime: r.scheduledTime });
+            continue;
+        }
+
+        if (recurrence === "daily") {
+            const startDate = range === "day" ? todayStart : range === "week" ? weekStart : monthStart;
+            const endDate = range === "day"
+                ? new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
+                : range === "week"
+                    ? weekEnd
+                    : monthEnd;
+            let d = new Date(startDate);
+            while (d.getTime() < endDate.getTime()) {
+                const occ = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m, 0, 0);
+                result.push({ reminder: r, effectiveScheduledTime: occ.toISOString() });
+                d.setDate(d.getDate() + 1);
+            }
+            continue;
+        }
+
+        if (recurrence === "weekly") {
+            const targetWeekday = weekday(r);
+            const startDate = range === "day" ? todayStart : range === "week" ? weekStart : monthStart;
+            const end = range === "day"
+                ? new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
+                : range === "week"
+                    ? weekEnd
+                    : monthEnd;
+            let d = new Date(startDate);
+            while (d.getTime() < end.getTime()) {
+                if (d.getDay() === targetWeekday) {
+                    d.setHours(h, m, 0, 0);
+                    result.push({ reminder: r, effectiveScheduledTime: d.toISOString() });
+                }
+                d.setDate(d.getDate() + 1);
+            }
+        }
+    }
+    return result.sort((a, b) => new Date(a.effectiveScheduledTime) - new Date(b.effectiveScheduledTime));
 }
 
 /**
@@ -255,6 +367,11 @@ export default function PatientActivityModal({ patient, onClose, onViewDetails }
     const filteredReminders = useMemo(
         () => filterRemindersByRange(sortedReminders, alertFilter),
         [sortedReminders, alertFilter]
+    );
+
+    const reminderOccurrences = useMemo(
+        () => buildOccurrencesForRange(filteredReminders, alertFilter),
+        [filteredReminders, alertFilter]
     );
 
     const filteredAlerts = useMemo(
@@ -336,7 +453,7 @@ export default function PatientActivityModal({ patient, onClose, onViewDetails }
                                 <h3 className="pa-section-title">
                                     <CalendarClock size={18} aria-hidden /> Scheduled reminders
                                 </h3>
-                                {filteredReminders.length === 0 ? (
+                                {reminderOccurrences.length === 0 ? (
                                     <p className="pa-empty">
                                         {sortedReminders.length === 0
                                             ? "No reminders scheduled."
@@ -344,25 +461,31 @@ export default function PatientActivityModal({ patient, onClose, onViewDetails }
                                     </p>
                                 ) : (
                                     <ul className="pa-reminder-list">
-                                        {filteredReminders.map((r) => {
-                                            const status = reminderStatus(r);
+                                        {reminderOccurrences.map((occ) => {
+                                            const r = occ.reminder;
+                                            const effectiveTime = occ.effectiveScheduledTime;
+                                            const status = reminderStatusForOccurrence(r, effectiveTime);
+                                            const statusLabel = status === "completed-late" ? "Completed late" : status;
+                                            const completedAtStr = status === "completed-late" && r.completedAt
+                                                ? formatCompletedAt(r.completedAt, effectiveTime) : null;
                                             return (
-                                                <li key={r.id} className={`pa-reminder-item pa-reminder-${status}`}>
+                                                <li key={`${r.id}-${effectiveTime}`} className={`pa-reminder-item pa-reminder-${status}`}>
                                                     <span className="pa-reminder-icon">
-                                                        {status === "completed" && <CheckCircle2 size={18} aria-hidden />}
+                                                        {(status === "completed" || status === "completed-late") && <CheckCircle2 size={18} aria-hidden />}
                                                         {status === "overdue" && <XCircle size={18} aria-hidden />}
                                                         {status === "pending" && <Clock size={18} aria-hidden />}
                                                     </span>
                                                     <div className="pa-reminder-content">
                                                         <span className="pa-reminder-title">{r.title}</span>
                                                         <span className="pa-reminder-meta">
-                                                            {formatReminderTime(r.scheduledTime)}
+                                                            {formatReminderTime(effectiveTime)}
                                                             {r.reminderType && ` · ${r.reminderType}`}
                                                             {r.recurrence && r.recurrence !== "once" && ` · ${r.recurrence}`}
+                                                            {completedAtStr && ` · Completed at ${completedAtStr}`}
                                                         </span>
                                                     </div>
                                                     <span className={`pa-reminder-badge pa-badge-${status}`}>
-                                                        {status}
+                                                        {statusLabel}
                                                     </span>
                                                 </li>
                                             );
