@@ -83,6 +83,20 @@ function isDue(isoString) {
   return Date.now() >= scheduled;
 }
 
+/** True if reminder is completed for this specific occurrence. For once: use isCompleted. For daily/weekly: completedAt must be on the same calendar day as the occurrence. */
+function isCompletedForOccurrence(reminder, effectiveScheduledTime) {
+  if (!reminder) return false;
+  if (reminder.recurrence === "once") return !!reminder.isCompleted;
+  if (!reminder.completedAt) return false;
+  const completed = new Date(reminder.completedAt);
+  const effective = new Date(effectiveScheduledTime);
+  return (
+    completed.getDate() === effective.getDate() &&
+    completed.getMonth() === effective.getMonth() &&
+    completed.getFullYear() === effective.getFullYear()
+  );
+}
+
 /**
  * Get the effective occurrence time for a reminder so recurring (daily/weekly) show correctly.
  * - once: use scheduledTime if on or after today.
@@ -238,17 +252,18 @@ export default function Reminders() {
   const renderCard = (occurrence, section) => {
     const r = occurrence.reminder;
     const effectiveTime = occurrence.effectiveScheduledTime;
+    const completedForThisOccurrence = isCompletedForOccurrence(r, effectiveTime);
     const typeClass = r.reminderType ? `pa-reminders-card--${r.reminderType}` : "";
     const IconComponent = REMINDER_TYPE_ICONS[r.reminderType] || ClipboardList;
-    const canMarkDone = section === "today" && !r.isCompleted;
+    const canMarkDone = section === "today" && !completedForThisOccurrence;
     const isUpcoming = section === "upcoming";
     const key = `${r.id}-${effectiveTime}`;
-    const completedLate = r.isCompleted && r.completedAt && new Date(r.completedAt) > new Date(effectiveTime);
+    const completedLate = completedForThisOccurrence && r.completedAt && new Date(r.completedAt) > new Date(effectiveTime);
 
     return (
       <li
         key={key}
-        className={`pa-reminders-card ${typeClass} ${r.isCompleted ? "pa-reminders-card--completed" : ""} ${completedLate ? "pa-reminders-card--completed-late" : ""}`}
+        className={`pa-reminders-card ${typeClass} ${completedForThisOccurrence ? "pa-reminders-card--completed" : ""} ${completedLate ? "pa-reminders-card--completed-late" : ""}`}
       >
         <div className="pa-reminders-card__main">
           <div className="pa-reminders-card__icon" aria-hidden>
@@ -276,7 +291,7 @@ export default function Reminders() {
           </div>
         </div>
         <div className="pa-reminders-card__footer">
-          {r.isCompleted ? (
+          {completedForThisOccurrence ? (
             <span className="pa-reminders-card__done" aria-label={completedLate ? "Completed late" : "Completed"}>
               <CheckCircle2 className="pa-reminders-card__done-icon" aria-hidden />
               {completedLate ? "Completed late" : "Completed"}

@@ -121,6 +121,72 @@ function filterAlertsByRange(alerts, range) {
     return alerts.filter((a) => new Date(a.timestamp) >= start);
 }
 
+/** True if a reminder has an occurrence on the given date (same calendar day). */
+function reminderOccursOnDate(reminder, date) {
+    const scheduled = new Date(reminder.scheduledTime);
+    const recurrence = reminder.recurrence || "once";
+    if (recurrence === "once") {
+        return scheduled.getDate() === date.getDate() &&
+            scheduled.getMonth() === date.getMonth() &&
+            scheduled.getFullYear() === date.getFullYear();
+    }
+    if (recurrence === "daily") return true;
+    if (recurrence === "weekly") return scheduled.getDay() === date.getDay();
+    return false;
+}
+
+/** True if a reminder has an occurrence in [startDate, endDate) (endDate exclusive). */
+function reminderOccursInRange(reminder, startDate, endDate) {
+    const scheduled = new Date(reminder.scheduledTime);
+    const recurrence = reminder.recurrence || "once";
+    const startMs = startDate.getTime();
+    const endMs = endDate.getTime();
+
+    if (recurrence === "once") {
+        const t = scheduled.getTime();
+        return t >= startMs && t < endMs;
+    }
+    if (recurrence === "daily") {
+        const today = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+        const todayEnd = new Date(today);
+        todayEnd.setDate(todayEnd.getDate() + 1);
+        return todayEnd.getTime() <= endMs;
+    }
+    if (recurrence === "weekly") {
+        const dayOfWeek = scheduled.getDay();
+        const d = new Date(startDate);
+        while (d.getTime() < endMs) {
+            if (d.getDay() === dayOfWeek) return true;
+            d.setDate(d.getDate() + 1);
+        }
+        return false;
+    }
+    return false;
+}
+
+function filterRemindersByRange(reminders, range) {
+    if (!Array.isArray(reminders) || reminders.length === 0) return [];
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const todayEnd = new Date(todayStart);
+    todayEnd.setDate(todayEnd.getDate() + 1);
+    const weekEnd = new Date(todayStart);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+    const monthEnd = new Date(todayStart);
+    monthEnd.setMonth(monthEnd.getMonth() + 1);
+
+    if (range === "day") {
+        return reminders.filter((r) => reminderOccursOnDate(r, now));
+    }
+    if (range === "week") {
+        return reminders.filter((r) => reminderOccursInRange(r, todayStart, weekEnd));
+    }
+    if (range === "month") {
+        return reminders.filter((r) => reminderOccursInRange(r, todayStart, monthEnd));
+    }
+    return reminders;
+}
+
 /**
  * Full patient activity: reminders list, mock games, current location map, alert history with filter.
  */
@@ -186,6 +252,11 @@ export default function PatientActivityModal({ patient, onClose, onViewDetails }
         );
     }, [reminders]);
 
+    const filteredReminders = useMemo(
+        () => filterRemindersByRange(sortedReminders, alertFilter),
+        [sortedReminders, alertFilter]
+    );
+
     const filteredAlerts = useMemo(
         () => filterAlertsByRange(alerts, alertFilter),
         [alerts, alertFilter]
@@ -234,10 +305,10 @@ export default function PatientActivityModal({ patient, onClose, onViewDetails }
                     </button>
                 </div>
 
-                {/* Period filter at top — applies to Location alerts below */}
+                {/* Period filter at top — applies to Scheduled reminders and Location alerts */}
                 {!loading && !error && (
                     <div className="pa-filter-bar">
-                        <span className="pa-filter-label">Alert period:</span>
+                        <span className="pa-filter-label">Period:</span>
                         <div className="pa-alert-filters">
                             {ALERT_FILTERS.map((f) => (
                                 <button
@@ -265,11 +336,15 @@ export default function PatientActivityModal({ patient, onClose, onViewDetails }
                                 <h3 className="pa-section-title">
                                     <CalendarClock size={18} aria-hidden /> Scheduled reminders
                                 </h3>
-                                {sortedReminders.length === 0 ? (
-                                    <p className="pa-empty">No reminders scheduled.</p>
+                                {filteredReminders.length === 0 ? (
+                                    <p className="pa-empty">
+                                        {sortedReminders.length === 0
+                                            ? "No reminders scheduled."
+                                            : "No reminders in this period. Try \"This week\" or \"This month\" for more."}
+                                    </p>
                                 ) : (
                                     <ul className="pa-reminder-list">
-                                        {sortedReminders.map((r) => {
+                                        {filteredReminders.map((r) => {
                                             const status = reminderStatus(r);
                                             return (
                                                 <li key={r.id} className={`pa-reminder-item pa-reminder-${status}`}>
