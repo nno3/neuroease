@@ -1,6 +1,7 @@
 /**
  * Activate page – opened from caregiver invite link (/activate?token=...).
- * Calls backend to validate token, activate account, then logs user in and redirects to home.
+ * Validates token, activates account (no password), signs user in and redirects to home.
+ * Passwordless by design for accessibility (e.g. people with dementia).
  */
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
@@ -46,12 +47,12 @@ export default function Activate() {
       <div className="pa-card">
         <h1 className="pa-title">Activate your account</h1>
         <p className="pa-muted" style={{ fontSize: "0.875rem", marginBottom: "1rem" }}>
-          Use the link from your caregiver&apos;s email. This page calls the backend to activate you.
+          Use the link from your caregiver&apos;s email. You&apos;ll be signed in in a moment.
         </p>
         {status === "activating" && (
           <>
             <p className="pa-muted">Opening your account…</p>
-            <p className="pa-muted" style={{ marginTop: 0 }}>You’ll be signed in in a moment.</p>
+            <p className="pa-muted" style={{ marginTop: 0 }}>You'll be signed in in a moment.</p>
           </>
         )}
         {status === "error" && (

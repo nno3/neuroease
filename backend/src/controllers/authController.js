@@ -362,7 +362,7 @@ const authController = {
     },
 
     /**
-     * Patient: activate account with invite token (from email link). No password.
+     * Patient: activate account with invite token (from email link). No password; logs in immediately.
      */
     activatePatient: async (req, res) => {
         try {

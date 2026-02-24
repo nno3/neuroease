@@ -17,7 +17,7 @@ router.get('/verify-email', authController.verifyEmail);
 router.post('/verify-email', authController.verifyEmail);
 router.post('/resend-verification', authController.resendVerification);
 
-// Patient: no password; invite link activates account, magic link logs in
+// Patient: invite link activates account (passwordless), magic link for login
 router.post('/activate', authController.activatePatient);
 router.get('/activate', authController.activatePatient);
 router.post('/patient/request-login', authController.patientRequestLogin);

@@ -111,8 +111,9 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarch
                                         className="pm-btn pm-btn-outline"
                                         onClick={handleResendInvite}
                                         disabled={inviteLoading}
+                                        title="Send activation link to the patient's email so they can open the app"
                                     >
-                                        {inviteLoading ? "Sending…" : "Resend invite"}
+                                        {inviteLoading ? "Sending…" : "Invite to app"}
                                     </button>
                                 )}
                                 <button type="button" className="pm-btn pm-btn-outline" onClick={openEditFromDetails}>

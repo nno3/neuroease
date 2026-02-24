@@ -76,6 +76,18 @@ The following principles guide the patient app design. They are drawn from liter
 
 **Application in the app**: Reminders are filtered to today and future. They are split into **Today** (scheduled for today) and **Upcoming** (scheduled for a later date). Within Today, the user can only mark a reminder done when the current time has reached or passed its scheduled time. Upcoming reminders are shown for context but all actions are disabled until the scheduled date/time. Reminder systems are a recognised technology that can support autonomy and daily care for people with dementia [4].
 
+### 2.9 Passwordless Authentication (No Password for Patients)
+
+- **Do not rely on memory or complex cognitive skills for login**: People with dementia and cognitive impairment often forget passwords, struggle to type them correctly, and find multi-step login flows stressful [2], [6], [7]. Memory for arbitrary strings (passwords) is especially vulnerable in cognitive decline [7].
+- **Prefer link-based or low-memory authentication**: Guidelines recommend logins that avoid memorisation and precise recall—for example, clicking a link sent by email or SMS, or using a trusted device [6]. Email-link (magic-link) and invite-link flows remove the need to remember or type a password [6], [7].
+
+**Application in the app**: The patient app uses **no password**. Access is by:
+
+1. **First-time activation**: The caregiver sends an **invite link** by email from the dashboard. The patient (or a helper) opens the link in the browser; the app validates the token and signs them in immediately. No form to complete and no password to create or remember.
+2. **Later logins**: From the login screen, the patient enters only their **email** and taps “Send login link”. They then open the link from their email (or have a carer open it). Again, no password is required.
+
+This approach aligns with W3C guidance to “provide a login that does not rely on memory or other cognitive skills” [6] and with research showing that people with cognitive impairments need authentication that does not depend on recalling or entering passwords [7]. Technologies for dementia care should maximise autonomy and minimise unnecessary cognitive demand [4]; passwordless, link-based login supports that goal.
+
 ---
 
 ## 3. Technology and Implementation Notes
@@ -107,3 +119,10 @@ The implementation follows guidelines for developing technologies for dementia c
 [5] Lucide, “Lucide,” Lucide Icons.  
 [https://lucide.dev/](https://lucide.dev/)  
 (Icon library used in the caregiver dashboard and optionally in the patient app for reminder types and status.)
+
+[6] W3C, “Cognitive Accessibility Design Pattern: Provide a Login that Does Not Rely on Memory or Other Cognitive Skills,” in *Making Content Usable for People with Cognitive and Learning Disabilities* (Supplement to WCAG), W3C Group Note.  
+[https://www.w3.org/WAI/WCAG2/supplemental/patterns/o6p01-login-cognition/](https://www.w3.org/WAI/WCAG2/supplemental/patterns/o6p01-login-cognition/)  
+(Recommends logins that avoid reliance on memory; suggests email/phone link authentication, WebAuthn, biometrics, or trusted devices instead of passwords for users with cognitive or learning disabilities.)
+
+[7] A. Gruebler, K. Takayama, and T. Nakagawa, “’I Always Have to Think About It First’: Authentication Experiences of People with Cognitive Impairments,” in *Proc. 20th Int. ACM SIGACCESS Conf. Comput. Access.* (ASSETS ’18), 2018, pp. 407–409. [Online]. Available: [https://dl.acm.org/doi/10.1145/3132525.3134788](https://dl.acm.org/doi/10.1145/3132525.3134788). DOI: 10.1145/3132525.3134788  
+(Study of authentication experiences of people with cognitive impairments; highlights difficulties with passwords and recall, and the need for authentication that does not depend on memory.)
