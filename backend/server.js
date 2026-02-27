@@ -9,6 +9,7 @@ const morgan = require('morgan');
 require('dotenv').config();
 
 const { sequelize, User } = require('./src/models');
+const { startReminderEmailJob } = require('./src/jobs/reminderEmailJob');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -85,6 +86,7 @@ const startServer = async () => {
             console.log(`Health check: http://localhost:${PORT}/api/health`);
             console.log(`Database: ${process.env.DB_NAME}@${process.env.DB_HOST}`);
             console.log('API request logging: ENABLED');
+            startReminderEmailJob();
         });
     } catch (error) {
         console.error('Failed to start server:', error.message);

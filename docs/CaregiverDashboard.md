@@ -57,11 +57,11 @@ The Dashboard aggregates high-level information: counts of active patients, remi
 
 ### 4.2 Patients
 
-The Patients page lists all patients assigned to the caregiver. Each patient can be opened in a details modal (profile summary, link to “Patient activity”) or edited in a form modal. The patient form supports profile fields and optional avatar; it also captures location-sharing consent so that location and safe-zone features are only used when the patient has agreed. Archiving is supported so that inactive patients can be hidden without deleting data. Patient creation and editing call the backend patient API with validation and ownership checks enforced on the server.
+The Patients page lists all patients assigned to the caregiver. Each patient can be opened in a details modal (profile summary, link to “Patient activity”) or edited in a form modal. The patient form supports profile fields and optional avatar; it also captures location-sharing consent so that location and safe-zone features are only used when the patient has agreed. In the **Care & Emergency** tab, the caregiver can set **Reminder notifications** (Email or None): when “Email” is selected, the patient receives an email at each reminder’s scheduled time (if not already completed); the patient can also set this preference in the patient app Profile screen. Archiving is supported so that inactive patients can be hidden without deleting data. Patient creation and editing call the backend patient API with validation and ownership checks enforced on the server.
 
 ### 4.3 Reminders
 
-Reminders are created and edited per patient with type (medication, appointment, task), schedule, and recurrence. The Reminders page provides a calendar-style view and list so caregivers can see what is due when. Reminder data is fetched from the backend and displayed with clear due dates and completion status. The patient app will consume the same reminder API so that patients see and complete reminders; the dashboard is the authoring and monitoring surface.
+Reminders are created and edited per patient with type (medication, appointment, task), schedule, and recurrence. The Reminders page provides a calendar-style view and list so caregivers can see what is due when. Reminder data is fetched from the backend and displayed with clear due dates and completion status. The patient app consumes the same reminder API so that patients see and complete reminders; the dashboard is the authoring and monitoring surface. When a patient’s reminder notification preference is “Email” (set in the patient form or in the patient app Profile), the backend sends the patient an email at the reminder’s scheduled time (see PatientApp.md §2.10).
 
 ### 4.4 Activity
 

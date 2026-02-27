@@ -88,6 +88,22 @@ The following principles guide the patient app design. They are drawn from liter
 
 This approach aligns with W3C guidance to “provide a login that does not rely on memory or other cognitive skills” [6] and with research showing that people with cognitive impairments need authentication that does not depend on recalling or entering passwords [7]. Technologies for dementia care should maximise autonomy and minimise unnecessary cognitive demand [4]; passwordless, link-based login supports that goal.
 
+### 2.10 Reminder Notifications (Email and In-App Push)
+
+Patients can be notified when a reminder is due via **email** or **in-app (Web) push**. The patient sets their preferred method in the app Profile screen (Email or In App or None); the caregiver can set or override this in the dashboard (patient form, Care & Emergency tab). No password or app-store install is required; the app is used as a PWA added to the home screen (“Add to Home Screen”).
+
+- **Email:** The backend sends an email at the reminder’s scheduled time when the patient’s preference is “Email”. The backend runs a scheduled job every 5 minutes, finds reminders that are due (and not yet completed), and for each patient with preference “email” sends one email via Nodemailer (SMTP). Env vars: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` (see BackendSetUp.md). No SMS in scope. The preference is stored on the patient profile as `reminderNotificationChannel` (`email` | `none`).
+- **In-app push (planned):** Web Push notifications would alert the patient when the app is in the background or closed. **In-app push works with “Add to Home Screen” (PWA)**—no native app install is required. The PWA runs in the browser; if the browser supports the Web Push API, the service worker can request permission and receive push. The backend would store the push subscription and send a push payload when a reminder is due.
+
+**Limitations of in-app (Web) push**
+
+- **iOS version:** Web Push in Safari (and for PWAs added to the home screen) is supported only on **iOS 16.4 and later**. Devices running **iOS earlier than 16.4 cannot receive in-app push notifications**. Users on older iOS should use **Email** as their reminder notification channel, or open the app to see reminders.
+- **Permission:** The user must grant notification permission when choosing “In-app push”. If they deny or revoke permission, push will not be delivered until they re-enable it in browser/device settings.
+- **Subscription expiry:** Push subscriptions can expire or be invalidated (e.g. after long inactivity, browser updates, or device changes). The app may need to re-prompt for permission and re-register the subscription; failed push sends can indicate an expired subscription.
+- **Browser and environment:** Some older browsers, or private/incognito browsing, may not support Web Push or may not persist the subscription. Behaviour may vary by browser (Chrome, Safari, Firefox) and OS.
+
+These limitations should be communicated to caregivers and patients where relevant (e.g. in app copy or caregiver docs) so that users on older iOS or with restricted browser settings can choose email instead.
+
 ---
 
 ## 3. Technology and Implementation Notes

@@ -162,4 +162,50 @@ async function sendPatientMagicLinkEmail(email, name, token) {
     return { sent: true };
 }
 
-module.exports = { sendVerificationEmail, sendPatientInviteEmail, sendPatientMagicLinkEmail };
+/**
+ * Send reminder-due email to patient. Used by the reminder notification job.
+ * @param {string} email - Recipient (patient) email
+ * @param {string} name - Patient name (for greeting)
+ * @param {string} reminderTitle - Reminder title
+ * @param {string} reminderMessage - Reminder message
+ * @param {Date|string} scheduledTime - When the reminder was scheduled
+ * @returns {Promise<{ sent: boolean, error?: string }>}
+ */
+async function sendReminderEmail(email, name, reminderTitle, reminderMessage, scheduledTime) {
+    const timeStr = scheduledTime instanceof Date
+        ? scheduledTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : new Date(scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: sans-serif; line-height: 1.5; color: #334155;">
+  <p>Hi ${name || 'there'},</p>
+  <p>This is a reminder:</p>
+  <p><strong>${(reminderTitle || 'Reminder').replace(/</g, '&lt;')}</strong></p>
+  ${reminderMessage ? `<p>${String(reminderMessage).replace(/</g, '&lt;')}</p>` : ''}
+  <p>Scheduled for ${timeStr}. Open the NeuroEase app to mark it done.</p>
+  <p>— NeuroEase</p>
+</body>
+</html>`;
+    const transporter = getTransporter();
+    if (transporter) {
+        try {
+            await transporter.sendMail({
+                from: MAIL_FROM,
+                to: email,
+                subject: `Reminder: ${(reminderTitle || 'Reminder').slice(0, 50)}`,
+                html,
+                text: `Hi ${name || 'there'},\n\nReminder: ${reminderTitle || 'Reminder'}\n${reminderMessage ? reminderMessage + '\n' : ''}\nScheduled for ${timeStr}. Open the NeuroEase app to mark it done.\n\n— NeuroEase`,
+            });
+            return { sent: true };
+        } catch (err) {
+            console.error('Send reminder email error:', err);
+            return { sent: false, error: err.message };
+        }
+    }
+    console.warn('SMTP not configured. Reminder email (not sent):', { to: email, title: reminderTitle });
+    return { sent: true };
+}
+
+module.exports = { sendVerificationEmail, sendPatientInviteEmail, sendPatientMagicLinkEmail, sendReminderEmail };

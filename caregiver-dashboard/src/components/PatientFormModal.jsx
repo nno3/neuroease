@@ -281,6 +281,7 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
             familyHistory: profile?.familyHistory ?? medicalHistory?.familyHistory ?? "",
             lifestyleFactors: profile?.lifestyleFactors ?? medicalHistory?.lifestyleFactors ?? "",
             immunizations: profile?.immunizations ?? medicalHistory?.immunizations ?? "",
+            reminderNotificationChannel: profile?.reminderNotificationChannel ?? "none",
         };
     }, [patient]);
 
@@ -483,6 +484,7 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                 emergencyContactRelationship: form.emergencyContactRelationship.trim() || null,
                 emergencyContactPhone: form.emergencyContactPhone.trim() || null,
                 emergencyContact: form.emergencyContact.trim() || null,
+                reminderNotificationChannel: (form.reminderNotificationChannel || "none") === "email" ? "email" : "none",
             };
 
             let inviteLink = null;
@@ -923,6 +925,34 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                                             <span>{opt.label}</span>
                                         </label>
                                     ))}
+                                </div>
+                            </div>
+                            <div className="pfm-field pfm-span2">
+                                <label className="pfm-label">Reminder notifications</label>
+                                <div className="pfm-radio-group">
+                                    <label className="pfm-radio-wrap">
+                                        <input
+                                            type="radio"
+                                            name="reminderNotificationChannel"
+                                            value="email"
+                                            checked={(form.reminderNotificationChannel || "none") === "email"}
+                                            onChange={() => setField("reminderNotificationChannel", "email")}
+                                        />
+                                        <span>Email when a reminder is due</span>
+                                    </label>
+                                    <label className="pfm-radio-wrap">
+                                        <input
+                                            type="radio"
+                                            name="reminderNotificationChannel"
+                                            value="none"
+                                            checked={(form.reminderNotificationChannel || "none") === "none"}
+                                            onChange={() => setField("reminderNotificationChannel", "none")}
+                                        />
+                                        <span>None</span>
+                                    </label>
+                                </div>
+                                <div className="pfm-help" style={{ marginTop: "0.25rem" }}>
+                                    When &quot;Email&quot; is selected, the patient receives an email at the reminder&apos;s scheduled time (if not already completed).
                                 </div>
                             </div>
                             <div className="pfm-field pfm-span2">

@@ -51,6 +51,12 @@ export default function Layout() {
           >
             Reminders
           </NavLink>
+          <NavLink
+            to="/profile"
+            className={({ isActive }) => `pa-bottom-nav-link ${isActive ? "is-active" : ""}`}
+          >
+            Profile
+          </NavLink>
         </nav>
       )}
     </div>

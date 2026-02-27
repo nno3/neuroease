@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Activate from "./pages/Activate";
 import Home from "./pages/Home";
 import Reminders from "./pages/Reminders";
+import Profile from "./pages/Profile";
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
         >
           <Route index element={<Home />} />
           <Route path="reminders" element={<Reminders />} />
+          <Route path="profile" element={<Profile />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

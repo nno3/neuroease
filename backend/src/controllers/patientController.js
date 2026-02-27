@@ -157,6 +157,7 @@ const patientController = {
         address, gender, phoneNumber,
         preferredCommunication, accessibilityNeeds, careNotes,
         emergencyContactName, emergencyContactRelationship, emergencyContactPhone,
+        reminderNotificationChannel,
       } = req.body;
 
       const historyObj = parseMedicalHistory(medicalHistory);
@@ -193,6 +194,7 @@ const patientController = {
         inviteTokenExpires
       });
 
+      const reminderChannel = reminderNotificationChannel === 'email' ? 'email' : 'none';
       // Create patient profile
       const patientProfile = await Patient.create({
         userId: patientUser.id,
@@ -208,6 +210,7 @@ const patientController = {
         emergencyContactName: emergencyContactName != null ? String(emergencyContactName).trim() || null : null,
         emergencyContactRelationship: emergencyContactRelationship != null ? String(emergencyContactRelationship).trim() || null : null,
         emergencyContactPhone: emergencyContactPhone != null ? String(emergencyContactPhone).trim() || null : null,
+        reminderNotificationChannel: reminderChannel,
       });
 
       // Auto-assign to the creating caregiver
@@ -418,6 +421,7 @@ const patientController = {
         preferredCommunication, accessibilityNeeds, careNotes,
         emergencyContactName, emergencyContactRelationship, emergencyContactPhone,
         locationConsent,
+        reminderNotificationChannel,
       } = req.body;
 
       const patientProfile = patientUser.Patient;
@@ -502,6 +506,12 @@ const patientController = {
         // locationConsent is set only by the patient (via patient app); caregivers cannot change it
         if (locationConsent !== undefined && req.user.userType === 'patient' && req.user.userId === patientId) {
           updates.locationConsent = Boolean(locationConsent);
+        }
+        if (reminderNotificationChannel !== undefined) {
+          const ch = String(reminderNotificationChannel).toLowerCase();
+          if (ch === 'email' || ch === 'none') {
+            updates.reminderNotificationChannel = ch;
+          }
         }
 
         if (Object.keys(updates).length) {

@@ -43,9 +43,18 @@ const Reminder = sequelize.define('Reminder', {
     recurrence: {
         type: DataTypes.ENUM('once', 'daily', 'weekly'),
         defaultValue: 'once'
+    },
+    reminderEmailSentAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: 'reminder_email_sent_at'
     }
 }, {
     tableName: 'reminders'
 });
+
+Reminder.associate = function(models) {
+    Reminder.belongsTo(models.User, { foreignKey: 'patientId' });
+};
 
 module.exports = Reminder;
