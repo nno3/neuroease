@@ -23,6 +23,7 @@ router.get('/activate', authController.activatePatient);
 router.post('/patient/request-login', authController.patientRequestLogin);
 router.post('/patient/verify-link', authController.patientVerifyLink);
 router.get('/patient/verify-link', authController.patientVerifyLink);
+router.post('/patient/verify-code', authController.patientVerifyCode);
 
 // Require valid JWT; requireAny allows both caregiver and patient
 router.get('/profile', verifyToken, requireAny, authController.getProfile);

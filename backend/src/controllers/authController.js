@@ -449,11 +449,13 @@ const authController = {
             }
             const magicToken = crypto.randomBytes(32).toString('hex');
             const magicExpires = new Date(Date.now() + MAGIC_LINK_EXPIRY_MS);
+            const shortCode = String(Math.floor(100000 + Math.random() * 900000)); // 6 digits
             await user.update({
                 magicLinkToken: magicToken,
-                magicLinkTokenExpires: magicExpires
+                magicLinkTokenExpires: magicExpires,
+                magicLinkShortCode: shortCode
             });
-            const emailResult = await sendPatientMagicLinkEmail(user.email, user.name, magicToken);
+            const emailResult = await sendPatientMagicLinkEmail(user.email, user.name, magicToken, shortCode);
             if (!emailResult.sent && emailResult.error) {
                 console.error('Magic link email failed:', emailResult.error);
                 const msg = process.env.NODE_ENV === 'development'
@@ -503,7 +505,8 @@ const authController = {
             }
             await user.update({
                 magicLinkToken: null,
-                magicLinkTokenExpires: null
+                magicLinkTokenExpires: null,
+                magicLinkShortCode: null
             });
             const jwtToken = jwt.sign(
                 { userId: user.id, userType: user.userType },
@@ -528,6 +531,66 @@ const authController = {
             res.status(500).json({
                 success: false,
                 message: 'Something went wrong. Please request a new login link.'
+            });
+        }
+    },
+
+    /**
+     * Patient: verify short code (from email) and return JWT. Use this when you opened the app
+     * from the home screen and the magic link opened in Safari instead – enter the code here.
+     */
+    patientVerifyCode: async (req, res) => {
+        try {
+            const email = (req.body.email || '').trim().toLowerCase();
+            const code = (req.body.code || '').trim();
+            if (!email || !code) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Email and code are required.'
+                });
+            }
+            const user = await User.findOne({
+                where: {
+                    email,
+                    userType: 'patient',
+                    magicLinkShortCode: code,
+                    magicLinkTokenExpires: { [Op.gt]: new Date() }
+                }
+            });
+            if (!user) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid or expired code. Request a new login link and use the new code within 15 minutes.'
+                });
+            }
+            await user.update({
+                magicLinkToken: null,
+                magicLinkTokenExpires: null,
+                magicLinkShortCode: null
+            });
+            const jwtToken = jwt.sign(
+                { userId: user.id, userType: user.userType },
+                process.env.JWT_SECRET,
+                { expiresIn: '7d' }
+            );
+            res.json({
+                success: true,
+                message: 'You are now logged in.',
+                data: {
+                    user: {
+                        id: user.id,
+                        email: user.email,
+                        name: user.name,
+                        userType: user.userType
+                    },
+                    token: jwtToken
+                }
+            });
+        } catch (error) {
+            console.error('Patient verify code error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Something went wrong. Please try again.'
             });
         }
     },

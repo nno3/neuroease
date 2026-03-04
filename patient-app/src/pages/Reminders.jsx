@@ -26,6 +26,16 @@ const RECURRENCE_LABELS = {
   weekly: "Weekly",
 };
 
+/** Today's date in format "Wednesday, March 4, 2026" */
+function getTodayFormatted() {
+  return new Date().toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 function formatTime(isoString) {
   if (!isoString) return "—";
   const d = new Date(isoString);
@@ -153,6 +163,16 @@ function buildOccurrences(reminders) {
   return result.sort((a, b) => new Date(a.effectiveScheduledTime) - new Date(b.effectiveScheduledTime));
 }
 
+/** Sort occurrences so incomplete (yet to complete) are at top, completed at end. Within each group, by time. */
+function sortIncompleteFirst(occurrences) {
+  return [...occurrences].sort((a, b) => {
+    const aDone = isCompletedForOccurrence(a.reminder, a.effectiveScheduledTime);
+    const bDone = isCompletedForOccurrence(b.reminder, b.effectiveScheduledTime);
+    if (aDone !== bDone) return aDone ? 1 : -1;
+    return new Date(a.effectiveScheduledTime) - new Date(b.effectiveScheduledTime);
+  });
+}
+
 export default function Reminders() {
   const { user } = useAuth();
   const [reminders, setReminders] = useState([]);
@@ -209,6 +229,7 @@ export default function Reminders() {
     return (
       <div className="pa-page">
         <h2 className="pa-heading">Reminders</h2>
+        <p className="pa-reminders-date">{getTodayFormatted()}</p>
         <div className="pa-reminders-loading" aria-live="polite" aria-busy="true">
           <p className="pa-muted">Loading reminders…</p>
           <div className="pa-reminders-skeleton" aria-hidden="true">
@@ -225,6 +246,7 @@ export default function Reminders() {
     return (
       <div className="pa-page">
         <h2 className="pa-heading">Reminders</h2>
+        <p className="pa-reminders-date">{getTodayFormatted()}</p>
         <p className="pa-error">{error}</p>
       </div>
     );
@@ -238,16 +260,18 @@ export default function Reminders() {
     (o) => !isCompletedForOccurrence(o.reminder, o.effectiveScheduledTime) &&
       new Date(o.effectiveScheduledTime).getTime() < now.getTime()
   );
-  const dueTodayList = todayRaw.filter(
+  const dueTodayList = sortIncompleteFirst(todayRaw.filter(
     (o) => isCompletedForOccurrence(o.reminder, o.effectiveScheduledTime) ||
       new Date(o.effectiveScheduledTime).getTime() >= now.getTime()
-  );
+  ));
+  const upcomingListSorted = sortIncompleteFirst(upcomingList);
   const hasAny = todayRaw.length > 0 || upcomingList.length > 0;
 
   if (!hasAny) {
     return (
       <div className="pa-page">
         <h2 className="pa-heading">Reminders</h2>
+        <p className="pa-reminders-date">{getTodayFormatted()}</p>
         <div className="pa-reminders-empty" role="status">
           <p className="pa-muted">No reminders for today or upcoming.</p>
           <p className="pa-muted" style={{ marginTop: "0.25rem", fontSize: "0.9375rem" }}>
@@ -335,6 +359,7 @@ export default function Reminders() {
   return (
     <div className="pa-page">
       <h2 className="pa-heading">Reminders</h2>
+      <p className="pa-reminders-date">{getTodayFormatted()}</p>
       {showCompletionModal && (
         <div
           className="pa-reminders-completion-modal-backdrop"
@@ -384,13 +409,13 @@ export default function Reminders() {
           </ul>
         </section>
       )}
-      {upcomingList.length > 0 && (
+      {upcomingListSorted.length > 0 && (
         <section className="pa-reminders-section" aria-labelledby="pa-reminders-upcoming-heading">
           <h3 id="pa-reminders-upcoming-heading" className="pa-reminders-section__title">
             Upcoming
           </h3>
           <ul className="pa-reminders-list" role="list" aria-label="Upcoming reminders">
-            {upcomingList.map((r) => renderCard(r, "upcoming"))}
+            {upcomingListSorted.map((r) => renderCard(r, "upcoming"))}
           </ul>
         </section>
       )}

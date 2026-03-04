@@ -9,15 +9,10 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import "./index.css";
 
-if (import.meta.env.DEV && "serviceWorker" in navigator) {
-  navigator.serviceWorker.getRegistrations?.().then((regs) => {
-    regs.forEach((r) => r.unregister());
-  });
-}
-if ("serviceWorker" in navigator && import.meta.env.PROD) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {});
-  });
+// Register service worker immediately so it's ready for push in both Safari tab and PWA (home screen/dock).
+// Explicit scope "/" ensures the SW controls the full app in both contexts.
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(

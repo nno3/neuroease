@@ -38,6 +38,9 @@ app.use('/api/activity', activityRoutes);
 const locationRoutes = require('./src/routes/locationRoutes');
 app.use('/api/location', locationRoutes);
 
+const pushRoutes = require('./src/routes/pushRoutes');
+app.use('/api/push', pushRoutes);
+
 const safeZoneRoutes = require('./src/routes/safeZoneRoutes');
 app.use('/api/safe-zones', safeZoneRoutes);
 
@@ -75,10 +78,43 @@ const startServer = async () => {
         await sequelize.authenticate();
         console.log('PostgreSQL connection established successfully');
 
+        // One-time fix: if push_subscriptions exists without user_id, truncate so sync can add NOT NULL user_id
+        try {
+            const [rows] = await sequelize.query(
+                `SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'push_subscriptions' AND column_name = 'user_id'`
+            );
+            const hasUserId = Array.isArray(rows) && rows.length > 0;
+            if (!hasUserId) {
+                const [countResult] = await sequelize.query(`SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'push_subscriptions'`);
+                if (Array.isArray(countResult) && countResult.length > 0) {
+                    await sequelize.query('TRUNCATE TABLE push_subscriptions');
+                    console.log('push_subscriptions: truncated (table had no user_id column; ready for sync).');
+                }
+            }
+        } catch (e) {
+            // Ignore; sync may create table from scratch
+        }
+
         // alter: true updates columns if model changed; avoids dropping data
         console.log('Syncing database tables...');
         await sequelize.sync({ alter: true });
         console.log('Database tables synchronized');
+
+        // Ensure push_subscriptions has created_at/updated_at (sync may have dropped them in a prior run)
+        try {
+            const [cols] = await sequelize.query(
+                `SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'push_subscriptions' AND column_name IN ('created_at', 'updated_at')`
+            );
+            const hasCreatedAt = Array.isArray(cols) && cols.some((c) => c.column_name === 'created_at');
+            const hasUpdatedAt = Array.isArray(cols) && cols.some((c) => c.column_name === 'updated_at');
+            if (!hasCreatedAt || !hasUpdatedAt) {
+                if (!hasCreatedAt) await sequelize.query(`ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE`);
+                if (!hasUpdatedAt) await sequelize.query(`ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE`);
+                console.log('push_subscriptions: added missing created_at/updated_at columns.');
+            }
+        } catch (e) {
+            // Ignore
+        }
 
         // Start server
         app.listen(PORT, () => {

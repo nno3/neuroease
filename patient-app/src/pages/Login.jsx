@@ -5,12 +5,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { requestLoginLink, verifyMagicLink } from "../services/authService";
+import { requestLoginLink, verifyMagicLink, verifyCode } from "../services/authService";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState("idle"); // idle | sending | sent | error | verifying | link-error
   const [message, setMessage] = useState("");
+  const [codeEmail, setCodeEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [codeStatus, setCodeStatus] = useState("idle"); // idle | submitting | error
+  const [codeError, setCodeError] = useState("");
   const { user, login } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -40,10 +44,25 @@ export default function Login() {
     try {
       await requestLoginLink(trimmed);
       setStatus("sent");
-      setMessage("Check your email for a link to log in. The link expires in 15 minutes.");
+      setMessage("Check your email. Use the link, or open this app from your home screen and enter the code from the email.");
     } catch (err) {
       setStatus("error");
       setMessage(err.message || "Something went wrong. Please try again.");
+    }
+  };
+
+  const handleCodeSubmit = async (e) => {
+    e.preventDefault();
+    if (!codeEmail.trim() || !code.trim()) return;
+    setCodeStatus("submitting");
+    setCodeError("");
+    try {
+      const data = await verifyCode(codeEmail.trim().toLowerCase(), code.trim());
+      login(data.user, data.token);
+      navigate("/", { replace: true });
+    } catch (err) {
+      setCodeStatus("error");
+      setCodeError(err.message || "Invalid or expired code.");
     }
   };
 
@@ -101,6 +120,40 @@ export default function Login() {
             {message}
           </p>
         )}
+        <hr style={{ margin: "1.5rem 0", border: "none", borderTop: "1px solid #e2e8f0" }} />
+        <p className="pa-muted" style={{ marginBottom: "0.75rem" }}>
+          Added the app to your home screen? Enter the code from your email here:
+        </p>
+        <form onSubmit={handleCodeSubmit} className="pa-form">
+          <label htmlFor="pa-code-email" className="pa-label">Email</label>
+          <input
+            id="pa-code-email"
+            type="email"
+            className="pa-input"
+            value={codeEmail}
+            onChange={(e) => setCodeEmail(e.target.value)}
+            placeholder="your@email.com"
+            autoComplete="email"
+            disabled={codeStatus === "submitting"}
+          />
+          <label htmlFor="pa-code" className="pa-label">Code from email</label>
+          <input
+            id="pa-code"
+            type="text"
+            inputMode="numeric"
+            maxLength={6}
+            className="pa-input"
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            placeholder="123456"
+            autoComplete="one-time-code"
+            disabled={codeStatus === "submitting"}
+          />
+          <button type="submit" className="pa-btn pa-btn--primary" disabled={codeStatus === "submitting"}>
+            {codeStatus === "submitting" ? "Logging in…" : "Log in with code"}
+          </button>
+        </form>
+        {codeError && <p className="pa-error" style={{ marginTop: "0.75rem" }}>{codeError}</p>}
       </div>
     </div>
   );

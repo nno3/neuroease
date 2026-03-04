@@ -1,11 +1,21 @@
 /**
- * Profile / settings – reminder notification preference (Email | None).
- * Patient can set preferred reminder notification method; persisted via PUT /api/patients/:id.
+ * Profile / settings – reminder notification preference (Email | In-app push | None).
+ * Patient sets preferred method; persisted via PUT /api/patients/:id. In-app push requires
+ * permission and sends subscription to POST /api/push/subscribe.
  */
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiRequest } from "../services/apiClient";
 import "./Profile.css";
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  const output = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) output[i] = rawData.charCodeAt(i);
+  return output;
+}
 
 export default function Profile() {
   const { user } = useAuth();
@@ -14,6 +24,9 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [permissionStatus, setPermissionStatus] = useState(null); // 'default' | 'granted' | 'denied'
+  const [requestingPermission, setRequestingPermission] = useState(false);
+  const [pushSubscriptionCount, setPushSubscriptionCount] = useState(null); // null = unknown, number = count from API
 
   useEffect(() => {
     if (!user?.id) {
@@ -27,8 +40,9 @@ export default function Profile() {
       .then((res) => {
         if (cancelled) return;
         const profile = res?.data?.patient?.Patient ?? res?.data?.patient?.profile ?? null;
-        const ch = profile?.reminderNotificationChannel ?? "none";
-        setChannel(ch === "email" ? "email" : "none");
+        const ch = (profile?.reminderNotificationChannel ?? "none").toLowerCase();
+        setChannel(ch === "email" || ch === "push" ? ch : "none");
+        if ("Notification" in window) setPermissionStatus(Notification.permission);
       })
       .catch((err) => {
         if (!cancelled) setError(err.message || "Could not load profile.");
@@ -39,27 +53,131 @@ export default function Profile() {
     return () => { cancelled = true; };
   }, [user?.id]);
 
-  const handleChannelChange = (value) => {
-    const newChannel = value === "email" ? "email" : "none";
+  // Keep permission status in sync (e.g. user changed it in Settings)
+  useEffect(() => {
+    if (!("Notification" in window)) return;
+    setPermissionStatus(Notification.permission);
+  }, [channel, saveSuccess]);
+
+  // Re-check permission when user returns from Settings (e.g. after enabling notifications)
+  useEffect(() => {
+    if (!("Notification" in window)) return;
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") setPermissionStatus(Notification.permission);
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, []);
+
+  // When In-app push is selected, fetch how many devices are registered so we can show "enabled" status
+  useEffect(() => {
+    if (channel !== "push" || !user?.id) {
+      setPushSubscriptionCount(null);
+      return;
+    }
+    let cancelled = false;
+    apiRequest("/api/push/status")
+      .then((res) => {
+        if (!cancelled && res?.data?.count !== undefined) setPushSubscriptionCount(res.data.count);
+      })
+      .catch(() => {
+        if (!cancelled) setPushSubscriptionCount(0);
+      });
+    return () => { cancelled = true; };
+  }, [channel, user?.id, saveSuccess]);
+
+  const handleChannelChange = async (value) => {
+    const newChannel = value === "email" ? "email" : value === "push" ? "push" : "none";
     setChannel(newChannel);
     setError(null);
     setSaveSuccess(false);
     if (!user?.id) return;
     setSaving(true);
-    apiRequest(`/api/patients/${user.id}`, {
-      method: "PUT",
-      body: JSON.stringify({ reminderNotificationChannel: newChannel }),
-    })
-      .then(() => {
-        setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 3000);
-      })
-      .catch((err) => {
-        setError(err.message || "Could not save. Try again.");
-      })
-      .finally(() => {
-        setSaving(false);
+    try {
+      if (newChannel === "push") {
+        const keyRes = await apiRequest("/api/push/vapid-public-key");
+        const publicKey = keyRes?.data?.publicKey;
+        if (!publicKey) throw new Error("Push not configured. Use Email or None.");
+        if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+          throw new Error("This browser does not support in-app push. Use Email or None.");
+        }
+        let permission = Notification.permission;
+        if (permission === "default") permission = await Notification.requestPermission();
+        if (permission !== "granted") {
+          setError("Notifications were denied. Enable them in browser settings to use in-app push.");
+          setSaving(false);
+          return;
+        }
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey),
+        });
+        const subJson = sub.toJSON();
+        await apiRequest("/api/push/subscribe", {
+          method: "POST",
+          body: JSON.stringify({
+            endpoint: subJson.endpoint,
+            keys: subJson.keys,
+          }),
+        });
+      }
+      await apiRequest(`/api/patients/${user.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ reminderNotificationChannel: newChannel }),
       });
+        setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      setError(err?.message || "Could not save. Try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRequestPermission = async () => {
+    if (!("Notification" in window)) return;
+    setRequestingPermission(true);
+    setError(null);
+    try {
+      const permission = await Notification.requestPermission();
+      setPermissionStatus(permission);
+      if (permission !== "granted") {
+        setError("Notifications were blocked. To get reminder alerts, allow notifications for this app in your device Settings.");
+        return;
+      }
+      // Permission granted – if In-app push is selected, subscribe and save now
+      if (channel === "push" && user?.id) {
+        setSaving(true);
+        try {
+          const keyRes = await apiRequest("/api/push/vapid-public-key");
+          const publicKey = keyRes?.data?.publicKey;
+          if (publicKey) {
+            const reg = await navigator.serviceWorker.ready;
+            const sub = await reg.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(publicKey),
+            });
+            const subJson = sub.toJSON();
+            await apiRequest("/api/push/subscribe", {
+              method: "POST",
+              body: JSON.stringify({ endpoint: subJson.endpoint, keys: subJson.keys }),
+            });
+          }
+          setSaveSuccess(true);
+          setTimeout(() => setSaveSuccess(false), 3000);
+          setPushSubscriptionCount((c) => (c != null ? c + 1 : 1));
+        } catch (e) {
+          setError(e?.message || "Could not register for push. Try selecting In-app push again.");
+        } finally {
+          setSaving(false);
+        }
+      }
+    } catch (e) {
+      setError("Could not request permission. Try again or enable notifications in device Settings.");
+    } finally {
+      setRequestingPermission(false);
+    }
   };
 
   if (loading) {
@@ -110,6 +228,21 @@ export default function Profile() {
             <input
               type="radio"
               name="reminderNotificationChannel"
+              value="push"
+              checked={channel === "push"}
+              onChange={() => handleChannelChange("push")}
+              disabled={saving}
+              aria-describedby="pa-reminder-push-desc"
+            />
+            <span>In-app push</span>
+          </label>
+          <p id="pa-reminder-push-desc" className="pa-profile-radio-desc">
+            Get a notification on this device when a reminder is due (works with Add to Home Screen). iOS 16.4 or later required for iPhone/iPad. When you select this, your device will ask you to allow notifications.
+          </p>
+          <label className="pa-profile-radio">
+            <input
+              type="radio"
+              name="reminderNotificationChannel"
               value="none"
               checked={channel === "none"}
               onChange={() => handleChannelChange("none")}
@@ -118,7 +251,7 @@ export default function Profile() {
             <span>None</span>
           </label>
           <p className="pa-profile-radio-desc">
-            Do not send reminder notifications by email.
+            Do not send reminder notifications.
           </p>
         </div>
         {saving && (
@@ -135,6 +268,42 @@ export default function Profile() {
           <p className="pa-error pa-profile-error" role="alert">
             {error}
           </p>
+        )}
+        {channel === "push" && (
+          <div className="pa-profile-push-status" role="status" aria-live="polite">
+            {pushSubscriptionCount === null && (
+              <p className="pa-muted">Checking…</p>
+            )}
+            {pushSubscriptionCount !== null && pushSubscriptionCount === 0 && permissionStatus === "granted" && (
+              <p className="pa-muted">
+                In-app push is on but no device is registered yet. Re-select &quot;In-app push&quot; above and allow notifications when asked.
+              </p>
+            )}
+          </div>
+        )}
+        {channel === "push" && "Notification" in window && permissionStatus !== "granted" && (
+          <div className="pa-profile-permission-box" role="region" aria-label="Notification permission">
+            <p className="pa-profile-permission-text">
+              {permissionStatus === "denied"
+                ? "Notifications are off for this app. To get reminder alerts, turn them on in your device Settings."
+                : "Allow notifications so you get reminder alerts when the app is in the background."}
+            </p>
+            <p className="pa-profile-permission-iphone">
+              <strong>On iPhone:</strong> Settings → Notifications. This app may not appear as &quot;NeuroEase&quot;. Look under <strong>Safari</strong> (scroll down) or under the <strong>website address</strong> (e.g. the IP or name of this server). Turn on Allow Notifications there. Or tap &quot;Allow notifications&quot; below and choose Allow when the system asks, then check Notifications again.
+            </p>
+            <p className="pa-profile-permission-pwa">
+              <strong>Home screen / dock:</strong> Notifications are tied to each context. If you enabled push in a Safari tab, you must also open the app from the home screen icon and select In-app push here so this device gets notifications. If it still doesn&apos;t work, remove the app from home screen, add it again, then open from the home screen and enable In-app push.
+            </p>
+            <button
+              type="button"
+              className="pa-btn pa-btn--primary"
+              onClick={handleRequestPermission}
+              disabled={requestingPermission}
+              aria-label="Allow notifications"
+            >
+              {requestingPermission ? "Checking…" : "Allow notifications"}
+            </button>
+          </div>
         )}
       </section>
     </div>

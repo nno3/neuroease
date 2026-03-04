@@ -48,6 +48,11 @@ const Reminder = sequelize.define('Reminder', {
         type: DataTypes.DATE,
         allowNull: true,
         field: 'reminder_email_sent_at'
+    },
+    overdueNotificationSentAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: 'overdue_notification_sent_at'
     }
 }, {
     tableName: 'reminders'

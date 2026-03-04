@@ -336,6 +336,13 @@
     background: #eff6ff;
 }
 
+.pfm-readonly-value {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
 .pfm-help {
     margin-top: 0;
     font-size: 12px;

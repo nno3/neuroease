@@ -345,6 +345,24 @@ export default function Patients() {
                                             {conditions?.trim() ? conditions : "—"}
                                         </div>
                                     </div>
+
+                                    <div className="pm-metric">
+                                        <div className="pm-metric-label">Reminder alerts</div>
+                                        <div className="pm-metric-value pm-metric-conditions">
+                                            {profile?.reminderNotificationChannel === "email"
+                                                ? "Email"
+                                                : profile?.reminderNotificationChannel === "push"
+                                                    ? "In-app push"
+                                                    : "None"}
+                                        </div>
+                                    </div>
+
+                                    <div className="pm-metric">
+                                        <div className="pm-metric-label">Location sharing</div>
+                                        <div className="pm-metric-value pm-metric-conditions">
+                                            {profile?.locationConsent === true ? "On" : "Off"}
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div className="pm-actions">

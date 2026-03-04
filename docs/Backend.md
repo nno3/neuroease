@@ -389,6 +389,19 @@ Response (200):
 }
 ```
 
+#### Patient passwordless login (magic link and 6-digit code)
+
+Patients do not use a password. They request a login link by email; the backend sends a magic link and a **one-time 6-digit code** in the same email.
+
+- **Why the code exists:** When the patient uses the app as a PWA (“Add to Home Screen”), the magic link from the email often opens in the **browser** (e.g. Safari), not in the installed app. Browser and home-screen app use separate storage, so the user ends up logged in only in the browser. The 6-digit code lets them log in **inside the home-screen app** by entering their email and the code, without relying on the link opening in the right place. See **PatientApp.md** §2.9 for the full rationale.
+
+- **How the code is generated:** When `POST /api/auth/patient/request-login` is called, the backend generates a 6-digit numeric code as `100000 + Math.floor(Math.random() * 900000)` (range 100000–999999, no leading zeros). It is stored in `users.magic_link_short_code` with the same 15-minute expiry as the magic link token. The code is single-use and is cleared when the user logs in via the link or via the code.
+
+- **Endpoints:**
+  - `POST /api/auth/patient/request-login` — Body: `{ "email": "patient@example.com" }`. Sends email with magic link and 6-digit code.
+  - `POST /api/auth/patient/verify-link` — Body: `{ "token": "<magic-link-token>" }`. Returns `{ user, token }` (JWT).
+  - `POST /api/auth/patient/verify-code` — Body: `{ "email": "patient@example.com", "code": "123456" }`. Returns `{ user, token }` (JWT). Use when the user is in the home-screen app and has the code from the email.
+
 ### Patient Management Endpoints
 ```
 GET    /api/patients              # List caregiver's assigned patients

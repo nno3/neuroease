@@ -106,6 +106,14 @@ New users get a verification link by email and must open it before they can log 
 
 For implementation details on email verification and sending email with Node and React, see [7], [8].
 
+**Web push (in-app reminder notifications)**  
+When patients choose “In-app push” in the patient app Profile, the backend sends reminder notifications via the Web Push API. Set these in `.env` to enable push:
+
+- `VAPID_PUBLIC_KEY` – Public key (base64url) for Web Push.
+- `VAPID_PRIVATE_KEY` – Private key (base64url). Keep this secret.
+
+Generate a key pair with: `npx web-push generate-vapid-keys`. If these are unset, the reminder job still runs but will not send in-app push (only email for “Email” preference). See docs/PatientApp.md for limitations (e.g. iOS 16.4+). If the server fails at startup with “column user_id of relation push_subscriptions contains null values”, the startup code will truncate the old `push_subscriptions` table once so the schema can be updated; just restart the server.
+
 >  note: Create a database matching DB_NAME (example neuroease) using pgAdmin or CLI.
 
 ### 4.3 Start the server

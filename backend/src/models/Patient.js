@@ -68,7 +68,7 @@ const Patient = sequelize.define('Patient', {
         defaultValue: false
     },
     reminderNotificationChannel: {
-        type: DataTypes.ENUM('email', 'none'),
+        type: DataTypes.STRING(20),
         allowNull: false,
         defaultValue: 'none',
         field: 'reminder_notification_channel'

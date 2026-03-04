@@ -251,6 +251,19 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarch
                                         </span>
                                     </div>
                                 </div>
+                                <div className="pm-detail-field pm-detail-span2">
+                                    <span className="pm-detail-label">Reminder notifications</span>
+                                    <div className="pm-detail-value">
+                                        {profile?.reminderNotificationChannel === "email"
+                                            ? "Email"
+                                            : profile?.reminderNotificationChannel === "push"
+                                                ? "In-app push"
+                                                : "None"}
+                                        <span className="pm-detail-muted" style={{ display: "block", marginTop: "2px", fontSize: "12px", color: "#64748b" }}>
+                                            Set by patient in their app (Profile)
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
 
                             {(() => {

@@ -1,5 +1,12 @@
 /* Reminders list – readable and tappable on small screens (e.g. 375px); high-contrast, touch-friendly */
 
+.pa-reminders-date {
+  margin: -0.25rem 0 0;
+  font-size: 0.9375rem;
+  color: var(--pa-text-muted, #64748b);
+  font-weight: 500;
+}
+
 .pa-reminders-loading {
   margin-top: 0.5rem;
 }

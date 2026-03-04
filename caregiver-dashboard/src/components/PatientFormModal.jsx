@@ -484,7 +484,6 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                 emergencyContactRelationship: form.emergencyContactRelationship.trim() || null,
                 emergencyContactPhone: form.emergencyContactPhone.trim() || null,
                 emergencyContact: form.emergencyContact.trim() || null,
-                reminderNotificationChannel: (form.reminderNotificationChannel || "none") === "email" ? "email" : "none",
             };
 
             let inviteLink = null;
@@ -929,30 +928,15 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                             </div>
                             <div className="pfm-field pfm-span2">
                                 <label className="pfm-label">Reminder notifications</label>
-                                <div className="pfm-radio-group">
-                                    <label className="pfm-radio-wrap">
-                                        <input
-                                            type="radio"
-                                            name="reminderNotificationChannel"
-                                            value="email"
-                                            checked={(form.reminderNotificationChannel || "none") === "email"}
-                                            onChange={() => setField("reminderNotificationChannel", "email")}
-                                        />
-                                        <span>Email when a reminder is due</span>
-                                    </label>
-                                    <label className="pfm-radio-wrap">
-                                        <input
-                                            type="radio"
-                                            name="reminderNotificationChannel"
-                                            value="none"
-                                            checked={(form.reminderNotificationChannel || "none") === "none"}
-                                            onChange={() => setField("reminderNotificationChannel", "none")}
-                                        />
-                                        <span>None</span>
-                                    </label>
-                                </div>
-                                <div className="pfm-help" style={{ marginTop: "0.25rem" }}>
-                                    When &quot;Email&quot; is selected, the patient receives an email at the reminder&apos;s scheduled time (if not already completed).
+                                <p className="pfm-readonly-value" aria-live="polite">
+                                    {(form.reminderNotificationChannel || "none") === "email"
+                                        ? "Email"
+                                        : (form.reminderNotificationChannel || "none") === "push"
+                                            ? "In-app push"
+                                            : "None"}
+                                </p>
+                                <div className="pfm-help-muted" style={{ marginTop: "0.25rem" }}>
+                                    Set by the patient in the app (Profile). When Email or In-app push is on, they are notified when a reminder is due; if not completed, a follow-up is sent 15 minutes later.
                                 </div>
                             </div>
                             <div className="pfm-field pfm-span2">

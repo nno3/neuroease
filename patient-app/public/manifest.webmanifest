@@ -1,8 +1,10 @@
 {
+  "id": "/",
   "name": "NeuroEase",
   "short_name": "NeuroEase",
   "description": "NeuroEase patient app – reminders and activities",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#1e3a5f",
   "theme_color": "#1e3a5f",

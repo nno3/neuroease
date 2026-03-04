@@ -108,6 +108,11 @@ const User = sequelize.define('User', {
         type: DataTypes.DATE,
         allowNull: true,
         field: 'magic_link_token_expires'
+    },
+    magicLinkShortCode: {
+        type: DataTypes.STRING(10),
+        allowNull: true,
+        field: 'magic_link_short_code'
     }
 }, {
     tableName: 'users',
@@ -166,7 +171,7 @@ User.associate = function(models) {
     User.hasMany(models.GameSession, { foreignKey: 'patientId', as: 'gameSessions' });
     User.hasMany(models.LocationLog, { foreignKey: 'patientId', as: 'locationLogs' });
     User.hasMany(models.SafeZone, { foreignKey: 'patientId', as: 'safeZones' });
-
+    User.hasMany(models.PushSubscription, { foreignKey: 'userId', as: 'pushSubscriptions' });
 };
 
 module.exports = User;

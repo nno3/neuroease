@@ -194,7 +194,8 @@ const patientController = {
         inviteTokenExpires
       });
 
-      const reminderChannel = reminderNotificationChannel === 'email' ? 'email' : 'none';
+      // Only the patient sets reminder channel in the app; new patients default to 'none'
+      const reminderChannel = 'none';
       // Create patient profile
       const patientProfile = await Patient.create({
         userId: patientUser.id,
@@ -507,9 +508,10 @@ const patientController = {
         if (locationConsent !== undefined && req.user.userType === 'patient' && req.user.userId === patientId) {
           updates.locationConsent = Boolean(locationConsent);
         }
-        if (reminderNotificationChannel !== undefined) {
+        // Only the patient can set reminder notification channel (in the patient app Profile)
+        if (reminderNotificationChannel !== undefined && req.user.userType === 'patient' && req.user.userId === patientId) {
           const ch = String(reminderNotificationChannel).toLowerCase();
-          if (ch === 'email' || ch === 'none') {
+          if (ch === 'email' || ch === 'push' || ch === 'none') {
             updates.reminderNotificationChannel = ch;
           }
         }

@@ -11,6 +11,7 @@ const GameSession = require('./GameSession');
 const LocationLog = require('./LocationLog');
 const SafeZone = require('./SafeZone');
 const LocationAlert = require('./LocationAlert');
+const PushSubscription = require('./PushSubscription');
 
 // Initialize all models first
 const models = {
@@ -20,7 +21,8 @@ const models = {
   GameSession,
   LocationLog,
   SafeZone,
-  LocationAlert
+  LocationAlert,
+  PushSubscription,
 };
 
 // Set up associations - this must happen AFTER all models are loaded

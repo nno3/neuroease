@@ -39,6 +39,19 @@ export async function verifyMagicLink(token) {
   throw new Error(data.message || "Login failed");
 }
 
+/** Log in with the 6-digit code from your email. Use this when you opened the app from your home screen and the link opened in Safari. */
+export async function verifyCode(email, code) {
+  const data = await apiRequest("/api/auth/patient/verify-code", {
+    method: "POST",
+    body: JSON.stringify({ email: email.trim().toLowerCase(), code: code.trim() }),
+  });
+  if (data.success && data.data?.user && data.data?.token) {
+    setStoredAuth(data.data.user, data.data.token);
+    return data.data;
+  }
+  throw new Error(data.message || "Invalid or expired code");
+}
+
 export function logout() {
   clearStoredAuth();
 }

@@ -63,3 +63,36 @@
 .pa-profile-error {
   margin-top: 0.75rem;
 }
+
+.pa-profile-permission-box {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  background: var(--pa-bg-subtle, #f1f5f9);
+  border-radius: 8px;
+  border: 1px solid var(--pa-border, #e2e8f0);
+}
+
+.pa-profile-permission-text {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.9375rem;
+  color: var(--pa-text);
+  line-height: 1.4;
+}
+
+.pa-profile-permission-iphone {
+  margin: 0.5rem 0 0.75rem 0;
+  font-size: 0.875rem;
+  color: var(--pa-text-muted);
+  line-height: 1.4;
+}
+
+.pa-profile-permission-pwa {
+  margin: 0.5rem 0 0.75rem 0;
+  font-size: 0.875rem;
+  color: var(--pa-text-muted);
+  line-height: 1.4;
+}
+
+.pa-profile-push-status {
+  margin-top: 1rem;
+}

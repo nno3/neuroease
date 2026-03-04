@@ -121,9 +121,13 @@ async function sendPatientInviteEmail(email, name, token) {
 
 /**
  * Send patient magic link (login). Link opens patient app /login?token=...
+ * shortCode: 6-digit code so user can log in from the home-screen app without opening the link in Safari.
  */
-async function sendPatientMagicLinkEmail(email, name, token) {
+async function sendPatientMagicLinkEmail(email, name, token, shortCode) {
     const loginUrl = `${PATIENT_APP_URL}/login?token=${encodeURIComponent(token)}`;
+    const codeBlock = shortCode
+        ? `<p><strong>Or, if you opened the app from your home screen:</strong> enter this code in the app (same email + this code): <strong style="font-size: 1.2em; letter-spacing: 0.1em;">${shortCode}</strong></p>`
+        : '';
     const html = `
 <!DOCTYPE html>
 <html>
@@ -132,12 +136,14 @@ async function sendPatientMagicLinkEmail(email, name, token) {
   <p>Hi ${name || 'there'},</p>
   <p>Use the link below to log in to NeuroEase:</p>
   <p><a href="${loginUrl}" style="color: #4A90E2; font-weight: 600;">Log in to NeuroEase</a></p>
+  ${codeBlock}
   <p>Or copy and paste this URL into your browser:</p>
   <p style="word-break: break-all;">${loginUrl}</p>
-  <p>This link expires in 15 minutes. If you didn't request this, you can ignore this email.</p>
+  <p>This link and code expire in 15 minutes. If you didn't request this, you can ignore this email.</p>
   <p>— NeuroEase</p>
 </body>
 </html>`;
+    const textCode = shortCode ? `\n\nOr enter this code in the app (from your home screen): ${shortCode}` : '';
     const transporter = getTransporter();
     if (transporter) {
         try {
@@ -146,7 +152,7 @@ async function sendPatientMagicLinkEmail(email, name, token) {
                 to: email,
                 subject: 'Log in to NeuroEase',
                 html,
-                text: `Hi ${name || 'there'},\n\nLog in here: ${loginUrl}\n\nThis link expires in 15 minutes.\n\n— NeuroEase`,
+                text: `Hi ${name || 'there'},\n\nLog in here: ${loginUrl}${textCode}\n\nLink and code expire in 15 minutes.\n\n— NeuroEase`,
             });
             return { sent: true };
         } catch (err) {
@@ -158,6 +164,7 @@ async function sendPatientMagicLinkEmail(email, name, token) {
     console.log('--- Magic link (login) ---');
     console.log('To:', email);
     console.log('Login link:', loginUrl);
+    if (shortCode) console.log('Short code:', shortCode);
     console.log('---');
     return { sent: true };
 }
