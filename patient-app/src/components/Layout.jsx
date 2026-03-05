@@ -4,6 +4,7 @@
  */
 import { Outlet, useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import VoiceAssistListener from "./VoiceAssistListener";
 import "./Layout.css";
 
 export default function Layout() {
@@ -17,6 +18,7 @@ export default function Layout() {
 
   return (
     <div className="pa-layout">
+      {user && <VoiceAssistListener />}
       <a href="#pa-main" className="pa-skip-link">
         Skip to main content
       </a>

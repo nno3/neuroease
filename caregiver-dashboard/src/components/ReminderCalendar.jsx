@@ -46,13 +46,14 @@ function timeLabel(d) {
     return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 
-function roundToNext15(date) {
+function roundToNextMinute(date) {
     const d = new Date(date);
-    const m = d.getMinutes();
-    const add = (15 - (m % 15)) % 15;
-    d.setMinutes(m + add);
     d.setSeconds(0);
     d.setMilliseconds(0);
+    const t = d.getTime();
+    if (t <= Date.now()) {
+        d.setTime(Math.ceil(Date.now() / 60000) * 60000);
+    }
     return d;
 }
 
@@ -60,16 +61,16 @@ function defaultDateTimeForDay(day) {
     const now = new Date();
     const base = new Date(day);
 
-    // If clicking today, choose next 15 min slot
+    // If clicking today, choose next minute slot
     if (sameDate(base, now)) {
-        return roundToNext15(addDays(now, 0));
+        return roundToNextMinute(addDays(now, 0));
     }
 
     // Otherwise default 09:00
     base.setHours(9, 0, 0, 0);
 
-    // If user clicks a past day (should be rare), bump to next 15 mins
-    if (base.getTime() < now.getTime()) return roundToNext15(now);
+    // If user clicks a past day (should be rare), bump to next minute
+    if (base.getTime() < now.getTime()) return roundToNextMinute(now);
 
     return base;
 }

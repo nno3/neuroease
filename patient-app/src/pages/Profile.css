@@ -96,3 +96,56 @@
 .pa-profile-push-status {
   margin-top: 1rem;
 }
+
+.pa-profile-voice-card {
+  margin-top: 1rem;
+  padding: 1.25rem;
+  background: var(--pa-bg-subtle, #f8fafc);
+  border-radius: 10px;
+  border: 1px solid var(--pa-border, #e2e8f0);
+}
+
+.pa-profile-voice-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+@media (max-width: 480px) {
+  .pa-profile-voice-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pa-profile-voice-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.pa-profile-voice-card .pa-btn {
+  margin-top: 1rem;
+}
+
+.pa-profile-voice-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--pa-text);
+}
+
+.pa-profile-select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9375rem;
+  border: 1px solid var(--pa-border, #e2e8f0);
+  border-radius: 8px;
+  background: var(--pa-bg);
+  color: var(--pa-text);
+  accent-color: var(--pa-primary);
+  cursor: pointer;
+}
+
+.pa-profile-test-status {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+}

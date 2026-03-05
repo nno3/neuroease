@@ -262,7 +262,7 @@ export default function ReminderFormModal({ open, mode, patientId, patients = []
                                     setFieldErrors((prev) => ({ ...prev, scheduledAt: undefined }));
                                 }}
                                 showTimeSelect
-                                timeIntervals={15}
+                                timeIntervals={1}
                                 timeCaption="Time"
                                 dateFormat="dd/MM/yyyy h:mm aa"
                                 placeholderText="DD/MM/YYYY hh:mm"
@@ -321,7 +321,7 @@ export default function ReminderFormModal({ open, mode, patientId, patients = []
                                     setFieldErrors((prev) => ({ ...prev, endAt: undefined }));
                                 }}
                                 showTimeSelect
-                                timeIntervals={15}
+                                timeIntervals={1}
                                 timeCaption="Time"
                                 dateFormat="dd/MM/yyyy h:mm aa"
                                 placeholderText="DD/MM/YYYY hh:mm"

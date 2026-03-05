@@ -98,7 +98,7 @@ This approach aligns with W3C guidance to “provide a login that does not rely 
 
 Patients can be notified when a reminder is due via **email** or **in-app (Web) push**. The patient chooses their preferred method in the app **Profile** screen (Email, In-app push, or None). **Caregivers cannot change this**—they can only view the patient’s choice on the dashboard (patient form, Care & Emergency tab). No password or app-store install is required; the app is used as a PWA added to the home screen (“Add to Home Screen”).
 
-- **Email:** When the patient’s preference is “Email”, the backend sends an email at the reminder’s scheduled time. A scheduled job runs every 2 minutes, finds reminders that are due (and not yet completed), and for each patient with preference “email” sends one email via Nodemailer (SMTP). Env vars: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` (see BackendSetUp.md). No SMS in scope. The preference is stored on the patient profile as `reminderNotificationChannel` (`email` | `push` | `none`).
+- **Email:** When the patient’s preference is “Email”, the backend sends an email at the reminder’s scheduled time. A scheduled job runs every 1 minute, finds reminders that are due (and not yet completed), and for each patient with preference “email” sends one email via Nodemailer (SMTP). Env vars: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` (see BackendSetUp.md). No SMS in scope. The preference is stored on the patient profile as `reminderNotificationChannel` (`email` | `push` | `none`).
 - **In-app push:** Web Push notifications alert the patient when the app is in the background or closed. **In-app push works with “Add to Home Screen” (PWA)**—no native app install is required. The PWA runs in the browser; if the browser supports the Web Push API, the service worker requests permission and receives push. The patient app sends the push subscription to the backend; the reminder job sends a push payload when a reminder is due (using VAPID keys in env: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`). When notifications are on (Email or In-app push), the patient is notified at the scheduled time and, if the reminder is not completed, receives a follow-up notification 15 minutes later.
 
 **Limitations of in-app (Web) push**
@@ -109,6 +109,60 @@ Patients can be notified when a reminder is due via **email** or **in-app (Web) 
 - **Browser and environment:** Some older browsers, or private/incognito browsing, may not support Web Push or may not persist the subscription. Behaviour may vary by browser (Chrome, Safari, Firefox) and OS.
 
 These limitations should be communicated to caregivers and patients where relevant (e.g. in app copy or caregiver docs) so that users on older iOS or with restricted browser settings can choose email instead.
+
+### 2.11 Voice-Assist Reminders
+
+Voice-assist lets patients hear their reminders read aloud using text-to-speech. It is an accessibility feature aligned with design for dementia and cognitive impairment [2], [4].
+
+**Rationale: why audio helps.** Academic research supports the use of audio and verbal prompts for people with dementia and mild cognitive impairment (MCI). Technology-based prompting studies have found that **text and audio prompts were more effective than video or picture prompts** for helping people with dementia complete multistep tasks at home [8]. A more recent experimental study found that **audible verbal instructions were significantly more useful** for task completion than tone-based or visual-only prompts [9]. Verbal prompting has also been shown to improve everyday cognition (medication management, finances, telephone use) in older adults with MCI and unimpaired elders over longitudinal follow-up [10]. Smartphone reminder applications designed for people with MCI and dementia—delivering auditory alarms and verbal reminders—have demonstrated improved task completion and reduced reliance on written cues [11]. This evidence supports NeuroEase’s voice-assist feature as a modality that can increase the likelihood that reminders are perceived and acted upon by the target demographic.
+
+There are two ways to trigger it:
+
+1. **On push:** When the patient receives an in-app push notification and opens the app, the reminder is read aloud automatically (if the feature is enabled in Profile).
+2. **Manual Read aloud:** On the Reminders page, a "Read aloud" button speaks all current reminders (overdue, due today, upcoming) in order.
+
+Both use the Web Speech API (`SpeechSynthesis`) with voice and speed options chosen in Profile.
+
+#### Options considered for “which reminder to speak” (on push)
+
+When a push arrives and the user opens the app, we need to know which reminder to speak. Three options were considered:
+
+- **Option A (chosen):** Include `reminderId`, `title`, and `body` in the push payload. The service worker stores this in IndexedDB when it receives the push; the main page reads it on visibility change or mount.
+- **Option B:** Backend exposes `GET /api/reminders/recently-notified?since=ISO8601` returning reminders push-sent in the last 5–10 minutes. The page fetches on visibility and speaks any not yet spoken.
+- **Option C:** Heuristic: fetch due/overdue reminders when visible; speak the first (or all) not yet marked as "spoken" this session.
+
+#### Why we chose Option A
+
+- **No extra API:** No backend endpoint or database query needed; the push payload carries everything required.
+- **Accurate:** We speak the exact reminder that triggered the push, not an inferred or recently-fetched list.
+- **Works offline:** IndexedDB is local; the page can read pending data even if the network is slow or unavailable.
+- **Immediate for open app:** When the app is already open and a push arrives, the service worker can `postMessage` to the client with the reminder data; the page speaks immediately without waiting for a fetch.
+
+#### Implementation
+
+- **Backend:** The reminder job (`reminderEmailJob.js`) includes `reminderId`, `title`, and `body` in the push payload sent via the push service.
+- **Service worker (`sw.js`):** On `push`, parses the payload. If `reminderId` is present, stores `{ reminderId, title, body, pushedAt }` in IndexedDB (`neuroease-voice-assist` DB, `pending` store). If the app has an open client, sends `postMessage({ type: "voice-assist-push", reminderId, title, body })` so the page can speak right away. On `notificationclick`, opens the app (or focuses existing window).
+- **Main app:** `VoiceAssistListener` (mounted in Layout) listens for (1) SW `postMessage` when a push arrives while the app is open; (2) `visibilitychange` when the user returns to the app; (3) mount with a short delay (when the user opens the app from a notification click). In each case, it fetches the pending reminder from IndexedDB (and clears it), checks the Profile opt-in and debounce interval, then calls `speakReminderIfNew`.
+- **Settings (Profile):** Checkbox "Read reminders aloud when I open the app" (stored in `localStorage`). Voice dropdown (English voices from `speechSynthesis.getVoices()`, deduplicated by name+lang). Speed dropdown (Slower / Normal / Faster). "Test voice" button to verify TTS.
+- **Deduplication:** `sessionStorage` tracks which reminder IDs have been spoken this session; we do not re-speak when the user switches tabs and comes back.
+- **Debouncing:** A minimum 2-second interval between speaks avoids rapid repeated announcements.
+
+#### Read aloud button on Reminders page
+
+A second, manual trigger was added so patients can hear all current reminders read aloud when they open the app (e.g. without receiving a push). The button shows "Read aloud" with a volume icon; when clicked, it speaks overdue, due today, and upcoming reminders in order. While speaking, the button changes to "Stop" so the user can cancel. Uses the same voice and speed settings from Profile.
+
+#### Voice and speed options
+
+Users can choose from available English system voices (e.g. Samantha, Daniel) and set speed (Slower, Normal, Faster). These apply to both push-triggered speech and the Read aloud button. We filter to English voices and deduplicate entries that appear multiple times in the browser’s voice list.
+
+#### Limitations
+
+- **User gesture:** Some browsers (e.g. iOS Safari) may require a user interaction before `speechSynthesis.speak()` can start. Tapping the push notification to open the app counts as a user gesture.
+- **Foreground only:** TTS runs only when the page is in the foreground. We cannot speak when the app is closed or in the background.
+- **Browser support:** `SpeechSynthesis` is well-supported but behaviour varies by browser and OS. Test on target devices (iOS Safari, Android Chrome).
+- **Screen readers:** Users who use a screen reader may hear duplicate announcements. Voice-assist is intended for users who do *not* use a screen reader.
+
+
 
 ---
 
@@ -148,3 +202,15 @@ The implementation follows guidelines for developing technologies for dementia c
 
 [7] A. Gruebler, K. Takayama, and T. Nakagawa, “’I Always Have to Think About It First’: Authentication Experiences of People with Cognitive Impairments,” in *Proc. 20th Int. ACM SIGACCESS Conf. Comput. Access.* (ASSETS ’18), 2018, pp. 407–409. [Online]. Available: [https://dl.acm.org/doi/10.1145/3132525.3134788](https://dl.acm.org/doi/10.1145/3132525.3134788). DOI: 10.1145/3132525.3134788  
 (Study of authentication experiences of people with cognitive impairments; highlights difficulties with passwords and recall, and the need for authentication that does not depend on memory.)
+
+[8] L. Boyd, J. Evans, R. Orpwood, and N. Harris, "Using simple technology to prompt multistep tasks in the home for people with dementia: An exploratory study comparing prompting formats," *Dementia*, vol. 16, no. 4, pp. 424–442, 2016. [Online]. Available: [https://journals.sagepub.com/doi/10.1177/1471301215602417](https://journals.sagepub.com/doi/10.1177/1471301215602417). DOI: [10.1177/1471301215602417](https://doi.org/10.1177/1471301215602417)  
+(Compared text, audio, video, and picture prompts for people with dementia completing multistep tasks at home; text and audio prompts were more effective than video or picture prompts for task types where actions could be conveyed verbally.)
+
+[9] T. Cannings, S. Brookman, R. Parker, L. Hoon, K. Ono, T. Kawata, N. Matsukawa, and N. Harris, "Optimizing Technology-Based Prompts for Supporting People Living With Dementia in Completing Activities of Daily Living at Home: Experimental Approach to Prompt Modality, Task Breakdown, and Attentional Support," *JMIR Aging*, vol. 7, e56055, Aug. 2024. [Online]. Available: [https://aging.jmir.org/2024/1/e56055/](https://aging.jmir.org/2024/1/e56055/)  
+(Experimental study of technology-based prompts for people with dementia; audible verbal instructions were significantly more useful for task completion than tone-based or visual-only prompts; granular task breakdown improved independent use.)
+
+[10] K. R. Thomas and M. Marsiske, "Verbal prompting to improve everyday cognition in MCI and unimpaired older adults," *Neuropsychology*, vol. 28, no. 1, pp. 123–134, 2014. [Online]. Available: [https://pmc.ncbi.nlm.nih.gov/articles/PMC3935329/](https://pmc.ncbi.nlm.nih.gov/articles/PMC3935329/). DOI: [10.1037/neu0000039](https://doi.org/10.1037/neu0000039)  
+(Longitudinal study of 2,802 older adults; standardized verbal prompts improved performance on everyday cognition tasks involving medication management, finances, and telephone use across 10-year follow-up, including those with MCI.)
+
+[11] K. Hackett et al., "Remind Me To Remember: A pilot study of a novel smartphone reminder application for older adults with dementia and mild cognitive impairment," *Neuropsychol. Rehabil.*, vol. 32, no. 1, pp. 22–50, 2020. [Online]. Available: [https://pmc.ncbi.nlm.nih.gov/articles/PMC7854961/](https://pmc.ncbi.nlm.nih.gov/articles/PMC7854961/). DOI: [10.1080/09602011.2020.1794909](https://doi.org/10.1080/09602011.2020.1794909)  
+(Pilot study of SmartPrompt smartphone reminder app with auditory alarms and visual reminders for people with MCI and dementia; participants completed significantly more tasks (93% vs 56%) when using the app; checking written cues decreased by 87%.)

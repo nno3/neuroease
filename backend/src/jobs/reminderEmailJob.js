@@ -1,5 +1,5 @@
 /**
- * Reminder notification job – runs every 2 min. Finds reminders that are due (and not completed),
+ * Reminder notification job – runs every 1 min. Finds reminders that are due (and not completed),
  * sends email or in-app push per patient preference. Sends initial at due time (reminderEmailSentAt).
  * If still incomplete 15 minutes after due, sends one overdue follow-up (overdueNotificationSentAt).
  */
@@ -7,7 +7,7 @@ const { Reminder, Patient, User, PushSubscription } = require('../models');
 const { sendReminderEmail } = require('../utils/emailService');
 const { sendPush, configureVapid } = require('../utils/pushService');
 
-const RUN_INTERVAL_MS = 2 * 60 * 1000; // run every 2 minutes so we catch due reminders sooner
+const RUN_INTERVAL_MS = 60 * 1000; // run every 1 minute so we catch due reminders sooner
 
 function startOfDay(d) {
     return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -146,7 +146,8 @@ async function runReminderEmailJob() {
 
             const effectiveTime = getEffectiveScheduledTime(reminder);
             const title = reminder.title || 'Reminder';
-            const body = reminder.message || `Scheduled for ${effectiveTime.toLocaleString()}`;
+            let body = reminder.message || `Scheduled for ${effectiveTime.toLocaleString()}`;
+            body += '\n\nOpen the app to complete and view it.';
 
             const channelLower = (channel || '').toLowerCase();
             if (channelLower === 'email') {
@@ -179,7 +180,7 @@ async function runReminderEmailJob() {
                 }
                 let anySent = false;
                 for (const sub of subs) {
-                    const result = await sendPush(sub, { title, body });
+                    const result = await sendPush(sub, { title, body, reminderId: reminder.id });
                     if (result.sent) {
                         anySent = true;
                         if (process.env.NODE_ENV !== 'production') {
@@ -207,9 +208,10 @@ async function runReminderEmailJob() {
 
             const effectiveTime = getEffectiveScheduledTime(reminder);
             const overdueTitle = `Overdue: ${reminder.title || 'Reminder'}`;
-            const overdueBody = reminder.message
+            let overdueBody = reminder.message
                 ? `This reminder was due at ${effectiveTime.toLocaleString()} and is still incomplete. ${reminder.message}`
                 : `This reminder was due at ${effectiveTime.toLocaleString()} and is still incomplete.`;
+            overdueBody += '\n\nOpen the app to complete and view it.';
 
             if (channel === 'email') {
                 if (!patientUser.email || !patientUser.email.trim()) continue;
@@ -241,7 +243,7 @@ async function runReminderEmailJob() {
                 }
                 let anySent = false;
                 for (const sub of subs) {
-                    const result = await sendPush(sub, { title: overdueTitle, body: overdueBody });
+                    const result = await sendPush(sub, { title: overdueTitle, body: overdueBody, reminderId: reminder.id });
                     if (result.sent) {
                         anySent = true;
                         if (process.env.NODE_ENV !== 'production') {
@@ -269,14 +271,14 @@ let intervalId = null;
 
 function startReminderEmailJob() {
     if (intervalId) return;
-    // First run after 30 seconds so DB is ready; then every 2 minutes
+    // First run after 30 seconds so DB is ready; then every 1 minute
     const delay = 30 * 1000;
     setTimeout(() => {
         runReminderEmailJob();
         intervalId = setInterval(runReminderEmailJob, RUN_INTERVAL_MS);
     }, delay);
     const pushReady = !!process.env.VAPID_PUBLIC_KEY && !!process.env.VAPID_PRIVATE_KEY;
-    console.log('Reminder job started (first run in 30s, then every 2 min). Web push: ' + (pushReady ? 'configured' : 'not configured (set VAPID keys for in-app push).'));
+    console.log('Reminder job started (first run in 30s, then every 1 min). Web push: ' + (pushReady ? 'configured' : 'not configured (set VAPID keys for in-app push).'));
 }
 
 function stopReminderEmailJob() {

@@ -2,11 +2,12 @@
  * Reminders list – fetches GET /api/reminders/patient/:patientId for the logged-in patient.
  * Shows loading state, empty state, and a readable list (time, title, type, recurrence).
  */
-import { useState, useEffect } from "react";
-import { CheckCircle2, Pill, CalendarDays, ClipboardList, AlertCircle } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { CheckCircle2, Pill, CalendarDays, ClipboardList, AlertCircle, Volume2, Square } from "lucide-react";
 import "./Reminders.css";
 import { useAuth } from "../context/AuthContext";
 import { getRemindersForPatient, markReminderComplete } from "../services/reminders";
+import { speakReminderList } from "../utils/voiceAssist";
 
 const REMINDER_TYPE_LABELS = {
   medication: "Medication",
@@ -181,6 +182,8 @@ export default function Reminders() {
   const [markingId, setMarkingId] = useState(null);
   const [markError, setMarkError] = useState(null);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [isReadingAloud, setIsReadingAloud] = useState(false);
+  const readAloudStopRef = useRef(null);
 
   const handleMarkDone = (reminderId) => {
     setMarkError(null);
@@ -225,6 +228,12 @@ export default function Reminders() {
     return () => { cancelled = true; };
   }, [user?.id]);
 
+  useEffect(() => {
+    return () => {
+      if ("speechSynthesis" in window) speechSynthesis.cancel();
+    };
+  }, []);
+
   if (loading) {
     return (
       <div className="pa-page">
@@ -266,6 +275,23 @@ export default function Reminders() {
   ));
   const upcomingListSorted = sortIncompleteFirst(upcomingList);
   const hasAny = todayRaw.length > 0 || upcomingList.length > 0;
+
+  const handleReadAloud = () => {
+    if (isReadingAloud && readAloudStopRef.current) {
+      readAloudStopRef.current();
+      setIsReadingAloud(false);
+      return;
+    }
+    const items = [
+      ...overdueList.map((o) => ({ occurrence: o, section: "overdue", completed: isCompletedForOccurrence(o.reminder, o.effectiveScheduledTime) })),
+      ...dueTodayList.map((o) => ({ occurrence: o, section: "today", completed: isCompletedForOccurrence(o.reminder, o.effectiveScheduledTime) })),
+      ...upcomingListSorted.map((o) => ({ occurrence: o, section: "upcoming", completed: isCompletedForOccurrence(o.reminder, o.effectiveScheduledTime) })),
+    ];
+    const { start, stop } = speakReminderList(items, () => setIsReadingAloud(false));
+    readAloudStopRef.current = stop;
+    start();
+    setIsReadingAloud(true);
+  };
 
   if (!hasAny) {
     return (
@@ -360,6 +386,26 @@ export default function Reminders() {
     <div className="pa-page">
       <h2 className="pa-heading">Reminders</h2>
       <p className="pa-reminders-date">{getTodayFormatted()}</p>
+      <div className="pa-reminders-read-aloud">
+        <button
+          type="button"
+          className={`pa-btn pa-btn--secondary pa-reminders-read-aloud__btn ${isReadingAloud ? "pa-reminders-read-aloud__btn--active" : ""}`}
+          onClick={handleReadAloud}
+          aria-label={isReadingAloud ? "Stop reading" : "Read reminders aloud"}
+        >
+          {isReadingAloud ? (
+            <>
+              <Square className="pa-reminders-read-aloud__icon" aria-hidden />
+              Stop
+            </>
+          ) : (
+            <>
+              <Volume2 className="pa-reminders-read-aloud__icon" aria-hidden />
+              Read aloud
+            </>
+          )}
+        </button>
+      </div>
       {showCompletionModal && (
         <div
           className="pa-reminders-completion-modal-backdrop"

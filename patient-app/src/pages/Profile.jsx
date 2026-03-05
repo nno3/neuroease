@@ -6,6 +6,16 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiRequest } from "../services/apiClient";
+import {
+  getVoiceAssistEnabled,
+  setVoiceAssistEnabled,
+  getVoiceAssistVoice,
+  setVoiceAssistVoice,
+  getVoiceAssistRate,
+  setVoiceAssistRate,
+  getAvailableVoices,
+  speakTest,
+} from "../utils/voiceAssist";
 import "./Profile.css";
 
 function urlBase64ToUint8Array(base64String) {
@@ -27,6 +37,26 @@ export default function Profile() {
   const [permissionStatus, setPermissionStatus] = useState(null); // 'default' | 'granted' | 'denied'
   const [requestingPermission, setRequestingPermission] = useState(false);
   const [pushSubscriptionCount, setPushSubscriptionCount] = useState(null); // null = unknown, number = count from API
+  const [voiceAssistOnOpen, setVoiceAssistOnOpen] = useState(false);
+  const [testVoiceStatus, setTestVoiceStatus] = useState(null);
+  const [voices, setVoices] = useState([]);
+  const [selectedVoice, setSelectedVoice] = useState("");
+  const [speechRate, setSpeechRate] = useState(1);
+
+  useEffect(() => {
+    setVoiceAssistOnOpen(getVoiceAssistEnabled());
+    setSelectedVoice(getVoiceAssistVoice());
+    setSpeechRate(getVoiceAssistRate());
+  }, []);
+
+  useEffect(() => {
+    const load = () => setVoices(getAvailableVoices());
+    load();
+    if ("speechSynthesis" in window) {
+      speechSynthesis.onvoiceschanged = load;
+      return () => { speechSynthesis.onvoiceschanged = null; };
+    }
+  }, []);
 
   useEffect(() => {
     if (!user?.id) {
@@ -305,6 +335,98 @@ export default function Profile() {
             </button>
           </div>
         )}
+      </section>
+      <section className="pa-profile-section" aria-labelledby="pa-voice-assist-heading">
+        <h3 id="pa-voice-assist-heading" className="pa-profile-section-title">
+          Voice assist
+        </h3>
+        <p className="pa-muted pa-profile-section-desc">
+          When you receive a push notification, the reminder can be read aloud automatically.
+        </p>
+        <label className="pa-profile-radio">
+          <input
+            type="checkbox"
+            checked={voiceAssistOnOpen}
+            onChange={(e) => {
+              const enabled = e.target.checked;
+              setVoiceAssistEnabled(enabled);
+              setVoiceAssistOnOpen(enabled);
+            }}
+            aria-describedby="pa-voice-assist-desc"
+          />
+          <span>Read reminders aloud when I open the app</span>
+        </label>
+        <p id="pa-voice-assist-desc" className="pa-profile-radio-desc">
+          If the app is open when a push arrives, it speaks immediately. If you tap the notification to open the app, it speaks when the app loads. Requires In-app push. Create a new reminder to test (older ones may not include voice-assist data).
+        </p>
+        <div className="pa-profile-voice-card">
+          <div className="pa-profile-voice-row">
+            <div className="pa-profile-voice-field">
+              <label htmlFor="pa-voice-select" className="pa-profile-voice-label">
+                Voice
+              </label>
+              <select
+                id="pa-voice-select"
+                value={(() => {
+                  const match = voices.find(
+                    (v) => `${v.name}|${v.lang}` === selectedVoice || v.name === selectedVoice || v.uri === selectedVoice
+                  );
+                  return match ? `${match.name}|${match.lang}` : selectedVoice || "";
+                })()}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setVoiceAssistVoice(v);
+                  setSelectedVoice(v);
+                }}
+                className="pa-profile-select"
+              >
+                <option value="">System default</option>
+                {voices.map((v) => {
+                  const val = `${v.name}|${v.lang}`;
+                  return (
+                    <option key={val} value={val}>
+                      {v.name} ({v.lang})
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+            <div className="pa-profile-voice-field">
+              <label htmlFor="pa-rate-select" className="pa-profile-voice-label">
+                Speed
+              </label>
+              <select
+                id="pa-rate-select"
+                value={[0.8, 1, 1.2].includes(speechRate) ? speechRate : 1}
+                onChange={(e) => {
+                  const r = parseFloat(e.target.value);
+                  setVoiceAssistRate(r);
+                  setSpeechRate(r);
+                }}
+                className="pa-profile-select"
+              >
+                <option value={0.8}>Slower</option>
+                <option value={1}>Normal</option>
+                <option value={1.2}>Faster</option>
+              </select>
+            </div>
+          </div>
+          <button
+          type="button"
+          className="pa-btn pa-btn--secondary"
+          onClick={() => {
+            setTestVoiceStatus(null);
+            const ok = speakTest(() => setTestVoiceStatus(null));
+            setTestVoiceStatus(ok ? "Playing…" : "Voice not supported in this browser.");
+          }}
+          aria-label="Test voice"
+        >
+          Test voice
+        </button>
+        {testVoiceStatus && (
+          <p className="pa-muted pa-profile-test-status">{testVoiceStatus}</p>
+        )}
+        </div>
       </section>
     </div>
   );

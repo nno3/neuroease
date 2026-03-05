@@ -31,24 +31,62 @@ self.addEventListener("fetch", (event) => {
 self.addEventListener("push", (event) => {
   let title = "Reminder";
   let body = "";
+  let reminderId = null;
   if (event.data) {
     try {
       const data = event.data.json();
       title = data.title || title;
       body = data.body || "";
+      reminderId = data.reminderId != null ? data.reminderId : null;
     } catch (_) {
       body = event.data.text() || "";
     }
   }
-  event.waitUntil(
-    self.registration.showNotification(title, {
-      body,
-      icon: "/icon-192.png",
-      tag: "reminder",
-      requireInteraction: false,
-    })
-  );
+  const showNotif = self.registration.showNotification(title, {
+    body,
+    icon: "/icon-192.png",
+    tag: "reminder",
+    requireInteraction: false,
+  });
+  const storePending = reminderId != null
+    ? openVoiceAssistDB().then((db) => putPendingReminder(db, reminderId, title, body)).catch(() => {})
+    : Promise.resolve();
+  // If app is already open, postMessage so it can speak immediately
+  const notifyClients = reminderId != null
+    ? self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+        list.forEach((c) => {
+          try {
+            c.postMessage({ type: "voice-assist-push", reminderId, title, body });
+          } catch (_) {}
+        });
+      })
+    : Promise.resolve();
+  event.waitUntil(Promise.all([showNotif, storePending, notifyClients]));
 });
+
+function openVoiceAssistDB() {
+  return new Promise((resolve, reject) => {
+    const req = self.indexedDB.open("neuroease-voice-assist", 1);
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => resolve(req.result);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains("pending")) {
+        db.createObjectStore("pending", { keyPath: "id" });
+      }
+    };
+  });
+}
+
+function putPendingReminder(db, reminderId, title, body) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("pending", "readwrite");
+    const store = tx.objectStore("pending");
+    store.put({ id: "latest", reminderId, pushedAt: Date.now(), title, body });
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();

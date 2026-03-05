@@ -7,6 +7,27 @@
   font-weight: 500;
 }
 
+.pa-reminders-read-aloud {
+  margin-top: 0.75rem;
+}
+
+.pa-reminders-read-aloud__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--pa-touch-min);
+}
+
+.pa-reminders-read-aloud__icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+}
+
+.pa-reminders-read-aloud__btn--active {
+  font-weight: 600;
+}
+
 .pa-reminders-loading {
   margin-top: 0.5rem;
 }

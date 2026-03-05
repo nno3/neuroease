@@ -9,10 +9,9 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import "./index.css";
 
-// Register service worker immediately so it's ready for push in both Safari tab and PWA (home screen/dock).
-// Explicit scope "/" ensures the SW controls the full app in both contexts.
+// Register service worker. ?v=3 forces fresh fetch when we update sw.js (bypasses cache).
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=3", { scope: "/" }).catch(() => {});
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(
