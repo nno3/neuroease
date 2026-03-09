@@ -44,6 +44,9 @@ app.use('/api/push', pushRoutes);
 const safeZoneRoutes = require('./src/routes/safeZoneRoutes');
 app.use('/api/safe-zones', safeZoneRoutes);
 
+const gameRoutes = require('./src/routes/gameRoutes');
+app.use('/api/games', gameRoutes);
+
 // Quick check for deployment and monitoring
 app.get('/api/health', (req, res) => {
     res.json({

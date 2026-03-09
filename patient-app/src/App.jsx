@@ -9,6 +9,8 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Activate from "./pages/Activate";
 import Home from "./pages/Home";
+import Games from "./pages/Games";
+import MemoryGame from "./pages/MemoryGame";
 import Reminders from "./pages/Reminders";
 import Profile from "./pages/Profile";
 
@@ -27,6 +29,8 @@ function App() {
           }
         >
           <Route index element={<Home />} />
+          <Route path="games" element={<Games />} />
+          <Route path="games/memory" element={<MemoryGame />} />
           <Route path="reminders" element={<Reminders />} />
           <Route path="profile" element={<Profile />} />
         </Route>

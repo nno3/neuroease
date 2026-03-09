@@ -48,6 +48,12 @@ export default function Layout() {
             Home
           </NavLink>
           <NavLink
+            to="/games"
+            className={({ isActive }) => `pa-bottom-nav-link ${isActive ? "is-active" : ""}`}
+          >
+            Games
+          </NavLink>
+          <NavLink
             to="/reminders"
             className={({ isActive }) => `pa-bottom-nav-link ${isActive ? "is-active" : ""}`}
           >

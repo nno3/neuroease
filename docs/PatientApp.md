@@ -162,7 +162,11 @@ Users can choose from available English system voices (e.g. Samantha, Daniel) an
 - **Browser support:** `SpeechSynthesis` is well-supported but behaviour varies by browser and OS. Test on target devices (iOS Safari, Android Chrome).
 - **Screen readers:** Users who use a screen reader may hear duplicate announcements. Voice-assist is intended for users who do *not* use a screen reader.
 
+### 2.12 Cognitive Games (Memory Match, Math)
 
+The patient app includes cognitive games (Memory Match, and planned Math) to support cognitive stimulation and engagement for people with dementia and MCI. Games are accessible from the Games section in the bottom navigation.
+
+**Rationale and design:** See [CognitiveGames_Dementia.md](./CognitiveGames_Dementia.md) for a full explanation of why we included a memory game, how it helps people with dementia, and the design choices (large cards, familiar images, simple rules, session saving) that make it dementia-friendly.
 
 ---
 
