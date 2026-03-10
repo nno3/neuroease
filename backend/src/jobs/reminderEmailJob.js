@@ -3,6 +3,7 @@
  * sends email or in-app push per patient preference. Sends initial at due time (reminderEmailSentAt).
  * If still incomplete 15 minutes after due, sends one overdue follow-up (overdueNotificationSentAt).
  */
+const { Op } = require('sequelize');
 const { Reminder, Patient, User, PushSubscription } = require('../models');
 const { sendReminderEmail } = require('../utils/emailService');
 const { sendPush, configureVapid } = require('../utils/pushService');
@@ -37,6 +38,7 @@ function isDueAndUnsent(reminder, now) {
     if (recurrence === 'daily') {
         const todayAtTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), base.getHours(), base.getMinutes(), base.getSeconds(), 0);
         if (todayAtTime.getTime() > now.getTime()) return false;
+        if (reminder.endTime && todayAtTime.getTime() > new Date(reminder.endTime).getTime()) return false;
         if (sentAt && startOfDay(sentAt).getTime() >= startOfDay(now).getTime()) return false;
         return true;
     }
@@ -50,6 +52,7 @@ function isDueAndUnsent(reminder, now) {
         thisWeekOccurrence.setDate(thisWeekOccurrence.getDate() + daysOffset);
         thisWeekOccurrence.setHours(base.getHours(), base.getMinutes(), base.getSeconds(), 0);
         if (thisWeekOccurrence.getTime() > now.getTime()) return false;
+        if (reminder.endTime && thisWeekOccurrence.getTime() > new Date(reminder.endTime).getTime()) return false;
         if (sentAt && sentAt.getTime() >= thisWeekOccurrence.getTime()) return false;
         return true;
     }
@@ -106,7 +109,12 @@ async function runReminderEmailJob() {
 
     try {
         const reminders = await Reminder.findAll({
-            where: { isCompleted: false },
+            where: {
+                [Op.or]: [
+                    { isCompleted: false },
+                    { recurrence: { [Op.in]: ['daily', 'weekly'] } },
+                ],
+            },
             include: [
                 {
                     model: User,
