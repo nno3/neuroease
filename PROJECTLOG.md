@@ -439,6 +439,15 @@ Sprint 5: Activity Monitoring & Reporting Charts (Phase 2)  largely complete, wi
 - Resolved merge conflicts after integrating `feature/activity-monitoring` into `develop` (commits: `69320a48`, `c7966f37`).
 - Applied UI tweaks to the activity graph (bar label positioning, date visibility) to improve readability. Commits: `a09bd082`, `6d87db90`.
 
+*Sprint 6: Location – Issue Closure and Verification*
+
+- Closed Sprint 6 issues #17–#21 after verification:
+  - #17 (Location Tracking API): Passed manual cURL tests; consent and caregiver checks confirmed.
+  - #18 (Safe Zones CRUD): Verified with cURL scripts; CRUD operations and geometry storage correct.
+  - #19 (Geofencing Checks & Alerts): Tested transitions (entering/leaving zones); alerts generated as expected.
+  - #20 (Location Monitoring Page): Tested; improved by adding alerts when patient returns to safe zone.
+  - #21 (Display Location Alerts in Dashboard): Completed; alerts visible on dashboard and Location page.
+
 ## Week 18 [w/c 09/02/2026]
 
 - Finalised dashboard and documentation ahead of the patient app sprint; improved patient details and caregiver experience.
@@ -453,6 +462,7 @@ Sprint 5: Activity Monitoring & Reporting Charts (Phase 2)  largely complete, wi
 *Documentation and Backend Setup*
 
 - Expanded BackendSetUp.md with clearer instructions for environment variables, database setup, email configuration (SMTP, PATIENT_APP_URL, FRONTEND_URL), and API usage. Commit: `7e4b2c94`
+- Added Caregiver dashboard documentation. Commit: `e4e5e08b`
 
 *Email Verification for Signups*
 
@@ -470,9 +480,9 @@ Sprint 5: Activity Monitoring & Reporting Charts (Phase 2)  largely complete, wi
 
 - Further improved the location page layout, controls, and integration with safe zones and alerts. Commit: `ff45acf4`
 
-**Started Sprint 7: Patient PWA. Delivered project scaffold, routing, passwordless login and activation, web app manifest, post-login shell, logout, and base accessibility.**
+**Started Sprint 7: Patient PWA Interface & Reminders (Phase 3).** Created milestone and branch `feature/patient-app`; deleted `feature/patient-management` after consolidation. Opened issues #22–#30 to track scaffold, manifest, login/activate, post-login shell, reminders list, mark complete, overdue UX, and invite integration.
 
-*Patient PWA Scaffold and Routing (First issue of Sprint 7)*
+*Patient PWA Scaffold and Routing (Issue #22) [Done]*
 
 - Created the patient app as a React + Vite PWA in the `patient-app` directory:
   - Set up routing for login, activate, home, and reminders.
@@ -480,9 +490,10 @@ Sprint 5: Activity Monitoring & Reporting Charts (Phase 2)  largely complete, wi
   - Established a simple layout and styling foundation for subsequent features.
   - Supporting commit: `4eb28810`
 
-*Web App Manifest*
+*Web App Manifest (Issue #24) [Done]*
 
 - Added a web app manifest (name, short_name, icons, start_url, display: standalone) to support “Add to Home Screen” and standalone launch. Commit: `d63612d7`
+- Verified by testing Add to Home Screen on an iPhone over the local network; the app installs and launches correctly in standalone mode.
 - Served the manifest with `Content-Type: application/manifest+json` in the Vite dev server to resolve a Chrome “Manifest: Syntax error” warning; formatted the manifest as valid JSON. Later adjusted dev server and cache behaviour as needed.
 
 *Patient Login and Activate (Passwordless Email Links) – Issue #25*
@@ -514,6 +525,164 @@ Sprint 5: Activity Monitoring & Reporting Charts (Phase 2)  largely complete, wi
   - **Accessibility:** Applied WCAG AA–oriented contrast (e.g. dark text on light background, primary colour on white). Set a minimum touch target size of 44×44px via CSS variable `--pa-touch-min` for buttons, nav links, and form controls. Ensured the viewport allows zoom (`user-scalable=yes`, `maximum-scale=5.0`); used `rem` for font sizes and avoided blocking zoom. Added visible focus indicators (`:focus-visible`) on buttons, links, and inputs; added a “Skip to main content” link to `#pa-main` for logical focus order on login, activate, and shell.
   - Supporting commit: `204aab7c`
 
-*Verification*
+*Verification and Issue Progression*
 
 - Confirmed: logged-in users see the same shell on Home and Reminders; logout clears the session and redirects to login; key interactive elements meet the minimum touch target and contrast; page zoom does not break layout; tab/focus order is logical on login, activate, and the main shell.
+- Issue #22 (scaffold): Implemented → Testing → Done. Issue #24 (manifest): Implemented → verified on iPhone → Done. Issue #25 (login/activate): Implemented → passed testing → Review → Done. Issue #26 (post-login shell): Implemented → Testing → Done.
+
+---
+
+## Week 19 [w/c 16/02/2026]
+
+- Continued Sprint 7 Patient PWA development on branch `feature/patient-app`. Focused on making the reminders list fully functional and completion flows reliable. Issues #27, #28, and #29 were implemented, tested, and moved to Done.
+
+*Reminders List – Fetch and Display (Issue #27) [Done]*
+
+- Implemented fetch and display of the reminders list so patients see their scheduled reminders at a glance:
+  - Integrated `GET /api/reminders/patient/:patientId` to load the logged-in patient’s reminders on mount.
+  - Displayed each reminder with time, title, type (medication, appointment, task), recurrence label (e.g. “Daily”), and clear visual grouping.
+  - Added loading skeleton and empty state (“No reminders”) so users always get clear feedback rather than a blank screen.
+  - Ensured layout is responsive and touch-friendly for mobile use.
+  - Supporting commit: `ec5a7e9c`
+
+*Mark Reminders as Complete (Issue #28) [Done]*
+
+- Implemented mark-as-done functionality with backend persistence:
+  - Patients tap a reminder to mark it complete; the app sends `PUT /api/reminders/:id` with `isCompleted: true` and `completedAt` (timestamp).
+  - UI updates immediately via local state; no full reload required.
+  - Success feedback via a short-lived completion modal so users know the action succeeded.
+  - During testing, an error was identified and fixed (see completion-per-occurrence fix below).
+  - This was essential for adherence tracking: caregivers rely on completion data in the Activity feed and dashboard.
+  - Supporting commit: `4a8836cb`
+
+*Completion per Occurrence for Daily/Weekly Reminders (Critical Fix)*
+
+- Fixed a limitation discovered during Issue #28 testing: previously, marking one occurrence complete could hide or misrepresent the rest of the series.
+  - For daily/weekly reminders, completion is now tracked per occurrence using `completedAt` and the occurrence date (same calendar day).
+  - One-time reminders continue to use the global `isCompleted` flag.
+  - The reminders list correctly shows which occurrences are done vs pending (e.g. “Done today” vs “Due today”).
+  - This fix underpins accurate adherence reporting for caregivers and reduces confusion for patients with recurring medications or appointments.
+  - Supporting commit: `eff2a4b4`
+
+*Overdue Highlighting and Reminder List UX (Issue #29) [Done]*
+
+- Improved the overdue reminder UI for clearer visual distinction and usability:
+  - During testing, orange for overdue was found confusing when medication reminders used red—particularly for older users, where red can convey urgency. Adjusted the colour scheme to avoid overlap and clarify meaning.
+  - Overdue reminders are visually distinct so they stand out from due-today and upcoming items.
+  - List is organised by section (Overdue, Today, Upcoming) so users can prioritise what needs attention first.
+  - Touch targets and spacing aligned with accessibility guidelines.
+  - Supporting commits: `eff2a4b4` (completion per occurrence, moved to Testing), `4e3899a4` (overdue UI update); issue moved to Done after review.
+
+*Code Quality and Documentation*
+
+- Added inline comments and fixed a minor error in the patient app. Commit: `2edeb125`
+
+
+---
+
+## Week 20 [w/c 23/02/2026]
+
+- Delivered two major pieces that complete the caregiver–patient onboarding flow and enable proactive reminder delivery. Issues #30 and #31 implemented and moved to Done.
+
+*Dashboard Invite Link Integration (Issue #30)*
+
+- Completed invite link integration so caregivers can bring patients into the app without manual account setup:
+  - Progression: Implemented → moved to Testing → passed testing → moved to Review.
+  - Caregivers generate invite links from the dashboard; each link embeds an activation token tied to the patient user.
+  - Invite links open the patient app’s `/activate?token=...` page; the backend validates the token, activates the account, and logs the user in.
+  - Patients never need a password: activation and subsequent logins use magic-link style flows.
+  - This was a critical usability improvement: it removes friction for elderly users and caregivers who support them.
+  - Supporting commit: `b369266d`
+
+*Reminder Notifications by Email (Issue #31)*
+
+- Implemented the first reminder notification channel so users are proactively notified of upcoming reminders:
+  - Documented implementation summary and testing summary in issue comments; ready for Review.
+  - Backend reminder job runs every minute, queries due and unsent reminders, and sends emails per patient’s `reminderNotificationChannel` preference.
+  - Patients configure their preference in Profile: Email, In-app push, or None.
+  - Email content includes reminder title, message, and scheduled time, plus a prompt to open the app.
+  - Supports one-time, daily, and weekly recurrence; uses `reminderEmailSentAt` to avoid duplicate sends for the same occurrence.
+  - Overdue follow-up: if a reminder is still incomplete 15 minutes after due, a second email is sent (stored in `overdueNotificationSentAt`).
+  - Supporting commit: `a95f3782`
+
+---
+
+## Week 21 [w/c 02/03/2026]
+
+- Delivered in-app push notifications and voice-assist for reminders, extending notification options and accessibility. Opened Issue #32 (push) and #33 (voice-assist); both implemented and moved to Done.
+
+*Reminder Notifications by In-App (Web) Push (Issue #32)*
+
+- Implemented reminder delivery via Web Push so users get notifications even when the app is in the background:
+  - Patients select “In-app push” in Profile; the browser’s Push API is used to subscribe, and the subscription (endpoint, keys) is stored per user in the backend.
+  - Backend reminder job sends push payloads via the Web Push API using VAPID keys; each payload includes title, body, and reminderId.
+  - Service worker (`sw.js`) receives push events, displays a system notification, stores the reminder in IndexedDB for voice-assist, and can notify open client windows via `postMessage`.
+  - This is especially important for mobile: users who add the app to their home screen receive native-style notifications when reminders are due.
+  - Supporting commit: `bd142846`
+
+*Voice-Assist Reminders When Push Is Received (Issue #33)*
+
+- Added voice-assist so reminders can be read aloud, improving accessibility for users with visual impairment or cognitive difficulties:
+  - Documented implementation summary and verification steps in issue comments.
+  - When a push arrives and the app is already open, the reminder is spoken immediately via the Web Speech API (`speechSynthesis`).
+  - When the user opens the app by tapping a notification, the pending reminder is stored in IndexedDB; on load, the app retrieves it and speaks it aloud.
+  - Profile section for Voice Assist: enable/disable, voice selection (system voices), and speech rate (Slower, Normal, Faster).
+  - Research supports that multimodal cues (audio + visual) improve task completion for people with dementia; this aligns with design goals in CognitiveGames_Dementia.md.
+  - Supporting commit: `e8f9cf40`
+
+---
+
+## Week 22 [w/c 09/03/2026]
+
+- Opened **Sprint 8: Cognitive Games (Phase 3)** milestone and issues #34–#39. Implemented Memory Match (#34) and Math Practice (#35), fixed recurring reminder push bug, and addressed Memory Match UI feedback from testing.
+
+*Games Section and Navigation*
+
+- Added Games to the patient app bottom navigation and created a Games list page (`/games`):
+  - Patients can tap Games to see available cognitive activities; each game is a card with icon, title, and short description.
+  - Routes: `/games/memory` for Memory Match, `/games/math` for Math Practice.
+  - Design aligns with dementia-friendly principles: large touch targets, clear labels, minimal clutter.
+
+*Memory Match Cognitive Game (Issue #34)*
+
+- Implemented Memory Match as the first cognitive game with full backend integration:
+  - During testing, inconsistencies and flaws in the user interface were identified (e.g. victory overlay appearing before last card flip, unclear quit/done controls). These were fixed in follow-up work.
+  - Ported from DementiaGames (card_memory_game_fruits) with React; 4×4 grid of fruit cards, flip-to-match pairs.
+  - Dementia-friendly design: large cards, full-width grid with minimal gaps, 44px minimum touch targets, high contrast.
+  - Features: start overlay, Pause/Resume, timer, moves counter, victory screen. Added a 1.5s delay before the victory overlay so users see the last pair flip and match—important for a sense of completion.
+  - Victory sound plays when all pairs are matched; sound can be toggled in Profile (Game sound effects).
+  - Backend: `POST /api/games` saves sessions with `gameType: 'memory'`, score (moves), duration, and accuracy for caregiver visibility in the Activity feed.
+  - Supporting commit: `d50f2b00`
+  - Opened follow-on issues #37 (show game sessions in Patient Activity Modal), #38 (add game sessions to Activity page feed), #39 (Games charts and data summary) to connect games to the caregiver dashboard.
+
+*Math Practice Cognitive Game (Issue #35)*
+
+- Implemented Math Practice and added it to the Games list:
+  - Ported from DementiaGames (mathGame 2); supports add, subtract, multiply, and divide with dementia-friendly equation display.
+  - Each question shows a simple equation (e.g. 5 + 3 = ?) and three shuffled answer options; correct/incorrect feedback includes hints.
+  - Sound feedback (correct/wrong) aligns with research: “feedback prompts for every action performed are critical for successful perception and task completion” (Frontiers in Sports and Active Living, 2024).
+  - Session features: timer, Pause/Resume, End session button that shows a summary (“You completed X questions. Time: MM:SS”) before returning to Games.
+  - Profile toggle for game sound effects applies to both games.
+  - Route `/games/math`; Math Practice card in Games list.
+  - Supporting commit: `5e1f504d`
+  - Opened Issue #36 (Math Game backend integration and UX polish) for follow-on refinements.
+
+*Recurring Reminders, Push and Email Notification Bug Fix [Critical]*
+
+- Fixed a bug where in-app push and email notifications stopped for recurring appointments or daily reminders after the first occurrence or first completion:
+  - **Root cause:** The reminder job filtered with `where: { isCompleted: false }`. When a patient marked a recurring reminder complete for one day, `isCompleted` was set to true and the reminder was excluded from all future job runs. Daily and weekly reminders thus stopped receiving notifications entirely.
+  - **Fix:** Include recurring reminders in the job regardless of `isCompleted`. The `isDueAndUnsent` logic already prevents duplicate sends per occurrence (using `reminderEmailSentAt` for daily, and per-week checks for weekly). Only one-time reminders are excluded when completed.
+  - **Enhancement:** Added `endTime` checks so notifications are not sent for occurrences after the reminder’s end date.
+  - This fix restores reliable notification delivery for daily medications, recurring appointments, and other recurring reminders, a core requirement for patient adherence.
+  - Supporting commit: `a4065418`
+
+*Documentation*
+
+- Updated CognitiveGames_Dementia.md with design rationale and evidence:
+  - Victory delay: why users need to see the last pair before the celebration overlay.
+  - Sound feedback: research reference and rationale for correct/wrong sounds in Math; no sound on card mismatch in Memory (to avoid discouragement).
+  - Profile sound-effects toggle: how it applies across games and why it matters for accessibility.
+
+*Sprint 8 Issue Board*
+
+- Sprint 8 issues created: #34 (Memory Match), #35 (Math Game), #36 (Math Game backend/UX), #37 (Patient Activity Modal, real game sessions), #38 (Activity page feed – game sessions), #39 (Games charts and data summary).
