@@ -16,6 +16,7 @@ import {
   getAvailableVoices,
   speakTest,
 } from "../utils/voiceAssist";
+import { getGameSoundsEnabled, setGameSoundsEnabled } from "../utils/gameSounds";
 import "./Profile.css";
 
 function urlBase64ToUint8Array(base64String) {
@@ -42,6 +43,11 @@ export default function Profile() {
   const [voices, setVoices] = useState([]);
   const [selectedVoice, setSelectedVoice] = useState("");
   const [speechRate, setSpeechRate] = useState(1);
+  const [gameSoundsEnabled, setGameSoundsEnabledState] = useState(true);
+
+  useEffect(() => {
+    setGameSoundsEnabledState(getGameSoundsEnabled());
+  }, []);
 
   useEffect(() => {
     setVoiceAssistOnOpen(getVoiceAssistEnabled());
@@ -427,6 +433,30 @@ export default function Profile() {
           <p className="pa-muted pa-profile-test-status">{testVoiceStatus}</p>
         )}
         </div>
+      </section>
+      <section className="pa-profile-section" aria-labelledby="pa-game-sounds-heading">
+        <h3 id="pa-game-sounds-heading" className="pa-profile-section-title">
+          Game sound effects
+        </h3>
+        <p className="pa-muted pa-profile-section-desc">
+          Play sounds in games when you get an answer right, wrong, or when you win. Helps with feedback.
+        </p>
+        <label className="pa-profile-radio">
+          <input
+            type="checkbox"
+            checked={gameSoundsEnabled}
+            onChange={(e) => {
+              const enabled = e.target.checked;
+              setGameSoundsEnabled(enabled);
+              setGameSoundsEnabledState(enabled);
+            }}
+            aria-describedby="pa-game-sounds-desc"
+          />
+          <span>Play sound effects in games</span>
+        </label>
+        <p id="pa-game-sounds-desc" className="pa-profile-radio-desc">
+          When on, Math Practice plays a sound for correct or incorrect answers, and Memory Match plays a sound when you win.
+        </p>
       </section>
     </div>
   );

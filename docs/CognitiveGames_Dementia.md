@@ -41,10 +41,35 @@ The Memory Match game in NeuroEase is designed to be usable and enjoyable for pe
 | **Pause and restart** | Users can pause if distracted and resume when ready. Reduces pressure and supports self-paced use. |
 | **Clear navigation** | "Back to games" and "Play again" are explicit and easy to find. Supports orientation and reduces confusion [2]. |
 | **Session saving** | Game results are stored so caregivers can see engagement without requiring the person to report it. |
+| **Victory delay (1.5 s)** | When the last pair matches, the game waits 1.5 seconds before showing the victory overlay. This lets the user see both cards flipped and the match complete before celebrating. Immediate overlay would obscure the final match and reduce the sense of completion [2]. |
+| **Sound feedback** | Correct/incorrect sounds (Math) and victory sound (Memory) provide multimodal feedback. Research shows that "feedback prompts for every action performed are critical for successful perception and task completion" in people with dementia [6]. Users can turn sound effects on or off in Profile. |
+| **Consistent victory UI** | Both games use the same feedback modal style: green success border, checkmark icon, clear message, and large action buttons. Familiar patterns reduce cognitive load. |
 
 ---
 
-## 4. Limitations and Future Work
+## 4. Sound Effects and Profile Toggle
+
+Sound effects (correct/incorrect in Math, victory in Memory) support accessibility through multimodal cues. The patient can enable or disable game sounds in **Profile → Game sound effects**. When enabled, sounds play for:
+
+- **Math Practice**: correct answer, wrong answer
+- **Memory Match**: victory when all pairs are matched
+
+The setting is stored in localStorage and applies across all games. Default: **on**.
+
+### Why no sound on card mismatch (Memory Match)
+
+Memory Match does *not* play a sound when the user flips two cards that do not match. Rationale:
+
+- **Mismatches are expected**: In a matching game, players explore cards to find pairs. Many mismatches are part of normal play, not "wrong answers." Unlike Math Practice (where an incorrect answer is a calculation error), mismatches are routine discovery.
+- **Avoid discouragement**: A negative sound on every mismatch could feel punitive or frustrating, especially for people who make many mismatches before completing the game. It may increase anxiety or reduce enjoyment.
+- **Visual feedback is sufficient**: The cards visibly flip back after a mismatch (with a short delay), which clearly signals "no match." Adding a wrong sound could be redundant and, in combination with the visual, feel overly negative.
+- **Positive reinforcement focus**: Playing sound only on victory keeps the emphasis on success and completion, which supports motivation and a sense of accomplishment [2].
+
+If stronger audio feedback for mismatches is desired in future, consider a neutral "try again" tone rather than a harsh "wrong" sound.
+
+---
+
+## 5. Limitations and Future Work
 
 - **Cognitive games are not a cure**: They are a supportive activity, not a treatment. Benefits vary by individual and stage of dementia [1].
 - **Not suitable for everyone**: Some people may find games frustrating or uninteresting. Caregivers should use judgement and not pressure use [3].
@@ -52,7 +77,7 @@ The Memory Match game in NeuroEase is designed to be usable and enjoyable for pe
 
 ---
 
-## 5. References
+## 6. References
 
 [1] C. Meyer and F. O'Keefe, "Non-pharmacological interventions for people with dementia: A review of reviews," *Dementia (London)*, vol. 19, no. 6, pp. 1927–1954, Aug. 2020. [Online]. Available: [https://pubmed.ncbi.nlm.nih.gov/30526036/](https://pubmed.ncbi.nlm.nih.gov/30526036/). DOI: [10.1177/1471301218813234](https://doi.org/10.1177/1471301218813234)  
 (Review of systematic reviews; cognitive stimulation and reminiscence improved cognition; strongest evidence for reducing responsive behaviours and emotional disorders.)
@@ -68,3 +93,6 @@ The Memory Match game in NeuroEase is designed to be usable and enjoyable for pe
 
 [5] W3C, "Web Content Accessibility Guidelines (WCAG) 2.1," W3C Recommendation, Jun. 2018.  
 (Minimum touch target size, contrast, and clear feedback for accessibility.)
+
+[6] Frontiers in Sports and Active Living, "Enhancing prompt perception in dementia: a comparative study of mixed reality cue modalities," 2024.  
+(Feedback prompts for every action are critical for successful perception and task completion in people with dementia; multimodal cues support accessibility.)

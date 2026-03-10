@@ -3,9 +3,10 @@
  * Adapted from DementiaGames/card_memory_game_fruits with React, large touch targets,
  * clear feedback, and optional backend session save.
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { apiRequest } from "../services/apiClient";
+import { getGameSoundsEnabled } from "../utils/gameSounds";
 import "./MemoryGame.css";
 
 /* Timestamp forces fresh image fetch on each page load (bypasses cache) */
@@ -44,6 +45,7 @@ export default function MemoryGame() {
   const [moves, setMoves] = useState(0);
   const [seconds, setSeconds] = useState(0);
   const [timerId, setTimerId] = useState(null);
+  const victorySoundRef = useRef(null);
 
   const initCards = useCallback(() => {
     const doubled = [...CARD_DATA, ...CARD_DATA];
@@ -137,8 +139,15 @@ export default function MemoryGame() {
       if (newMatched.size === CARD_DATA.length) {
         if (timerId) clearInterval(timerId);
         setTimerId(null);
-        setGameWon(true);
-        saveSession(moves + 1, seconds);
+        /* Delay victory so user sees the last pair flipped before celebrating */
+        setTimeout(() => {
+          if (getGameSoundsEnabled() && victorySoundRef.current) {
+            victorySoundRef.current.currentTime = 0;
+            victorySoundRef.current.play().catch(() => {});
+          }
+          setGameWon(true);
+          saveSession(moves + 1, seconds);
+        }, 1500);
       }
     } else {
       setTimeout(() => {
@@ -215,7 +224,8 @@ export default function MemoryGame() {
 
       {showVictory && (
         <div className="pa-memory-overlay" role="dialog" aria-label="You won">
-          <div className="pa-memory-overlay-content">
+          <div className="pa-memory-overlay-content pa-memory-victory">
+            <div className="pa-memory-victory-icon">✓</div>
             <h3>Well done!</h3>
             <p className="pa-memory-stats">
               Time: {formatTime(seconds)} · Moves: {moves}
@@ -239,6 +249,13 @@ export default function MemoryGame() {
           </div>
         </div>
       )}
+
+      <audio
+        ref={victorySoundRef}
+        src="/games/math/correct.mp3"
+        preload="auto"
+        aria-hidden="true"
+      />
 
       <div
         className={`pa-memory-play ${showStart || showVictory || showPause ? "is-blurred" : ""}`}

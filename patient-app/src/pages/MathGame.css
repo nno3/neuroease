@@ -1,0 +1,387 @@
+/* Math Practice – dementia-friendly: large numbers, 44px touch targets, clear feedback */
+.pa-math-game {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 20px 24px;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 120px);
+}
+
+.pa-math-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+
+.pa-math-back {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--pa-primary);
+  text-decoration: none;
+  padding: 8px 12px;
+  min-height: var(--pa-touch-min);
+  display: inline-flex;
+  align-items: center;
+  border-radius: 8px;
+}
+
+.pa-math-back:hover {
+  text-decoration: underline;
+}
+
+.pa-math-back:focus-visible {
+  outline: 2px solid var(--pa-primary);
+  outline-offset: 2px;
+}
+
+.pa-math-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--pa-text);
+}
+
+.pa-math-stats-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--pa-text);
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+.pa-math-stats-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pa-math-pause-btn {
+  min-height: 44px;
+  padding: 10px 16px;
+  font-size: 1rem;
+  font-weight: 600;
+  background: var(--pa-border);
+  color: var(--pa-text);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.pa-math-pause-btn:hover,
+.pa-math-pause-btn:focus-visible {
+  background: var(--pa-primary);
+  color: white;
+}
+
+.pa-math-pause-btn:focus-visible {
+  outline: 2px solid var(--pa-primary-light);
+  outline-offset: 2px;
+}
+
+.pa-math-end-btn {
+  min-height: 48px;
+  padding: 12px 20px;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  background: var(--pa-primary);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  white-space: nowrap;
+}
+
+.pa-math-end-btn:hover,
+.pa-math-end-btn:focus-visible {
+  background: var(--pa-primary-light);
+}
+
+.pa-math-end-btn:focus-visible {
+  outline: 2px solid var(--pa-primary-light);
+  outline-offset: 2px;
+}
+
+.pa-math-done {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--pa-primary);
+  text-decoration: none;
+  padding: 8px 12px;
+  min-height: var(--pa-touch-min);
+  display: inline-flex;
+  align-items: center;
+  border-radius: 8px;
+}
+
+.pa-math-done:hover {
+  text-decoration: underline;
+}
+
+.pa-math-done:focus-visible {
+  outline: 2px solid var(--pa-primary);
+  outline-offset: 2px;
+}
+
+/* Start screen – operation selection */
+.pa-math-start {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 0;
+}
+
+.pa-math-start h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--pa-primary);
+  margin: 0 0 8px;
+}
+
+.pa-math-start-desc {
+  font-size: 1rem;
+  color: var(--pa-text-muted);
+  margin: 0 0 28px;
+}
+
+.pa-math-ops {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+  max-width: 360px;
+}
+
+.pa-math-op-btn {
+  min-height: 72px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: var(--pa-surface);
+  border: 2px solid var(--pa-primary);
+  border-radius: 12px;
+  cursor: pointer;
+  color: var(--pa-primary);
+  font-weight: 600;
+  transition: background 0.2s, color 0.2s;
+}
+
+.pa-math-op-btn:hover,
+.pa-math-op-btn:focus-visible {
+  background: var(--pa-primary);
+  color: white;
+}
+
+.pa-math-op-symbol {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.pa-math-op-label {
+  font-size: 0.9375rem;
+}
+
+/* Game play area */
+.pa-math-play {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-height: 0;
+  transition: filter 0.3s ease;
+}
+
+.pa-math-play.is-blurred {
+  filter: blur(6px);
+  pointer-events: none;
+}
+
+.pa-math-equation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: var(--pa-surface);
+  border: 2px solid var(--pa-border);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.pa-math-num {
+  font-size: clamp(2.5rem, 10vw, 4rem);
+  font-weight: 700;
+  color: var(--pa-text);
+}
+
+.pa-math-op {
+  font-size: clamp(2rem, 8vw, 3rem);
+  font-weight: 700;
+  color: var(--pa-primary);
+}
+
+.pa-math-eq {
+  font-size: clamp(2rem, 8vw, 3rem);
+  font-weight: 700;
+  color: var(--pa-text-muted);
+}
+
+.pa-math-q {
+  font-size: clamp(2.5rem, 10vw, 4rem);
+  font-weight: 700;
+  color: var(--pa-primary);
+}
+
+.pa-math-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pa-math-option {
+  min-height: 64px;
+  padding: 16px 24px;
+  font-size: clamp(1.5rem, 6vw, 2.25rem);
+  font-weight: 700;
+  background: var(--pa-primary);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.pa-math-option:hover {
+  background: var(--pa-primary-light);
+}
+
+.pa-math-option:active {
+  transform: scale(0.98);
+}
+
+.pa-math-option:focus-visible {
+  outline: 3px solid var(--pa-primary-light);
+  outline-offset: 2px;
+}
+
+/* Feedback overlay */
+.pa-math-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+
+.pa-math-feedback {
+  background: var(--pa-surface);
+  padding: 28px 24px;
+  border-radius: 16px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  border: 4px solid;
+}
+
+.pa-math-feedback.is-correct {
+  border-color: #16a34a;
+}
+
+.pa-math-feedback.is-incorrect {
+  border-color: #dc2626;
+}
+
+.pa-math-feedback.pa-math-pause-modal {
+  border: 2px solid var(--pa-border);
+}
+
+.pa-math-feedback.pa-math-pause-modal h3 {
+  color: var(--pa-primary);
+}
+
+.pa-math-feedback-icon {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.pa-math-feedback.is-correct .pa-math-feedback-icon {
+  color: #16a34a;
+}
+
+.pa-math-feedback.is-incorrect .pa-math-feedback-icon {
+  color: #dc2626;
+}
+
+.pa-math-feedback h3 {
+  font-size: 1.375rem;
+  font-weight: 700;
+  margin: 0 0 8px;
+  line-height: 1.3;
+}
+
+.pa-math-feedback.is-correct h3 {
+  color: #16a34a;
+}
+
+.pa-math-feedback.is-incorrect h3 {
+  color: #dc2626;
+}
+
+.pa-math-feedback p {
+  font-size: 1rem;
+  color: var(--pa-text-muted);
+  margin: 0 0 20px;
+  line-height: 1.5;
+}
+
+.pa-math-continue {
+  min-height: var(--pa-touch-min);
+  padding: 14px 28px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  background: var(--pa-primary);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.pa-math-continue:hover,
+.pa-math-continue:focus-visible {
+  background: var(--pa-primary-light);
+}
+
+.pa-math-summary-text {
+  font-size: 1.125rem !important;
+  font-weight: 600 !important;
+  color: var(--pa-text) !important;
+  margin: 0 0 20px !important;
+  line-height: 1.5;
+}
+
+.pa-math-back-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}

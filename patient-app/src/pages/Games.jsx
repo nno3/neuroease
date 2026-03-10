@@ -13,7 +13,13 @@ const GAMES = [
     description: "Match pairs of fruit cards. Tap cards to flip and find matches.",
     icon: "🍎",
   },
-  // Future: Math, Sequencing
+  {
+    id: "math",
+    path: "/games/math",
+    title: "Math Practice",
+    description: "Practice addition, subtraction, multiplication, and division.",
+    icon: "🔢",
+  },
 ];
 
 export default function Games() {
