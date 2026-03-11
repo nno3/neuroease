@@ -17,6 +17,7 @@ import {
   speakTest,
 } from "../utils/voiceAssist";
 import { getGameSoundsEnabled, setGameSoundsEnabled } from "../utils/gameSounds";
+import { Volume2 } from "lucide-react";
 import "./Profile.css";
 
 function urlBase64ToUint8Array(base64String) {
@@ -237,227 +238,214 @@ export default function Profile() {
   return (
     <div className="pa-page">
       <h2 className="pa-heading">Profile</h2>
-      <section className="pa-profile-section" aria-labelledby="pa-reminder-notifications-heading">
-        <h3 id="pa-reminder-notifications-heading" className="pa-profile-section-title">
-          Reminder notifications
+
+      {/* Notifications card */}
+      <div className="pa-profile-card" role="region" aria-labelledby="pa-notifications-heading">
+        <h3 id="pa-notifications-heading" className="pa-profile-card-title">
+          Notifications
         </h3>
-        <p className="pa-muted pa-profile-section-desc">
-          Choose how you want to be notified when a reminder is due.
-        </p>
-        <div className="pa-profile-radio-group" role="radiogroup" aria-labelledby="pa-reminder-notifications-heading">
-          <label className="pa-profile-radio">
-            <input
-              type="radio"
-              name="reminderNotificationChannel"
-              value="email"
-              checked={channel === "email"}
-              onChange={() => handleChannelChange("email")}
-              disabled={saving}
-              aria-describedby="pa-reminder-email-desc"
-            />
-            <span>Email</span>
-          </label>
-          <p id="pa-reminder-email-desc" className="pa-profile-radio-desc">
-            Receive an email when a reminder is due (at the scheduled time).
-          </p>
-          <label className="pa-profile-radio">
-            <input
-              type="radio"
-              name="reminderNotificationChannel"
-              value="push"
-              checked={channel === "push"}
-              onChange={() => handleChannelChange("push")}
-              disabled={saving}
-              aria-describedby="pa-reminder-push-desc"
-            />
-            <span>In-app push</span>
-          </label>
-          <p id="pa-reminder-push-desc" className="pa-profile-radio-desc">
-            Get a notification on this device when a reminder is due (works with Add to Home Screen). iOS 16.4 or later required for iPhone/iPad. When you select this, your device will ask you to allow notifications.
-          </p>
-          <label className="pa-profile-radio">
-            <input
-              type="radio"
-              name="reminderNotificationChannel"
-              value="none"
-              checked={channel === "none"}
-              onChange={() => handleChannelChange("none")}
-              disabled={saving}
-            />
-            <span>None</span>
-          </label>
-          <p className="pa-profile-radio-desc">
-            Do not send reminder notifications.
-          </p>
+        <hr className="pa-profile-card-divider" aria-hidden />
+
+        {/* Reminder channel */}
+        <div className="pa-profile-channel-section" role="radiogroup" aria-labelledby="pa-reminder-channel-heading">
+          <h4 id="pa-reminder-channel-heading" className="pa-profile-row-label">Reminder alerts</h4>
+          <p className="pa-profile-row-desc">Choose how you want to be notified when a reminder is due.</p>
+          <div className="pa-profile-radio-group">
+            <label className="pa-profile-radio">
+              <input
+                type="radio"
+                name="reminderNotificationChannel"
+                value="email"
+                checked={channel === "email"}
+                onChange={() => handleChannelChange("email")}
+                disabled={saving}
+                aria-describedby="pa-reminder-email-desc"
+              />
+              <span>Email</span>
+            </label>
+            <p id="pa-reminder-email-desc" className="pa-profile-radio-desc">Receive an email when a reminder is due.</p>
+            <label className="pa-profile-radio">
+              <input
+                type="radio"
+                name="reminderNotificationChannel"
+                value="push"
+                checked={channel === "push"}
+                onChange={() => handleChannelChange("push")}
+                disabled={saving}
+                aria-describedby="pa-reminder-push-desc"
+              />
+              <span>In-app push</span>
+            </label>
+            <p id="pa-reminder-push-desc" className="pa-profile-radio-desc">Get a notification on this device (works with Add to Home Screen). iOS 16.4+ for iPhone/iPad.</p>
+            <label className="pa-profile-radio">
+              <input
+                type="radio"
+                name="reminderNotificationChannel"
+                value="none"
+                checked={channel === "none"}
+                onChange={() => handleChannelChange("none")}
+                disabled={saving}
+              />
+              <span>None</span>
+            </label>
+            <p className="pa-profile-radio-desc">Do not send reminder notifications.</p>
+          </div>
         </div>
-        {saving && (
-          <p className="pa-muted pa-profile-saving" aria-live="polite">
-            Saving…
-          </p>
-        )}
-        {saveSuccess && (
-          <p className="pa-profile-success" role="status">
-            Saved.
-          </p>
-        )}
-        {error && (
-          <p className="pa-error pa-profile-error" role="alert">
-            {error}
-          </p>
-        )}
+
+        {saving && <p className="pa-muted pa-profile-saving" aria-live="polite">Saving…</p>}
+        {saveSuccess && <p className="pa-profile-success" role="status">Saved.</p>}
+        {error && <p className="pa-error pa-profile-error" role="alert">{error}</p>}
         {channel === "push" && (
           <div className="pa-profile-push-status" role="status" aria-live="polite">
-            {pushSubscriptionCount === null && (
-              <p className="pa-muted">Checking…</p>
-            )}
+            {pushSubscriptionCount === null && <p className="pa-muted">Checking…</p>}
             {pushSubscriptionCount !== null && pushSubscriptionCount === 0 && permissionStatus === "granted" && (
-              <p className="pa-muted">
-                In-app push is on but no device is registered yet. Re-select &quot;In-app push&quot; above and allow notifications when asked.
-              </p>
+              <p className="pa-muted">In-app push is on but no device is registered. Re-select &quot;In-app push&quot; and allow notifications.</p>
             )}
           </div>
         )}
-        {channel === "push" && "Notification" in window && permissionStatus !== "granted" && (
-          <div className="pa-profile-permission-box" role="region" aria-label="Notification permission">
-            <p className="pa-profile-permission-text">
-              {permissionStatus === "denied"
-                ? "Notifications are off for this app. To get reminder alerts, turn them on in your device Settings."
-                : "Allow notifications so you get reminder alerts when the app is in the background."}
-            </p>
-            <p className="pa-profile-permission-iphone">
-              <strong>On iPhone:</strong> Settings → Notifications. This app may not appear as &quot;NeuroEase&quot;. Look under <strong>Safari</strong> (scroll down) or under the <strong>website address</strong> (e.g. the IP or name of this server). Turn on Allow Notifications there. Or tap &quot;Allow notifications&quot; below and choose Allow when the system asks, then check Notifications again.
-            </p>
-            <p className="pa-profile-permission-pwa">
-              <strong>Home screen / dock:</strong> Notifications are tied to each context. If you enabled push in a Safari tab, you must also open the app from the home screen icon and select In-app push here so this device gets notifications. If it still doesn&apos;t work, remove the app from home screen, add it again, then open from the home screen and enable In-app push.
-            </p>
-            <button
-              type="button"
-              className="pa-btn pa-btn--primary"
-              onClick={handleRequestPermission}
-              disabled={requestingPermission}
-              aria-label="Allow notifications"
-            >
-              {requestingPermission ? "Checking…" : "Allow notifications"}
-            </button>
+
+        {/* Voice Reminders - toggle row */}
+        <div className="pa-profile-toggle-row">
+          <div className="pa-profile-toggle-text">
+            <span className="pa-profile-row-label">Voice Reminders</span>
+            <span className="pa-profile-row-desc" id="pa-voice-assist-desc">Hear reminders spoken aloud</span>
+          </div>
+          <label className="pa-profile-toggle">
+            <input
+              type="checkbox"
+              checked={voiceAssistOnOpen}
+              onChange={(e) => {
+                const enabled = e.target.checked;
+                setVoiceAssistEnabled(enabled);
+                setVoiceAssistOnOpen(enabled);
+              }}
+              aria-describedby="pa-voice-assist-desc"
+            />
+            <span className="pa-profile-toggle-slider" />
+          </label>
+        </div>
+
+        {/* Voice options when enabled */}
+        {voiceAssistOnOpen && (
+          <div className="pa-profile-voice-options">
+            <div className="pa-profile-voice-row">
+              <div className="pa-profile-voice-field">
+                <label htmlFor="pa-voice-select" className="pa-profile-voice-label">Voice</label>
+                <select
+                  id="pa-voice-select"
+                  value={(() => {
+                    const match = voices.find(
+                      (v) => `${v.name}|${v.lang}` === selectedVoice || v.name === selectedVoice || v.uri === selectedVoice
+                    );
+                    return match ? `${match.name}|${match.lang}` : selectedVoice || "";
+                  })()}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setVoiceAssistVoice(v);
+                    setSelectedVoice(v);
+                  }}
+                  className="pa-profile-select"
+                >
+                  <option value="">System default</option>
+                  {voices.map((v) => {
+                    const val = `${v.name}|${v.lang}`;
+                    return <option key={val} value={val}>{v.name} ({v.lang})</option>;
+                  })}
+                </select>
+              </div>
+              <div className="pa-profile-voice-field">
+                <label htmlFor="pa-rate-select" className="pa-profile-voice-label">Speed</label>
+                <select
+                  id="pa-rate-select"
+                  value={[0.8, 1, 1.2].includes(speechRate) ? speechRate : 1}
+                  onChange={(e) => {
+                    const r = parseFloat(e.target.value);
+                    setVoiceAssistRate(r);
+                    setSpeechRate(r);
+                  }}
+                  className="pa-profile-select"
+                >
+                  <option value={0.8}>Slower</option>
+                  <option value={1}>Normal</option>
+                  <option value={1.2}>Faster</option>
+                </select>
+              </div>
+            </div>
           </div>
         )}
-      </section>
-      <section className="pa-profile-section" aria-labelledby="pa-voice-assist-heading">
-        <h3 id="pa-voice-assist-heading" className="pa-profile-section-title">
-          Voice assist
-        </h3>
-        <p className="pa-muted pa-profile-section-desc">
-          When you receive a push notification, the reminder can be read aloud automatically.
-        </p>
-        <label className="pa-profile-radio">
-          <input
-            type="checkbox"
-            checked={voiceAssistOnOpen}
-            onChange={(e) => {
-              const enabled = e.target.checked;
-              setVoiceAssistEnabled(enabled);
-              setVoiceAssistOnOpen(enabled);
-            }}
-            aria-describedby="pa-voice-assist-desc"
-          />
-          <span>Read reminders aloud when I open the app</span>
-        </label>
-        <p id="pa-voice-assist-desc" className="pa-profile-radio-desc">
-          If the app is open when a push arrives, it speaks immediately. If you tap the notification to open the app, it speaks when the app loads. Requires In-app push. Create a new reminder to test (older ones may not include voice-assist data).
-        </p>
-        <div className="pa-profile-voice-card">
-          <div className="pa-profile-voice-row">
-            <div className="pa-profile-voice-field">
-              <label htmlFor="pa-voice-select" className="pa-profile-voice-label">
-                Voice
-              </label>
-              <select
-                id="pa-voice-select"
-                value={(() => {
-                  const match = voices.find(
-                    (v) => `${v.name}|${v.lang}` === selectedVoice || v.name === selectedVoice || v.uri === selectedVoice
-                  );
-                  return match ? `${match.name}|${match.lang}` : selectedVoice || "";
-                })()}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setVoiceAssistVoice(v);
-                  setSelectedVoice(v);
-                }}
-                className="pa-profile-select"
-              >
-                <option value="">System default</option>
-                {voices.map((v) => {
-                  const val = `${v.name}|${v.lang}`;
-                  return (
-                    <option key={val} value={val}>
-                      {v.name} ({v.lang})
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-            <div className="pa-profile-voice-field">
-              <label htmlFor="pa-rate-select" className="pa-profile-voice-label">
-                Speed
-              </label>
-              <select
-                id="pa-rate-select"
-                value={[0.8, 1, 1.2].includes(speechRate) ? speechRate : 1}
-                onChange={(e) => {
-                  const r = parseFloat(e.target.value);
-                  setVoiceAssistRate(r);
-                  setSpeechRate(r);
-                }}
-                className="pa-profile-select"
-              >
-                <option value={0.8}>Slower</option>
-                <option value={1}>Normal</option>
-                <option value={1.2}>Faster</option>
-              </select>
-            </div>
-          </div>
-          <button
+
+        {/* Test Voice Reminder button */}
+        <button
           type="button"
-          className="pa-btn pa-btn--secondary"
+          className="pa-btn pa-btn--primary pa-profile-test-btn"
           onClick={() => {
             setTestVoiceStatus(null);
             const ok = speakTest(() => setTestVoiceStatus(null));
             setTestVoiceStatus(ok ? "Playing…" : "Voice not supported in this browser.");
           }}
-          aria-label="Test voice"
+          aria-label="Test voice reminder"
         >
-          Test voice
+          <Volume2 className="pa-profile-test-btn-icon" aria-hidden />
+          Test Voice Reminder
         </button>
-        {testVoiceStatus && (
-          <p className="pa-muted pa-profile-test-status">{testVoiceStatus}</p>
-        )}
-        </div>
-      </section>
-      <section className="pa-profile-section" aria-labelledby="pa-game-sounds-heading">
-        <h3 id="pa-game-sounds-heading" className="pa-profile-section-title">
-          Game sound effects
+        {testVoiceStatus && <p className="pa-muted pa-profile-test-status">{testVoiceStatus}</p>}
+      </div>
+
+      {/* Games card */}
+      <div className="pa-profile-card" role="region" aria-labelledby="pa-games-heading">
+        <h3 id="pa-games-heading" className="pa-profile-card-title">
+          Games
         </h3>
-        <p className="pa-muted pa-profile-section-desc">
-          Play sounds in games when you get an answer right, wrong, or when you win. Helps with feedback.
-        </p>
-        <label className="pa-profile-radio">
-          <input
-            type="checkbox"
-            checked={gameSoundsEnabled}
-            onChange={(e) => {
-              const enabled = e.target.checked;
-              setGameSoundsEnabled(enabled);
-              setGameSoundsEnabledState(enabled);
-            }}
-            aria-describedby="pa-game-sounds-desc"
-          />
-          <span>Play sound effects in games</span>
-        </label>
-        <p id="pa-game-sounds-desc" className="pa-profile-radio-desc">
-          When on, Math Practice plays a sound for correct or incorrect answers, and Memory Match plays a sound when you win.
-        </p>
-      </section>
+        <hr className="pa-profile-card-divider" aria-hidden />
+
+        <div className="pa-profile-toggle-row">
+          <div className="pa-profile-toggle-text">
+            <span className="pa-profile-row-label">Sound Effects</span>
+            <span className="pa-profile-row-desc" id="pa-game-sounds-desc">Play sounds for game feedback</span>
+          </div>
+          <label className="pa-profile-toggle">
+            <input
+              type="checkbox"
+              checked={gameSoundsEnabled}
+              onChange={(e) => {
+                const enabled = e.target.checked;
+                setGameSoundsEnabled(enabled);
+                setGameSoundsEnabledState(enabled);
+              }}
+              aria-describedby="pa-game-sounds-desc"
+            />
+            <span className="pa-profile-toggle-slider" />
+          </label>
+        </div>
+      </div>
+
+      {/* Permission box - when push selected but not granted */}
+      {channel === "push" && "Notification" in window && permissionStatus !== "granted" && (
+        <div className="pa-profile-card pa-profile-permission-box" role="region" aria-label="Notification permission">
+          <h3 className="pa-profile-card-title">Allow Notifications</h3>
+          <hr className="pa-profile-card-divider" aria-hidden />
+          <p className="pa-profile-permission-text">
+            {permissionStatus === "denied"
+              ? "Notifications are off for this app. To get reminder alerts, turn them on in your device Settings."
+              : "Allow notifications so you get reminder alerts when the app is in the background."}
+          </p>
+          <p className="pa-profile-permission-iphone">
+            <strong>On iPhone:</strong> Settings → Notifications. This app may appear under <strong>Safari</strong> or the <strong>website address</strong>. Turn on Allow Notifications.
+          </p>
+          <p className="pa-profile-permission-pwa">
+            <strong>Home screen app:</strong> If you enabled push in Safari, open the app from the home screen icon and enable In-app push here so this device gets notifications.
+          </p>
+          <button
+            type="button"
+            className="pa-btn pa-btn--primary pa-profile-test-btn"
+            onClick={handleRequestPermission}
+            disabled={requestingPermission}
+            aria-label="Allow notifications"
+          >
+            {requestingPermission ? "Checking…" : "Allow notifications"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

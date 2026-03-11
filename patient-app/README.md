@@ -10,7 +10,7 @@ npm install
 npm run dev
 ```
 
-Dev server: **http://localhost:5174** (port 5174; caregiver dashboard uses 5173).
+Dev server: **http://localhost:5175** (patient app only; caregiver dashboard uses 5173).
 
 ## Backend API
 

@@ -26,6 +26,7 @@ export default defineConfig({
   ],
   server: {
     port: 5175,
+    strictPort: true, // Fail if port in use instead of trying next
     host: true,
     headers: {
       "Cache-Control": "no-store, no-cache, must-revalidate",

@@ -172,24 +172,33 @@ main (production)
 git clone <repository-url>
 cd na429
 
-# Backend setup
+# Backend setup (Terminal 1)
 cd backend
 npm install
 # Configure .env file (see docs/BackendSetUp.md)
 npm start
 
-# Caregiver dashboard (new terminal)
+# Caregiver dashboard (Terminal 2)
 cd ../caregiver-dashboard
 npm install
-npm start
+npm run dev
 
-# Patient app (new terminal)
+# Patient app (Terminal 3)
 cd ../patient-app
 npm install
-npm start
+npm run dev
 ```
 
-**Detailed instructions**: See individual documentation files in `docs/` which I will implement once done with each part of this project
+### Development URLs (different ports)
+| App | URL |
+|-----|-----|
+| **Caregiver Dashboard** | http://localhost:5173 |
+| **Patient App** | http://localhost:5175 |
+| **Backend API** | http://localhost:5001 |
+
+Both frontends run on separate ports. If you only see the dashboard, open **http://localhost:5175** for the patient app.
+
+**Detailed instructions**: See individual documentation files in `docs/`
 
 ---
 
