@@ -402,6 +402,34 @@
     margin-top: 4px;
 }
 
+.loc-popup-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: #2563eb;
+    color: #ffffff !important;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background 0.2s;
+    border: none;
+}
+
+.loc-popup-nav-btn:hover,
+.loc-popup-nav-btn:focus,
+.loc-popup-nav-btn:visited {
+    color: #ffffff !important;
+    background: #1d4ed8;
+}
+
+.loc-popup-nav-btn svg {
+    color: #ffffff;
+    stroke: #ffffff;
+}
+
 /* Leaflet custom marker: hide default icon styling */
 .loc-custom-marker {
     background: none !important;

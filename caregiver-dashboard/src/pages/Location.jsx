@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { MapContainer, TileLayer, Circle, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { MapPin, RefreshCw, AlertTriangle, CheckCircle2, Plus, Search, Pencil, Trash2, X } from "lucide-react";
+import { MapPin, RefreshCw, AlertTriangle, CheckCircle2, Plus, Search, Pencil, Trash2, X, Navigation } from "lucide-react";
 import { getPatients } from "../services/patients";
 import {
     getLatestLocation,
@@ -743,6 +743,16 @@ export default function Location() {
                                                     </span>
                                                 </>
                                             )}
+                                            <br />
+                                            <a
+                                                href={`https://www.google.com/maps/dir/?api=1&destination=${loc.latitude},${loc.longitude}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="loc-popup-nav-btn"
+                                            >
+                                                <Navigation size={14} />
+                                                Go to location
+                                            </a>
                                         </Popup>
                                     </Marker>
                                 );
