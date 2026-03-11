@@ -249,48 +249,69 @@
   opacity: 0.9;
 }
 
-/* Completion modal: "Great Job!" overlay */
-.pa-reminders-completion-modal-backdrop {
+/* Completion modal – matches games success overlay (green border, ✓ icon, Continue button) */
+.pa-reminders-completion-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem;
-  z-index: 1000;
+  padding: 20px;
+  z-index: 100;
 }
 
 .pa-reminders-completion-modal {
   background: var(--pa-surface);
   border-radius: 16px;
-  padding: 2rem 1.75rem;
-  max-width: 20rem;
+  padding: 28px 24px;
+  max-width: 360px;
   width: 100%;
   text-align: center;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.pa-reminders-completion-modal--success {
+  border: 4px solid #16a34a;
 }
 
 .pa-reminders-completion-modal__icon {
-  width: 4rem;
-  height: 4rem;
+  font-size: 3rem;
+  font-weight: 700;
   color: #16a34a;
-  margin: 0 auto 1rem;
-  display: block;
+  margin-bottom: 12px;
 }
 
 .pa-reminders-completion-modal__title {
-  margin: 0 0 0.5rem;
-  font-size: 1.5rem;
+  margin: 0 0 8px;
+  font-size: 1.375rem;
   font-weight: 700;
-  color: var(--pa-text);
+  color: #16a34a;
 }
 
 .pa-reminders-completion-modal__text {
-  margin: 0;
+  margin: 0 0 20px;
   font-size: 1rem;
   color: var(--pa-text-muted);
-  font-weight: 400;
+  line-height: 1.5;
+}
+
+.pa-reminders-completion-modal__btn {
+  min-height: var(--pa-touch-min);
+  padding: 14px 28px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  width: 100%;
+  background: var(--pa-primary);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.pa-reminders-completion-modal__btn:hover,
+.pa-reminders-completion-modal__btn:focus-visible {
+  background: var(--pa-primary-light);
 }
 
 .pa-reminders-mark-error {

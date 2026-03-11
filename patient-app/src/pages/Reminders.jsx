@@ -196,7 +196,6 @@ export default function Reminders() {
           prev.map((r) => (r.id === reminderId ? { ...r, isCompleted: true, completedAt } : r))
         );
         setShowCompletionModal(true);
-        setTimeout(() => setShowCompletionModal(false), 3000);
       })
       .catch((err) => {
         setMarkError(err.message || "Couldn't mark as done. Try again.");
@@ -408,25 +407,28 @@ export default function Reminders() {
       </div>
       {showCompletionModal && (
         <div
-          className="pa-reminders-completion-modal-backdrop"
-          onClick={() => setShowCompletionModal(false)}
-          onKeyDown={(e) => e.key === "Escape" && setShowCompletionModal(false)}
+          className="pa-reminders-completion-overlay"
           role="dialog"
           aria-modal="true"
           aria-labelledby="pa-completion-title"
           aria-describedby="pa-completion-desc"
         >
-          <div
-            className="pa-reminders-completion-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <CheckCircle2 className="pa-reminders-completion-modal__icon" aria-hidden />
+          <div className="pa-reminders-completion-modal pa-reminders-completion-modal--success">
+            <div className="pa-reminders-completion-modal__icon">✓</div>
             <h2 id="pa-completion-title" className="pa-reminders-completion-modal__title">
-              Great Job!
+              Well done!
             </h2>
             <p id="pa-completion-desc" className="pa-reminders-completion-modal__text">
-              Reminder completed!
+              Reminder completed.
             </p>
+            <button
+              type="button"
+              className="pa-reminders-completion-modal__btn"
+              onClick={() => setShowCompletionModal(false)}
+              aria-label="Continue"
+            >
+              Continue
+            </button>
           </div>
         </div>
       )}
