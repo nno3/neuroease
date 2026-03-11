@@ -22,12 +22,16 @@
   font-size: 1rem;
   font-weight: 600;
   color: var(--pa-primary);
-  text-decoration: none;
+  background: none;
+  border: none;
   padding: 8px 12px;
   min-height: var(--pa-touch-min);
+  min-width: var(--pa-touch-min);
   display: inline-flex;
   align-items: center;
   border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
 }
 
 .pa-math-back:hover {
@@ -151,7 +155,61 @@
 .pa-math-start-desc {
   font-size: 1rem;
   color: var(--pa-text-muted);
-  margin: 0 0 28px;
+  margin: 0 0 16px;
+}
+
+.pa-math-difficulty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+  width: 100%;
+}
+
+.pa-math-difficulty-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--pa-text);
+}
+
+.pa-math-diff-btns {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  width: 100%;
+  max-width: 360px;
+}
+
+.pa-math-diff-btn {
+  min-height: var(--pa-touch-min);
+  min-width: var(--pa-touch-min);
+  flex: 1;
+  padding: 10px 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  background: var(--pa-surface);
+  color: var(--pa-text);
+  border: 2px solid var(--pa-border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.pa-math-diff-btn:hover,
+.pa-math-diff-btn:focus-visible {
+  border-color: var(--pa-primary);
+  color: var(--pa-primary);
+}
+
+.pa-math-diff-btn.is-active {
+  background: var(--pa-primary);
+  color: white;
+  border-color: var(--pa-primary);
+}
+
+.pa-math-diff-btn:focus-visible {
+  outline: 2px solid var(--pa-primary);
+  outline-offset: 2px;
 }
 
 .pa-math-ops {
@@ -379,9 +437,27 @@
   line-height: 1.5;
 }
 
-.pa-math-back-link {
+.pa-math-summary-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pa-math-play-again,
+.pa-math-back-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  text-decoration: none;
+}
+
+.pa-math-back-btn {
+  background: var(--pa-surface);
+  color: var(--pa-primary);
+  border: 2px solid var(--pa-primary);
+}
+
+.pa-math-back-btn:hover,
+.pa-math-back-btn:focus-visible {
+  background: var(--pa-primary);
+  color: white;
 }

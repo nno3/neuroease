@@ -69,15 +69,38 @@ If stronger audio feedback for mismatches is desired in future, consider a neutr
 
 ---
 
-## 5. Limitations and Future Work
+## 5. Math Practice – Difficulty Levels
 
-- **Cognitive games are not a cure**: They are a supportive activity, not a treatment. Benefits vary by individual and stage of dementia [1].
-- **Not suitable for everyone**: Some people may find games frustrating or uninteresting. Caregivers should use judgement and not pressure use [3].
-- **Math game**: A second cognitive game (math practice) is planned to support different cognitive domains (arithmetic, reasoning) and provide variety.
+Math Practice offers three difficulty levels that control the number range for each operation. Caregivers and patients can choose the level that best matches the person’s ability and comfort.
+
+| Level | Addition | Subtraction | Multiplication | Division |
+|-------|----------|-------------|-----------------|----------|
+| **Easy** | Numbers 1–5 | Numbers 1–6 | Numbers 1–4 | Numbers 1–4 |
+| **Normal** | Numbers 1–10 | Numbers 1–10 | Numbers 1–6 | Numbers 1–5 |
+| **Hard** | Numbers 1–15 | Numbers 1–15 | Numbers 1–10 | Numbers 1–10 |
+
+**What each level means:**
+
+- **Easy**: Smaller numbers throughout. Best for people who are new to the game, have more advanced dementia, or prefer lower cognitive load. Equations stay within single-digit or very small double-digit results.
+- **Normal**: Standard range. Suitable for most users with mild to moderate cognitive impairment who can work with numbers up to about 10.
+- **Hard**: Larger numbers and more challenging arithmetic. For users who find Normal too easy and want to maintain or stretch their skills. Results can reach double digits (e.g. 12×8, 90÷9).
+
+The difficulty is chosen on the Math Practice start screen before selecting an operation. It applies to the entire session and can be changed when starting a new game.
+
+### Rationale for number ranges
+
+The three levels are informed by research on arithmetic-based cognitive training for older adults and people with cognitive impairment. Nouchi et al. [7] describe “learning therapy”—a validated intervention using reading aloud and solving simple arithmetic calculations. In that programme, *the lowest level of difficulty was simple addition (e.g. 1 + 3)* and *the highest level was three-figure division (e.g. 156 ÷ 3)*. The authors selected *extremely simple and easy tasks* to avoid psychological stress during training, and used *systematized basic problems in arithmetic* with difficulty adjusted so participants could solve problems *with ease and without mental stress*. NeuroEase’s Easy level aligns with that “lowest difficulty” idea (single-digit operations, small results). Normal uses a standard range within 10, common in foundational arithmetic. Hard extends to larger numbers and double-digit results for users who need more challenge while remaining within manageable bounds.
 
 ---
 
-## 6. References
+## 6. Limitations and Future Work
+
+- **Cognitive games are not a cure**: They are a supportive activity, not a treatment. Benefits vary by individual and stage of dementia [1].
+- **Not suitable for everyone**: Some people may find games frustrating or uninteresting. Caregivers should use judgement and not pressure use [3].
+
+---
+
+## 7. References
 
 [1] C. Meyer and F. O'Keefe, "Non-pharmacological interventions for people with dementia: A review of reviews," *Dementia (London)*, vol. 19, no. 6, pp. 1927–1954, Aug. 2020. [Online]. Available: [https://pubmed.ncbi.nlm.nih.gov/30526036/](https://pubmed.ncbi.nlm.nih.gov/30526036/). DOI: [10.1177/1471301218813234](https://doi.org/10.1177/1471301218813234)  
 (Review of systematic reviews; cognitive stimulation and reminiscence improved cognition; strongest evidence for reducing responsive behaviours and emotional disorders.)
@@ -96,3 +119,6 @@ If stronger audio feedback for mismatches is desired in future, consider a neutr
 
 [6] Frontiers in Sports and Active Living, "Enhancing prompt perception in dementia: a comparative study of mixed reality cue modalities," 2024.  
 (Feedback prompts for every action are critical for successful perception and task completion in people with dementia; multimodal cues support accessibility.)
+
+[7] R. Nouchi et al., "Reading Aloud and Solving Simple Arithmetic Calculation Intervention (Learning Therapy) Improves Inhibition, Verbal Episodic Memory, Focus Attention and Processing Speed in Healthy Elderly People: Evidence from a Randomized Controlled Trial," *Front. Hum. Neurosci.*, vol. 10, art. 217, May 2016. [Online]. Available: [https://doi.org/10.3389/fnhum.2016.00217](https://doi.org/10.3389/fnhum.2016.00217)  
+(RCT of “learning therapy” (reading aloud + simple arithmetic) in older adults; lowest difficulty: single-digit addition e.g. 1+3; highest: three-figure division e.g. 156÷3; tasks selected to be simple and low-stress; supports scaffolding from single-digit to harder arithmetic.)

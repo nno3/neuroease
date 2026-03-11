@@ -10,7 +10,8 @@
  * in dementia with mixed reality cue modalities.
  */
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { apiRequest } from "../services/apiClient";
 import { getGameSoundsEnabled } from "../utils/gameSounds";
 import "./MathGame.css";
 
@@ -39,27 +40,39 @@ function generateDummy(answer, other, minVal = 0) {
   return dummy;
 }
 
-function generateEquation(op) {
+/**
+ * Difficulty levels control the number range for each operation.
+ * Rationale: Learning therapy (Nouchi et al., Front. Hum. Neurosci. 2016) uses
+ * single-digit addition (e.g. 1+3) as lowest difficulty; we scaffold Easy → Normal → Hard.
+ * See docs/CognitiveGames_Dementia.md §5 for full rationale and references.
+ */
+function generateEquation(op, difficulty = "normal") {
+  const config = {
+    easy: { add: 5, subtract: 6, multiply: 4, divide: 4 },
+    normal: { add: 10, subtract: 10, multiply: 6, divide: 5 },
+    hard: { add: 15, subtract: 15, multiply: 10, divide: 10 },
+  };
+  const c = config[difficulty] || config.normal;
   let num1, num2, answer;
   switch (op) {
     case "add":
-      num1 = Math.floor(Math.random() * 10) + 1;
-      num2 = Math.floor(Math.random() * 10) + 1;
+      num1 = Math.floor(Math.random() * c.add) + 1;
+      num2 = Math.floor(Math.random() * c.add) + 1;
       answer = num1 + num2;
       break;
     case "subtract":
-      num1 = Math.floor(Math.random() * 10) + 1;
+      num1 = Math.floor(Math.random() * c.subtract) + 1;
       num2 = Math.floor(Math.random() * num1) + 1;
       answer = num1 - num2;
       break;
     case "multiply":
-      num1 = Math.floor(Math.random() * 6) + 1;
-      num2 = Math.floor(Math.random() * 6) + 1;
+      num1 = Math.floor(Math.random() * c.multiply) + 1;
+      num2 = Math.floor(Math.random() * c.multiply) + 1;
       answer = num1 * num2;
       break;
     case "divide":
-      num2 = Math.floor(Math.random() * 5) + 1;
-      const mult = Math.floor(Math.random() * 5) + 1;
+      num2 = Math.floor(Math.random() * c.divide) + 1;
+      const mult = Math.floor(Math.random() * c.divide) + 1;
       num1 = num2 * mult;
       answer = num1 / num2;
       break;
@@ -73,7 +86,9 @@ function generateEquation(op) {
 }
 
 export default function MathGame() {
+  const navigate = useNavigate();
   const [operation, setOperation] = useState(null);
+  const [difficulty, setDifficulty] = useState("normal"); // "easy" | "normal" | "hard"
   const [gameStarted, setGameStarted] = useState(false);
   const [equation, setEquation] = useState(null);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -84,6 +99,7 @@ export default function MathGame() {
   const [seconds, setSeconds] = useState(0);
   const [timerId, setTimerId] = useState(null);
   const [questionsCorrect, setQuestionsCorrect] = useState(0);
+  const [totalAttempts, setTotalAttempts] = useState(0);
   const [showSessionSummary, setShowSessionSummary] = useState(false);
   const [gamePaused, setGamePaused] = useState(false);
   const questionStartRef = useRef(Date.now());
@@ -91,8 +107,8 @@ export default function MathGame() {
   const correctSoundRef = useRef(null);
   const wrongSoundRef = useRef(null);
 
-  const nextQuestion = useCallback((op) => {
-    setEquation(generateEquation(op));
+  const nextQuestion = useCallback((op, diff) => {
+    setEquation(generateEquation(op, diff));
     setShowFeedback(false);
     setTotalQuestionTime(0);
     questionStartRef.current = Date.now();
@@ -104,8 +120,9 @@ export default function MathGame() {
     setGamePaused(false);
     setSeconds(0);
     setQuestionsCorrect(0);
+    setTotalAttempts(0);
     setShowSessionSummary(false);
-    nextQuestion(op);
+    nextQuestion(op, difficulty);
     setTimerId(setInterval(() => setSeconds((s) => s + 1), 1000));
   };
 
@@ -121,10 +138,45 @@ export default function MathGame() {
     setTimerId(setInterval(() => setSeconds((s) => s + 1), 1000));
   };
 
+  const saveSession = async (finalCorrect, finalSeconds, finalAttempts) => {
+    const accuracy =
+      finalAttempts > 0 ? Math.min(1, finalCorrect / finalAttempts) : null;
+    try {
+      await apiRequest("/api/games", {
+        method: "POST",
+        body: JSON.stringify({
+          gameType: "math",
+          score: finalCorrect,
+          duration: Math.round(finalSeconds),
+          accuracy: accuracy,
+        }),
+      });
+    } catch (_) {
+      // Silent fail – offline or backend unavailable
+    }
+  };
+
   const endSession = () => {
     if (timerId) clearInterval(timerId);
     setTimerId(null);
+    saveSession(questionsCorrect, seconds, totalAttempts);
     setShowSessionSummary(true);
+  };
+
+  const handleBack = () => {
+    if (gameStarted && !showSessionSummary) {
+      saveSession(questionsCorrect, seconds, totalAttempts);
+    }
+    navigate("/games");
+  };
+
+  const playAgain = () => {
+    setShowSessionSummary(false);
+    setSeconds(0);
+    setQuestionsCorrect(0);
+    setTotalAttempts(0);
+    nextQuestion(operation, difficulty);
+    setTimerId(setInterval(() => setSeconds((s) => s + 1), 1000));
   };
 
   const playFeedbackSound = (correct) => {
@@ -140,6 +192,7 @@ export default function MathGame() {
 
   const handleAnswer = (selected) => {
     if (!equation || showFeedback || gamePaused) return;
+    setTotalAttempts((t) => t + 1);
     if (timerId) clearInterval(timerId);
     setTimerId(null);
     const correct = selected === equation.answer;
@@ -167,7 +220,7 @@ export default function MathGame() {
   const continueGame = () => {
     if (isCorrect) {
       setQuestionsCorrect((c) => c + 1);
-      nextQuestion(operation);
+      nextQuestion(operation, difficulty);
       setTimerId(setInterval(() => setSeconds((s) => s + 1), 1000));
     } else {
       setTotalQuestionTime((t) => t + lastAttemptSecondsRef.current);
@@ -191,12 +244,43 @@ export default function MathGame() {
     return (
       <div className="pa-math-game">
         <div className="pa-math-header">
-          <Link to="/games" className="pa-math-back">← Back</Link>
+          <button type="button" className="pa-math-back" onClick={handleBack}>
+            ← Back to games
+          </button>
           <h2 className="pa-math-title">Math Practice</h2>
         </div>
         <div className="pa-math-start">
           <h3>Choose a game</h3>
           <p className="pa-math-start-desc">Pick an operation to practice.</p>
+          <div className="pa-math-difficulty">
+            <span className="pa-math-difficulty-label">Difficulty:</span>
+            <div className="pa-math-diff-btns">
+            <button
+              type="button"
+              className={`pa-math-diff-btn ${difficulty === "easy" ? "is-active" : ""}`}
+              onClick={() => setDifficulty("easy")}
+              aria-pressed={difficulty === "easy"}
+            >
+              Easy
+            </button>
+            <button
+              type="button"
+              className={`pa-math-diff-btn ${difficulty === "normal" ? "is-active" : ""}`}
+              onClick={() => setDifficulty("normal")}
+              aria-pressed={difficulty === "normal"}
+            >
+              Normal
+            </button>
+            <button
+              type="button"
+              className={`pa-math-diff-btn ${difficulty === "hard" ? "is-active" : ""}`}
+              onClick={() => setDifficulty("hard")}
+              aria-pressed={difficulty === "hard"}
+            >
+              Hard
+            </button>
+            </div>
+          </div>
           <div className="pa-math-ops">
             {OPERATIONS.map((op) => (
               <button
@@ -218,7 +302,9 @@ export default function MathGame() {
   return (
     <div className="pa-math-game">
       <div className="pa-math-header">
-        <Link to="/games" className="pa-math-back">← Back</Link>
+        <button type="button" className="pa-math-back" onClick={handleBack}>
+          ← Back to games
+        </button>
         <h2 className="pa-math-title">Math Practice</h2>
       </div>
       <div className="pa-math-stats-bar">
@@ -319,12 +405,22 @@ export default function MathGame() {
               <br />
               Time: {formatTime(seconds)}
             </p>
-            <Link
-              to="/games"
-              className="pa-math-continue pa-math-back-link"
-            >
-              Back to games
-            </Link>
+            <div className="pa-math-summary-actions">
+              <button
+                type="button"
+                className="pa-math-continue pa-math-play-again"
+                onClick={playAgain}
+              >
+                Play again
+              </button>
+              <button
+                type="button"
+                className="pa-math-continue pa-math-back-btn"
+                onClick={handleBack}
+              >
+                Back to games
+              </button>
+            </div>
           </div>
         </div>
       )}
