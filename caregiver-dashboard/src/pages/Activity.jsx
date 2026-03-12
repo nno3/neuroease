@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "./Activity.css";
-import { Calendar as CalendarIcon, RefreshCw, ClipboardList, Pill, CalendarDays, CheckCircle2, AlertTriangle, Clock3,} from "lucide-react";
+import { Calendar, RefreshCw, ClipboardList, Pill, CalendarDays, CheckCircle2, AlertTriangle, Clock3 } from "lucide-react";
 import { getPatients } from "../services/patients";
 import { format3 } from "../utils/patientHelpers";
 
@@ -48,6 +48,62 @@ function formatBarLabel(isoDateStr) {
     return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
+/** Returns a short x-axis label for a bar based on the period. */
+function getXLabel(d, period) {
+    if (period === "day") return d.label ?? "";
+    if (period === "6month") {
+        // d.label is "Week of 3 Mar" — just show "Mar" for the first week of each month
+        if (!d.key) return "";
+        const dt = new Date(d.key + "T12:00:00");
+        if (Number.isNaN(dt.getTime())) return "";
+        return dt.toLocaleDateString("en-GB", { month: "short" }); // "Mar"
+    }
+    if (period === "year") {
+        // d.label is "Mar 2026" — shorten to "Mar"
+        if (!d.key) return "";
+        const dt = new Date(d.key + "-01T12:00:00");
+        if (Number.isNaN(dt.getTime())) return "";
+        return dt.toLocaleDateString("en-GB", { month: "short" }); // "Mar"
+    }
+    if (!d.date) return "";
+    const dt = new Date(d.date + "T12:00:00");
+    if (Number.isNaN(dt.getTime())) return "";
+    if (period === "week") return dt.toLocaleDateString("en-GB", { weekday: "short" }); // Mon, Tue…
+    if (period === "month") return String(dt.getDate()); // 1, 2, … 30
+    return "";
+}
+
+/** Decide which bar indices should show an x-axis label, like Health app. */
+function getVisibleLabelIndices(series, period) {
+    const n = series.length;
+    if (n === 0) return new Set();
+    if (period === "day") {
+        // Show 12am, 6am, 12pm, 6pm — hours 0, 6, 12, 18
+        return new Set(series.map((d, i) => (d.hour % 6 === 0 ? i : -1)).filter((i) => i >= 0));
+    }
+    if (period === "week") return new Set([...Array(n).keys()]); // all 7 days
+    if (period === "month") {
+        // Show more date labels: every 3-4 days
+        const s = new Set();
+        for (let i = 0; i < n; i += 3) s.add(i);
+        s.add(n - 1);
+        return s;
+    }
+    if (period === "6month") {
+        // Show first week of each month
+        const s = new Set();
+        let lastMonth = -1;
+        series.forEach((d, i) => {
+            if (!d.key) return;
+            const dt = new Date(d.key + "T12:00:00");
+            if (dt.getMonth() !== lastMonth) { s.add(i); lastMonth = dt.getMonth(); }
+        });
+        return s;
+    }
+    if (period === "year") return new Set([...Array(n).keys()]); // all 12 months
+    return new Set([0, n - 1]);
+}
+
 function typeLabel(v) {
     if (v === "medication") return "Medication";
     if (v === "appointment") return "Appointment";
@@ -72,33 +128,24 @@ function StatusIcon({ status, size = 16 }) {
     return <Clock3 size={size} />;
 }
 
-/** Custom input to match your older Patient date picker style */
-const DateInputWithButton = forwardRef(
-    ({ value, onClick, onChange, placeholder, className, disabled }, ref) => (
-        <div className={`act-datewrap ${disabled ? "is-disabled" : ""}`}>
+const DateInputWithIcon = forwardRef(
+    ({ value, onClick, placeholder, disabled }, ref) => (
+        <div className="act-datewrap" onClick={onClick} role="button" tabIndex={0}>
             <input
                 ref={ref}
-                className={className}
+                className="act-date-input"
                 value={value || ""}
-                onChange={onChange} // allow typing
-                onClick={onClick} // open calendar
+                readOnly
                 placeholder={placeholder}
                 disabled={disabled}
             />
-            <button
-                type="button"
-                className="act-calbtn"
-                onClick={onClick}
-                disabled={disabled}
-                aria-label="Open calendar"
-                title="Open calendar"
-            >
-                <CalendarIcon size={18} />
-            </button>
+            <span className="act-date-icon">
+                <Calendar size={16} />
+            </span>
         </div>
     )
 );
-DateInputWithButton.displayName = "DateInputWithButton";
+DateInputWithIcon.displayName = "DateInputWithIcon";
 
 const TYPES = [
     { label: "All", value: "all" },
@@ -106,6 +153,39 @@ const TYPES = [
     { label: "Appointments", value: "appointment" },
     { label: "Tasks", value: "general" },
 ];
+
+const PERIODS = [
+    { label: "D", value: "day", title: "Day" },
+    { label: "W", value: "week", title: "Week" },
+    { label: "M", value: "month", title: "Month" },
+    { label: "6M", value: "6month", title: "6 Months" },
+    { label: "Y", value: "year", title: "Year" },
+];
+
+function getDateRangeForPeriod(period, anchor) {
+    const d = anchor || new Date();
+    const sd = startOfDay(d);
+    let from, to;
+    if (period === "day") {
+        from = to = sd;
+    } else if (period === "week") {
+        to = sd;
+        from = addDays(sd, -6);
+    } else if (period === "month") {
+        to = sd;
+        from = addDays(sd, -29);
+    } else if (period === "6month") {
+        to = sd;
+        from = addDays(sd, -181);
+    } else if (period === "year") {
+        to = sd;
+        from = addDays(sd, -364);
+    } else {
+        from = addDays(sd, -13);
+        to = sd;
+    }
+    return { from: startOfDay(from), to: endOfDay(to) };
+}
 
 function initBreakdown() {
     return {
@@ -125,14 +205,74 @@ function buildEmptySeries(rangeStart, rangeEnd) {
     return out;
 }
 
+/** Aggregate seriesByDay into buckets by week (for 6M) or month (for Y). */
+function aggregateSeries(seriesByDay, groupBy) {
+    if (!Array.isArray(seriesByDay) || seriesByDay.length === 0) return [];
+    const buckets = new Map();
+    seriesByDay.forEach((d) => {
+        const dt = new Date(d.date + "T12:00:00");
+        if (Number.isNaN(dt.getTime())) return;
+        let key;
+        let label;
+        if (groupBy === "week") {
+            const weekStart = new Date(dt);
+            weekStart.setDate(dt.getDate() - dt.getDay() + 1);
+            key = dateKey(weekStart);
+            label = `Week of ${weekStart.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
+        } else {
+            key = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
+            label = dt.toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+        }
+        const existing = buckets.get(key) || { key, label, completed: 0, pending: 0, overdue: 0, total: 0 };
+        existing.completed += Number(d.completed || 0);
+        existing.pending += Number(d.pending || 0);
+        existing.overdue += Number(d.overdue || 0);
+        existing.total += Number(d.total || 0);
+        buckets.set(key, existing);
+    });
+    return Array.from(buckets.values()).sort((a, b) => a.key.localeCompare(b.key));
+}
+
+/** Aggregate log items by hour for Day view. Returns 24 buckets. */
+function aggregateLogByHour(logItems) {
+    const buckets = Array.from({ length: 24 }, (_, h) => ({
+        hour: h,
+        label: h === 0 ? "12am" : h === 12 ? "12pm" : h < 12 ? `${h}am` : `${h - 12}pm`,
+        completed: 0, pending: 0, overdue: 0, total: 0,
+    }));
+    logItems.forEach((it) => {
+        const ts = new Date(it.timestamp);
+        const h = ts.getHours();
+        if (h >= 0 && h < 24) {
+            buckets[h].total += 1;
+            if (it.status === "completed") buckets[h].completed += 1;
+            else if (it.status === "overdue" || it.status === "missed") buckets[h].overdue += 1;
+            else buckets[h].pending += 1;
+        }
+    });
+    return buckets;
+}
+
 export default function Activity() {
     const [patients, setPatients] = useState([]);
     const [patientId, setPatientId] = useState("all");
     const [type, setType] = useState("all");
+    const [period, setPeriod] = useState("week");
+    const [anchorDate, setAnchorDate] = useState(() => new Date());
 
     const today = useMemo(() => new Date(), []);
-    const [fromDate, setFromDate] = useState(() => addDays(today, -13));
-    const [toDate, setToDate] = useState(() => today);
+    const isToday = dateKey(anchorDate) === dateKey(today);
+
+    const { from: fromDate, to: toDate } = useMemo(
+        () => getDateRangeForPeriod(period, anchorDate),
+        [period, anchorDate]
+    );
+
+    const dateRangeLabel = useMemo(() => {
+        const fmt = (d) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+        if (period === "day") return fmt(fromDate);
+        return `${fmt(fromDate)} – ${fmt(toDate)}`;
+    }, [period, fromDate, toDate]);
 
     const [summaryLoading, setSummaryLoading] = useState(true);
     const [summaryError, setSummaryError] = useState("");
@@ -149,10 +289,12 @@ export default function Activity() {
     const [logLoading, setLogLoading] = useState(false);
     const [logError, setLogError] = useState("");
 
+    const logLimit = period === "day" ? 500 : LOG_LIMIT;
+
     useEffect(() => {
         setLogPage(1);
         setLogItems([]);
-    }, [patientId, type, fromDate, toDate, refreshKey]);
+    }, [patientId, type, fromDate, toDate, refreshKey, period]);
 
     useEffect(() => {
         const ac = new AbortController();
@@ -170,7 +312,7 @@ export default function Activity() {
                 from: toISODateOnly(safeFrom),
                 to: toISODateOnly(safeTo),
                 page: String(logPage),
-                limit: String(LOG_LIMIT),
+                limit: String(logLimit),
             });
 
             try {
@@ -212,7 +354,7 @@ export default function Activity() {
         })();
 
         return () => ac.abort();
-    }, [patientId, type, fromDate, toDate, refreshKey, logPage]);
+    }, [patientId, type, fromDate, toDate, refreshKey, logPage, logLimit]);
 
 
     useEffect(() => {
@@ -296,12 +438,6 @@ export default function Activity() {
         return () => ac.abort();
     }, [patientId, type, fromDate, toDate, refreshKey]);
 
-    const dateRangeLabel = useMemo(() => {
-        const f = fromDate ? fromDate.toLocaleDateString("en-GB") : "—";
-        const t = toDate ? toDate.toLocaleDateString("en-GB") : "—";
-        return `${f} → ${t}`;
-    }, [fromDate, toDate]);
-
     const selectedPatientName = useMemo(() => {
         if (patientId === "all") return "All patients";
         const p = patients.find((x) => String(x.id) === String(patientId));
@@ -319,109 +455,173 @@ export default function Activity() {
         }
 
         return {
-            seriesByDay: buildEmptySeries(startOfDay(fromDate || new Date()), endOfDay(toDate || new Date())),
+            seriesByDay: buildEmptySeries(startOfDay(fromDate || new Date()), startOfDay(toDate || new Date())),
             breakdownByType: initBreakdown(),
             totals: { total: 0, completed: 0, pending: 0, overdue: 0 },
             usingLiveSummary: false,
         };
     }, [summaryData, fromDate, toDate]);
 
-    const seriesByDay = chartAgg.seriesByDay || buildEmptySeries(startOfDay(fromDate || new Date()), endOfDay(toDate || new Date()));
+    const rawSeriesByDay = chartAgg.seriesByDay || buildEmptySeries(startOfDay(fromDate || new Date()), startOfDay(toDate || new Date()));
     const breakdownByType = chartAgg.breakdownByType || initBreakdown();
     const totals = chartAgg.totals || { total: 0, completed: 0, pending: 0, overdue: 0 };
 
+    const seriesByDay = useMemo(() => {
+        if (period === "day") {
+            return aggregateLogByHour(logItems);
+        }
+        if (period === "6month") {
+            return aggregateSeries(rawSeriesByDay, "week");
+        }
+        if (period === "year") {
+            return aggregateSeries(rawSeriesByDay, "month");
+        }
+        return rawSeriesByDay;
+    }, [period, rawSeriesByDay, logItems]);
+
+    const chartBarLabel = useMemo(() => {
+        if (period === "day") return (d) => d.label ?? "";
+        if (period === "6month" || period === "year") return (d) => d.label ?? "";
+        return formatBarLabel;
+    }, [period]);
+
     const maxDaily = useMemo(
-        () => Math.max(1, ...seriesByDay.map((d) => d.total || 0)),
+        () => Math.max(1, ...seriesByDay.map((d) => Number(d.total || 0))),
         [seriesByDay]
     );
 
+
+
+    const visibleLabelSet = useMemo(
+        () => getVisibleLabelIndices(seriesByDay, period),
+        [seriesByDay, period]
+    );
+
+    const barMinWidth = null;
+
+    // Y-axis: pick 3 nice round ticks (top, mid, 0)
+    const yTicks = useMemo(() => {
+        const top = maxDaily;
+        const mid = Math.round(top / 2);
+        return [top, mid, 0];
+    }, [maxDaily]);
+
+    const selectedBar = selectedBarDate
+        ? seriesByDay.find((x) => (x.date ?? x.key ?? `h${x.hour}`) === selectedBarDate)
+        : null;
+
     const chartContent = (
-        <>
-            {seriesByDay.length > 14 && (
-                <div className="act-scroll-hint">
-                    ← Scroll horizontally to view all {seriesByDay.length} days →
+        <div className="hc-wrap">
+            {/* Y-axis title */}
+            <div className="hc-yaxis-label">Reminders</div>
+            
+            {/* Y-axis labels on the right, like Health app */}
+            <div className="hc-yaxis">
+                {yTicks.map((v) => (
+                    <span key={v} className="hc-ytick">{v}</span>
+                ))}
+            </div>
+
+            {/* Bar area */}
+            <div className="hc-body">
+                {/* Horizontal grid lines */}
+                <div className="hc-grid">
+                    <div className="hc-gridline" />
+                    <div className="hc-gridline" />
+                    <div className="hc-gridline hc-gridline--base" />
                 </div>
-            )}
-            <div className="act-chart-bars-wrap">
-                <div className="act-chart-ylabel" aria-hidden="true">Activity Count</div>
-                <div className="act-bars-container">
-                    <div className="act-bars" role="img" aria-label="Adherence trend chart">
-                        {seriesByDay.map((d) => {
+
+                {/* Bars row — scrollable for 6M/Y */}
+                <div className={barMinWidth ? "hc-bars-scroll" : "hc-bars-fit"}>
+                    <div className="hc-bars" role="img" aria-label="Adherence trend chart">
+                        {seriesByDay.map((d, idx) => {
+                            const barKey = d.date ?? d.key ?? `h${d.hour}` ?? idx;
                             const total = Number(d.total || 0);
                             const completed = Number(d.completed || 0);
                             const pending = Number(d.pending || 0);
                             const overdue = Number(d.overdue || 0);
-                            const hTotal = Math.max(2, (total / maxDaily) * 100);
+                            const hTotal = total > 0 ? Math.max(3, (total / maxDaily) * 100) : 0;
                             const hCompleted = total ? (completed / total) * 100 : 0;
                             const hPending = total ? (pending / total) * 100 : 0;
                             const hOverdue = total ? (overdue / total) * 100 : 0;
-                            const isSelected = selectedBarDate === d.date;
+                            const xLabel = getXLabel(d, period);
+                            const isSelected = selectedBarDate === barKey;
+                            const showLabel = visibleLabelSet.has(idx);
                             return (
                                 <div
-                                    key={d.date}
-                                    className={`act-barcol ${isSelected ? "is-selected" : ""}`}
+                                    key={barKey}
+                                    className={`hc-col ${isSelected ? "is-selected" : ""}`}
                                     role="button"
                                     tabIndex={0}
-                                    onClick={() => setSelectedBarDate((prev) => (prev === d.date ? null : d.date))}
-                                    onKeyDown={(e) => e.key === "Enter" && setSelectedBarDate((prev) => (prev === d.date ? null : d.date))}
-                                    title={`${formatBarLabel(d.date)} — Total: ${total}, Completed: ${completed}, Pending: ${pending}, Overdue: ${overdue}`}
+                                    onClick={() => setSelectedBarDate((prev) => (prev === barKey ? null : barKey))}
+                                    onKeyDown={(e) => e.key === "Enter" && setSelectedBarDate((prev) => (prev === barKey ? null : barKey))}
+                                    title={`${xLabel || chartBarLabel(d)} — Total: ${total}`}
+                                    style={barMinWidth ? { flex: "none", width: `${barMinWidth}px` } : undefined}
                                 >
-                                    <div className="act-bar" style={{ height: `${hTotal}%` }}>
-                                        <div className="act-bar-seg is-completed" style={{ height: `${hCompleted}%` }} />
-                                        <div className="act-bar-seg is-pending" style={{ height: `${hPending}%` }} />
-                                        <div className="act-bar-seg is-overdue" style={{ height: `${hOverdue}%` }} />
+                                    <div className="hc-bar-area">
+                                        {hTotal > 0 ? (
+                                            <div className="hc-bar" style={{ height: `${hTotal}%` }}>
+                                                <div className="hc-seg hc-seg--overdue" style={{ height: `${hOverdue}%` }} />
+                                                <div className="hc-seg hc-seg--pending" style={{ height: `${hPending}%` }} />
+                                                <div className="hc-seg hc-seg--completed" style={{ height: `${hCompleted}%` }} />
+                                            </div>
+                                        ) : (
+                                            <div className="hc-bar hc-bar--empty" style={{ height: "3px" }} />
+                                        )}
                                     </div>
-                                    <div className="act-barlabel">{formatBarLabel(d.date)}</div>
+                                    <div className={`hc-xlabel ${showLabel ? "" : "hc-xlabel--hidden"}`}>
+                                        {showLabel ? xLabel : ""}
+                                    </div>
                                 </div>
                             );
                         })}
                     </div>
                 </div>
             </div>
-            {selectedBarDate && (() => {
-                const d = seriesByDay.find((x) => x.date === selectedBarDate);
-                if (!d) return null;
+
+            {/* Tap/click summary callout */}
+            {selectedBar && (() => {
+                const d = selectedBar;
                 const total = Number(d.total || 0);
                 const completed = Number(d.completed || 0);
                 const pending = Number(d.pending || 0);
                 const overdue = Number(d.overdue || 0);
-                const patientsForDay = logItems
-                    .filter((it) => it.timestamp && dateKey(new Date(it.timestamp)) === selectedBarDate)
-                    .map((it) => it.patientName)
-                    .filter(Boolean);
-                const uniquePatients = [...new Set(patientsForDay)];
+                const label = getXLabel(d, period) || chartBarLabel(d);
                 return (
-                    <div className="act-bar-summary">
-                        <div className="act-bar-summary-row">
-                            <strong>{formatBarLabel(selectedBarDate)}</strong>
-                            <span>Total: {total}</span>
-                            <span>Completed: {completed}</span>
-                            <span>Pending: {pending}</span>
-                            <span>Overdue: {overdue}</span>
+                    <div className="hc-callout">
+                        <div className="hc-callout-label">{label}</div>
+                        <div className="hc-callout-stats">
+                            <span className="hc-callout-stat hc-callout-stat--completed">
+                                <span className="hc-callout-dot" />
+                                {completed} done
+                            </span>
+                            <span className="hc-callout-stat hc-callout-stat--pending">
+                                <span className="hc-callout-dot" />
+                                {pending} pending
+                            </span>
+                            <span className="hc-callout-stat hc-callout-stat--overdue">
+                                <span className="hc-callout-dot" />
+                                {overdue} overdue
+                            </span>
+                            <span className="hc-callout-total">{total} total</span>
                         </div>
-                        {uniquePatients.length > 0 && (
-                            <div className="act-bar-summary-patients">
-                                Patients: {uniquePatients.join(", ")}
-                            </div>
-                        )}
-                        <button type="button" className="act-bar-summary-close" onClick={() => setSelectedBarDate(null)} aria-label="Close">
-                            ×
-                        </button>
+                        <button type="button" className="hc-callout-close" onClick={() => setSelectedBarDate(null)} aria-label="Close">×</button>
                     </div>
                 );
             })()}
-            <div className="act-legend">
-                <div className="act-legend-item">
-                    <span className="act-dot is-completed"/> Completed
-                </div>
-                <div className="act-legend-item">
-                    <span className="act-dot is-pending"/> Pending
-                </div>
-                <div className="act-legend-item">
-                    <span className="act-dot is-overdue"/> Overdue
-                </div>
+
+            {/* X-axis label */}
+            <div className="hc-xaxis-label">
+                {period === "day" ? "Time" : period === "week" ? "Day of Week" : period === "month" ? "Day of Month" : period === "6month" ? "Month" : "Month"}
             </div>
-        </>
+
+            {/* Legend */}
+            <div className="hc-legend">
+                <span className="hc-legend-item"><span className="hc-ldot hc-ldot--completed" />Completed</span>
+                <span className="hc-legend-item"><span className="hc-ldot hc-ldot--pending" />Pending</span>
+                <span className="hc-legend-item"><span className="hc-ldot hc-ldot--overdue" />Overdue</span>
+            </div>
+        </div>
     );
 
     return (
@@ -494,42 +694,6 @@ export default function Activity() {
                             </div>
                         </div>
 
-                        <div className="act-control">
-                            <label className="act-label">From</label>
-                            <DatePicker
-                                selected={fromDate}
-                                onChange={(d) => setFromDate(d)}
-                                dateFormat="dd/MM/yyyy"
-                                placeholderText="DD/MM/YYYY"
-                                maxDate={toDate || new Date()}
-                                calendarStartDay={1}
-                                showMonthDropdown
-                                showYearDropdown
-                                dropdownMode="select"
-                                scrollableYearDropdown
-                                yearDropdownItemNumber={120}
-                                customInput={<DateInputWithButton className="act-input" />}
-                            />
-                        </div>
-
-                        <div className="act-control">
-                            <label className="act-label">To</label>
-                            <DatePicker
-                                selected={toDate}
-                                onChange={(d) => setToDate(d)}
-                                dateFormat="dd/MM/yyyy"
-                                placeholderText="DD/MM/YYYY"
-                                minDate={fromDate || undefined}
-                                maxDate={new Date()}
-                                calendarStartDay={1}
-                                showMonthDropdown
-                                showYearDropdown
-                                dropdownMode="select"
-                                scrollableYearDropdown
-                                yearDropdownItemNumber={120}
-                                customInput={<DateInputWithButton className="act-input" />}
-                            />
-                        </div>
                     </div>
 
                     {(logError || summaryError) && <div className="act-error">{logError || summaryError}</div>}
@@ -537,7 +701,7 @@ export default function Activity() {
                     <div className="act-content">
                         <div className="act-kpis">
                             <div className="act-kpi">
-                                <div className="act-kpi-label">Total items</div>
+                                <div className="act-kpi-label">Total reminders</div>
                                 <div className="act-kpi-value">{totals.total}</div>
                             </div>
                             <div className="act-kpi">
@@ -554,8 +718,52 @@ export default function Activity() {
                             </div>
                         </div>
 
-                        <div className="act-charts">
-                            <div className="act-chart">
+                        <div className="act-period-bar">
+                            <div className="act-period-tabs">
+                                {PERIODS.map((p) => (
+                                    <button
+                                        key={p.value}
+                                        type="button"
+                                        className={`act-period-tab ${period === p.value ? "is-active" : ""}`}
+                                        onClick={() => setPeriod(p.value)}
+                                        title={p.title}
+                                    >
+                                        {p.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="act-date-picker">
+                                <DatePicker
+                                    selected={anchorDate}
+                                    onChange={(date) => { if (date) setAnchorDate(date); }}
+                                    dateFormat="dd/MM/yyyy"
+                                    placeholderText="Pick a date"
+                                    maxDate={today}
+                                    calendarStartDay={1}
+                                    showMonthDropdown
+                                    showYearDropdown
+                                    dropdownMode="select"
+                                    scrollableYearDropdown
+                                    yearDropdownItemNumber={15}
+                                    customInput={<DateInputWithIcon />}
+                                />
+                                {!isToday && (
+                                    <button
+                                        type="button"
+                                        className="act-today-btn"
+                                        onClick={() => setAnchorDate(new Date())}
+                                    >
+                                        Today
+                                    </button>
+                                )}
+                            </div>
+
+                            <span className="act-date-range-label">{dateRangeLabel}</span>
+                        </div>
+
+                        <div className="act-charts-row">
+                            <div className="act-chart act-chart--main">
                                 <div className="act-chart-head">
                                     <div>
                                         <div className="act-chart-title">Reminder adherence trend</div>
@@ -582,42 +790,42 @@ export default function Activity() {
                                 )}
                             </div>
 
-                            <div className="act-chart">
-                                <div className="act-chart-head">
-                                    <div className="act-chart-title">Breakdown by reminder type</div>
-                                    <div className="act-chart-sub">Medication / Appointment / Task</div>
-                                </div>
+                            <div className="act-chart act-chart--breakdown">
+                            <div className="act-chart-head">
+                                <div className="act-chart-title">Breakdown by reminder type</div>
+                                <div className="act-chart-sub">Medication / Appointment / Task</div>
+                            </div>
 
-                                {summaryLoading ? (
-                                    <div className="act-state">Loading charts…</div>
-                                ) : (
-                                    <div className="act-typebars">
-                                        {["medication", "appointment", "general"].map((t) => {
-                                            const val = breakdownByType?.[t]?.total ?? 0;
-                                            const pct = totals.total ? Math.round((val / totals.total) * 100) : 0;
+                            {summaryLoading ? (
+                                <div className="act-state">Loading charts…</div>
+                            ) : (
+                                <div className="act-typebars">
+                                    {["medication", "appointment", "general"].map((t) => {
+                                        const val = breakdownByType?.[t]?.total ?? 0;
+                                        const pct = totals.total ? Math.round((val / totals.total) * 100) : 0;
 
-                                            return (
-                                                <div key={t} className="act-typebar">
-                                                    <div className={`act-typebar-icon is-${t}`}>
-                                                        <TypeIcon type={t}/>
-                                                    </div>
-                                                    <div className="act-typebar-main">
-                                                        <div className="act-typebar-top">
-                                                            <span className="act-typebar-title">{typeLabel(t)}</span>
-                                                            <span className="act-typebar-meta">
+                                        return (
+                                            <div key={t} className="act-typebar">
+                                                <div className={`act-typebar-icon is-${t}`}>
+                                                    <TypeIcon type={t}/>
+                                                </div>
+                                                <div className="act-typebar-main">
+                                                    <div className="act-typebar-top">
+                                                        <span className="act-typebar-title">{typeLabel(t)}</span>
+                                                        <span className="act-typebar-meta">
                               {val} • {pct}%
                             </span>
-                                                        </div>
-                                                        <div className="act-typebar-track">
-                                                            <div className={`act-typebar-fill is-${t}`}
-                                                                 style={{width: `${pct}%`}}/>
-                                                        </div>
+                                                    </div>
+                                                    <div className="act-typebar-track">
+                                                        <div className={`act-typebar-fill is-${t}`}
+                                                             style={{width: `${pct}%`}}/>
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                             </div>
                         </div>
 
