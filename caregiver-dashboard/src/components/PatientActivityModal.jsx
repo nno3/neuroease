@@ -5,6 +5,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { getRemindersForPatient } from "../services/reminders";
 import { getLatestLocation, getLocationAlerts, getSafeZones } from "../services/locationService";
+import { getRecentGameSessions } from "../services/activityService";
 import { getInitials, getAvatarColor } from "../utils/patientHelpers";
 import {
     CalendarClock,
@@ -125,10 +126,11 @@ function reminderStatusForOccurrence(reminder, effectiveScheduledTime) {
     return "pending";
 }
 
-const MOCK_GAMES = [
-    { id: "1", name: "Memory match", description: "Match pairs to exercise recall", comingSoon: true },
-    { id: "2", name: "Puzzle", description: "Daily puzzle for focus", comingSoon: true },
-];
+const GAME_TYPE_LABELS = {
+    memory: "Memory Match",
+    math: "Math Practice",
+    sequencing: "Sequencing",
+};
 
 const ALERT_FILTERS = [
     { value: "day", label: "Today" },
@@ -300,13 +302,14 @@ function buildOccurrencesForRange(reminders, range) {
 }
 
 /**
- * Full patient activity: reminders list, mock games, current location map, alert history with filter.
+ * Full patient activity: reminders list, game sessions, current location map, alert history with filter.
  */
 export default function PatientActivityModal({ patient, onClose, onViewDetails }) {
     const patientId = patient?.id ?? patient?.patientId;
     const patientName = patient?.name ?? "Patient";
 
     const [reminders, setReminders] = useState([]);
+    const [gameSessions, setGameSessions] = useState([]);
     const [location, setLocation] = useState(null);
     const [safeZones, setSafeZones] = useState([]);
     const [alerts, setAlerts] = useState([]);
@@ -327,7 +330,8 @@ export default function PatientActivityModal({ patient, onClose, onViewDetails }
             getLatestLocation(pid).catch(() => null),
             getSafeZones(pid).catch(() => ({ data: [] })),
             getLocationAlerts(pid),
-        ]).then(([remRes, locRes, zonesRes, alertRes]) => {
+            getRecentGameSessions(20, pid),
+        ]).then(([remRes, locRes, zonesRes, alertRes, gamesRes]) => {
             const remList = remRes.status === "fulfilled" ? remRes.value?.data ?? [] : [];
             setReminders(Array.isArray(remList) ? remList : []);
 
@@ -354,6 +358,14 @@ export default function PatientActivityModal({ patient, onClose, onViewDetails }
             } else {
                 setAlerts([]);
             }
+
+            if (gamesRes.status === "fulfilled" && gamesRes.value != null) {
+                const r = gamesRes.value;
+                const items = Array.isArray(r?.data?.items) ? r.data.items : (Array.isArray(r?.data) ? r.data : []);
+                setGameSessions(items);
+            } else {
+                setGameSessions([]);
+            }
         }).catch((err) => setError(err?.data?.message ?? err?.message ?? "Failed to load activity"))
             .finally(() => setLoading(false));
     }, [patientId]);
@@ -378,6 +390,28 @@ export default function PatientActivityModal({ patient, onClose, onViewDetails }
         () => filterAlertsByRange(alerts, alertFilter),
         [alerts, alertFilter]
     );
+
+    const filteredGameSessions = useMemo(() => {
+        if (!gameSessions.length) return [];
+        const now = new Date();
+        let start, end;
+        if (alertFilter === "day") {
+            start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            end = new Date(start);
+            end.setDate(end.getDate() + 1);
+        } else if (alertFilter === "week") {
+            start = getWeekStart(now);
+            end = new Date(start);
+            end.setDate(end.getDate() + 7);
+        } else {
+            start = new Date(now.getFullYear(), now.getMonth(), 1);
+            end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        }
+        return gameSessions.filter((s) => {
+            const t = new Date(s.timestamp || s.playedAt).getTime();
+            return t >= start.getTime() && t < end.getTime();
+        });
+    }, [gameSessions, alertFilter]);
 
     const locationStatus = useMemo(() => {
         if (!location) return null;
@@ -460,7 +494,7 @@ export default function PatientActivityModal({ patient, onClose, onViewDetails }
                                             : "No reminders in this period. Try \"This week\" or \"This month\" for more."}
                                     </p>
                                 ) : (
-                                    <ul className="pa-reminder-list">
+                                    <ul className={`pa-reminder-list ${reminderOccurrences.length > 5 ? "pa-reminder-list--scroll" : ""}`}>
                                         {reminderOccurrences.map((occ) => {
                                             const r = occ.reminder;
                                             const effectiveTime = occ.effectiveScheduledTime;
@@ -494,21 +528,43 @@ export default function PatientActivityModal({ patient, onClose, onViewDetails }
                                 )}
                             </section>
 
-                            {/* Games — mock */}
+                            {/* Games — real sessions */}
                             <section className="pa-section">
                                 <h3 className="pa-section-title">
                                     <Gamepad2 size={18} aria-hidden /> Games
                                 </h3>
-                                <p className="pa-muted">Games will appear here when the patient app supports them.</p>
-                                <ul className="pa-games-list">
-                                    {MOCK_GAMES.map((g) => (
-                                        <li key={g.id} className="pa-game-item">
-                                            <span className="pa-game-name">{g.name}</span>
-                                            <span className="pa-game-desc">{g.description}</span>
-                                            <span className="pa-game-badge">{g.comingSoon ? "Coming soon" : ""}</span>
-                                        </li>
-                                    ))}
-                                </ul>
+                                {filteredGameSessions.length === 0 ? (
+                                    <p className="pa-empty">
+                                        {gameSessions.length === 0
+                                            ? "No game sessions yet. Games will appear here once the patient plays them."
+                                            : "No games played in this period. Try \u201CThis week\u201D or \u201CThis month\u201D for more."}
+                                    </p>
+                                ) : (
+                                    <ul className={`pa-games-list ${filteredGameSessions.length > 5 ? "pa-games-list--scroll" : ""}`}>
+                                        {filteredGameSessions.map((s, i) => {
+                                            const label = GAME_TYPE_LABELS[s.gameType] || s.gameType;
+                                            const mins = Math.floor((s.duration || 0) / 60);
+                                            const secs = (s.duration || 0) % 60;
+                                            const durationStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+                                            const accuracyStr = s.accuracy != null ? `${Math.round(s.accuracy * 100)}%` : null;
+                                            const playedAt = s.timestamp || s.playedAt;
+                                            const dateStr = playedAt
+                                                ? new Date(playedAt).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })
+                                                : "—";
+                                            return (
+                                                <li key={s.id ?? i} className="pa-game-item">
+                                                    <span className="pa-game-name">{label}</span>
+                                                    <span className="pa-game-desc">
+                                                        Score: {s.score ?? "—"}
+                                                        {accuracyStr && ` · Accuracy: ${accuracyStr}`}
+                                                        {` · ${durationStr}`}
+                                                    </span>
+                                                    <span className="pa-game-date">{dateStr}</span>
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                )}
                             </section>
 
                             {/* Location & safe zones — status line + map + set safe zone */}

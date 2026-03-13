@@ -187,6 +187,11 @@
     overflow: hidden;
 }
 
+.pa-reminder-list--scroll {
+    max-height: 245px;
+    overflow-y: auto;
+}
+
 .pa-reminder-item {
     display: flex;
     align-items: center;
@@ -262,25 +267,33 @@
     color: #1d4ed8;
 }
 
-/* Games mock */
+/* Games */
 .pa-games-list {
     list-style: none;
     margin: 0;
     padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.pa-games-list--scroll {
+    max-height: 215px;
+    overflow-y: auto;
 }
 
 .pa-game-item {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
+    gap: 6px 10px;
+    padding: 10px 14px;
+    background: #fff;
+    border-bottom: 1px solid #f1f3f5;
+}
+
+.pa-game-item:last-child {
+    border-bottom: none;
 }
 
 .pa-game-name {
@@ -292,13 +305,16 @@
 .pa-game-desc {
     font-size: 12px;
     color: #64748b;
+    flex: 1;
+    min-width: 0;
 }
 
-.pa-game-badge {
-    margin-left: auto;
+.pa-game-date {
     font-size: 11px;
-    font-weight: 600;
-    color: #64748b;
+    font-weight: 500;
+    color: #94a3b8;
+    white-space: nowrap;
+    margin-left: auto;
 }
 
 .pa-location-status {

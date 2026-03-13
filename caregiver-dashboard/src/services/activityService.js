@@ -31,9 +31,12 @@ export function getGamesPlayedToday() {
 /**
  * Recent game sessions for dashboard activity feed.
  * @param {number} [limit=20]
+ * @param {number} [patientId] - If provided, filter to this patient only.
  */
-export function getRecentGameSessions(limit = 20) {
-    return api.get(`/activity/recent-games?limit=${Math.max(1, Math.min(50, limit))}`);
+export function getRecentGameSessions(limit = 20, patientId) {
+    const params = new URLSearchParams({ limit: String(Math.max(1, Math.min(50, limit))) });
+    if (patientId != null) params.set("patientId", String(patientId));
+    return api.get(`/activity/recent-games?${params.toString()}`);
 }
 
 /**

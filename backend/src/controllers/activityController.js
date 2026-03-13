@@ -683,12 +683,14 @@ const activityController = {
     },
 
     /**
-     * GET /api/activity/recent-games?limit=20
+     * GET /api/activity/recent-games?limit=20&patientId=optional
      * Returns recent game sessions for caregiver's assigned patients (for dashboard activity feed).
+     * If patientId is provided, filters to that patient only.
      */
     getRecentGameSessions: async (req, res) => {
         try {
             const limit = Math.min(50, Math.max(1, parseInt(String(req.query.limit ?? "20"), 10) || 20));
+            const patientIdRaw = req.query.patientId;
             const caregiver = await User.findByPk(req.user.userId);
             if (!caregiver) return res.status(404).json({ success: false, message: "Caregiver not found" });
 
@@ -703,8 +705,18 @@ const activityController = {
                 return res.json({ success: true, data: { items: [] } });
             }
 
+            let targetIds = assignedIds;
+            if (patientIdRaw != null && String(patientIdRaw) !== "all") {
+                const pid = parseInt(String(patientIdRaw), 10);
+                if (!Number.isFinite(pid)) return res.status(400).json({ success: false, message: "Invalid patientId" });
+                if (!assignedIds.includes(pid)) {
+                    return res.status(403).json({ success: false, message: "Access denied. Patient not assigned to you." });
+                }
+                targetIds = [pid];
+            }
+
             const sessions = await GameSession.findAll({
-                where: { patientId: { [Op.in]: assignedIds } },
+                where: { patientId: { [Op.in]: targetIds } },
                 order: [["playedAt", "DESC"]],
                 limit,
                 attributes: ["id", "patientId", "gameType", "score", "duration", "accuracy", "playedAt"],
