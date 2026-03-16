@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import { format3 } from "../utils/patientHelpers";
 import "./Reminders.css";
 
-import {Pill, CalendarDays, ClipboardList, Plus, Trash2, UserRound, Repeat, CheckCircle2, Clock3,} from "lucide-react";
+import { Pill, CalendarDays, ClipboardList, Plus, Trash2, UserRound, Repeat, CheckCircle2, Clock3, AlertTriangle } from "lucide-react";
 import ReminderCalendar from "../components/ReminderCalendar";
 
 function sameDate(a, b) {
@@ -110,6 +110,39 @@ function doesReminderOccurOnDate(reminder, targetDate) {
     }
 
     return false;
+}
+
+/** When is this reminder due on targetDate? Returns Date or null. For one-time, always returns scheduledTime. For recurring, returns occurrence time only if it occurs on targetDate. */
+function getOccurrenceTime(reminder, targetDate) {
+    const reminderDate = new Date(reminder.scheduledTime);
+    if (Number.isNaN(reminderDate.getTime())) return null;
+    const recur = reminder.recurrence || "once";
+    if (recur === "once") return reminderDate;
+    if (!doesReminderOccurOnDate(reminder, targetDate)) return null;
+    return new Date(
+        targetDate.getFullYear(),
+        targetDate.getMonth(),
+        targetDate.getDate(),
+        reminderDate.getHours(),
+        reminderDate.getMinutes(),
+        reminderDate.getSeconds()
+    );
+}
+
+/** completed | overdue | pending for this occurrence */
+function getOccurrenceStatus(reminder, occurrenceTime) {
+    if (!occurrenceTime) return "pending";
+    const now = new Date();
+    const completed = reminder.recurrence === "once"
+        ? !!reminder.isCompleted
+        : reminder.completedAt && (() => {
+            const c = new Date(reminder.completedAt);
+            const o = new Date(occurrenceTime);
+            return c.getDate() === o.getDate() && c.getMonth() === o.getMonth() && c.getFullYear() === o.getFullYear();
+        })();
+    if (completed) return "completed";
+    if (occurrenceTime.getTime() < now.getTime()) return "overdue";
+    return "pending";
 }
 
 export default function Reminders() {
@@ -421,7 +454,10 @@ export default function Reminders() {
                             ) : (
                                 <div className="rm-schedule-list">
                                     {visibleReminders.map((r) => {
-                                        const isCompleted = r.isCompleted === true;
+                                        const refDate = selectedDate || new Date();
+                                        const occurrenceTime = getOccurrenceTime(r, refDate);
+                                        const status = getOccurrenceStatus(r, occurrenceTime);
+                                        const statusLabel = status === "completed" ? "Completed" : status === "overdue" ? "Overdue" : "Pending";
 
                                         return (
                                             <div className="rm-schedule-card" key={r.id}>
@@ -470,11 +506,12 @@ export default function Reminders() {
                                                         </div>
 
                                                         <div className="rm-line">
-                                                            <CheckCircle2 size={14}/>
+                                                            {status === "completed" && <CheckCircle2 size={14} />}
+                                                            {status === "overdue" && <AlertTriangle size={14} />}
+                                                            {status === "pending" && <Clock3 size={14} />}
                                                             <span className="rm-line-label">Status:</span>
-                                                            <span
-                                                                className={`rm-status ${isCompleted ? "is-complete" : "is-pending"}`}>
-                                                                {isCompleted ? "Completed" : "Pending"}
+                                                            <span className={`rm-status is-${status}`}>
+                                                                {statusLabel}
                                                             </span>
                                                         </div>
                                                     </div>

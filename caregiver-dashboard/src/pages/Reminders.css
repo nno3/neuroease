@@ -257,8 +257,9 @@ This is my current css, the white block at the end is now gone but I want the re
     font-size: 14px;
 }
 
-.rm-status.is-complete { color: #1f7a33; }
+.rm-status.is-completed { color: #1f7a33; }
 .rm-status.is-pending { color: #b45309; }
+.rm-status.is-overdue { color: #dc2626; font-weight: 700; }
 
 .rm-card-msg {
     margin-top: 10px;
