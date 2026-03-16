@@ -40,6 +40,17 @@ export function getRecentGameSessions(limit = 20, patientId) {
 }
 
 /**
+ * Game sessions chart-ready summary aggregated by day and game type.
+ * @param {string} from - YYYY-MM-DD
+ * @param {string} to - YYYY-MM-DD
+ * @param {string} [patientId=all]
+ */
+export function getGamesSummary({ from, to, patientId = "all" } = {}) {
+    const params = new URLSearchParams({ from, to, patientId });
+    return api.get(`/activity/games-summary?${params.toString()}`);
+}
+
+/**
  * Per-patient activity summary for today (reminders, games, last active).
  * @param {number} [patientId] - If provided, return only this patient's summary.
  */

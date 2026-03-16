@@ -190,6 +190,51 @@
     color: #2563eb;
 }
 
+/* Date range banner shown below shared filters */
+.act-date-range-banner {
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #334155;
+    padding: 8px 0;
+    margin: 0 0 4px 0;
+    letter-spacing: 0.01em;
+}
+
+/* Content sections (Reminders / Games) */
+.act-section {
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eef2f7;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.act-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.act-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.act-section-title {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 800;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+}
+
 .act-datewrap {
     display: grid;
     grid-template-columns: 1fr 42px;
@@ -278,14 +323,6 @@
     font-weight: 700;
     color: #475569;
     margin-left: auto;
-}
-
-.act-period-bar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 12px 20px;
-    margin-bottom: 16px;
 }
 
 .act-period-tabs {
@@ -427,14 +464,6 @@
     border-color: #bfdbfe;
 }
 
-.act-date-range-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: #64748b;
-    margin-left: auto;
-    white-space: nowrap;
-}
-
 .act-content {
     margin-top: 10px;
     display: grid;
@@ -499,6 +528,13 @@
     height: 320px;
 }
 
+.act-chart--perf {
+    flex: 1;
+    min-width: 280px;
+    display: flex;
+    flex-direction: column;
+}
+
 .act-chart--breakdown {
     flex: 1;
     min-width: 0;
@@ -508,16 +544,220 @@
     grid-template-columns: 1fr;
 }
 
+/* ── Performance line chart ── */
+.perf-chart-wrap {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
+}
+
+.perf-axis-labels {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 4px 4px;
+    min-height: 20px;
+}
+
+.perf-axis-label--left {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #0ea5e9;
+}
+
+.perf-axis-label--right {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #ec4899;
+}
+
+.perf-svg {
+    width: 100%;
+    flex: 1;
+    min-height: 200px;
+    max-height: 360px;
+}
+
+.perf-tick {
+    font-size: 10px;
+    fill: #94a3b8;
+    font-weight: 600;
+}
+
+.perf-tick--acc {
+    fill: #db2777;
+}
+
+.perf-axis-label {
+    font-size: 9px;
+    fill: #0ea5e9;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.perf-axis-label--acc {
+    fill: #ec4899;
+}
+
+.perf-xlabel {
+    font-size: 9px;
+    fill: #94a3b8;
+    font-weight: 600;
+}
+
+.perf-dot {
+    transition: r 0.15s ease;
+    cursor: pointer;
+}
+
+.perf-tooltip {
+    position: absolute;
+    top: 40px;
+    transform: translateX(-50%);
+    background: #0f172a;
+    color: #fff;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 10;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.perf-tooltip strong {
+    font-size: 13px;
+    margin-bottom: 2px;
+}
+
+.perf-tooltip-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.perf-tooltip-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.perf-tooltip-dot--score { background: #0ea5e9; }
+.perf-tooltip-dot--acc   { background: #ec4899; }
+
+.perf-tooltip-count {
+    color: #94a3b8;
+    font-size: 11px;
+    margin-top: 2px;
+}
+
+/* ── Performance click callout ── */
+.perf-callout {
+    margin-top: 10px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 14px 16px;
+    animation: fadeIn 0.15s ease;
+}
+
+.perf-callout-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.perf-callout-header .hc-callout-close {
+    position: static;
+    flex-shrink: 0;
+}
+
+.perf-callout-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: #0f172a;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.perf-callout-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.perf-callout-stat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.perf-callout-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.perf-callout-stat-label {
+    color: #64748b;
+    min-width: 120px;
+}
+
+.perf-callout-stat-value {
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.perf-callout-note {
+    font-weight: 400;
+    font-size: 11px;
+    color: #94a3b8;
+    margin-left: 4px;
+}
+
+.act-chart--perf .act-period-tabs {
+    margin-bottom: 10px;
+}
+
+.act-state--perf-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    height: 200px;
+    color: #94a3b8;
+    font-size: 13px;
+    text-align: center;
+    padding: 20px;
+}
+
 .act-chart-head {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 10px 16px;
     margin-bottom: 12px;
 }
 
 .act-chart-maximise-btn {
+    margin-left: auto;
+    flex-shrink: 0;
     padding: 6px 12px;
     font-size: 12px;
     font-weight: 700;
@@ -547,6 +787,15 @@
 }
 
 /* ── Health-app style chart ── */
+.hc-chart-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
 .hc-wrap {
     margin-top: 12px;
     display: flex;
@@ -833,6 +1082,16 @@
     font-weight: 700;
     color: #0f172a;
     margin-right: 4px;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.hc-callout-date {
+    font-size: 12px;
+    font-weight: 400;
+    color: #64748b;
 }
 
 .hc-callout-stats {
@@ -899,6 +1158,79 @@
     transform: scale(1.1);
 }
 
+/* Detail list inside callout */
+.hc-detail-list {
+    list-style: none;
+    margin: 10px 0 0;
+    padding: 0;
+    width: 100%;
+    border-top: 1px solid #e2e8f0;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.hc-detail-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 0;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 12px;
+}
+
+.hc-detail-item:last-child {
+    border-bottom: none;
+}
+
+.hc-detail-item--completed { color: #166534; }
+.hc-detail-item--overdue,
+.hc-detail-item--missed { color: #b91c1c; }
+.hc-detail-item--pending { color: #1d4ed8; }
+
+.hc-detail-title {
+    font-weight: 600;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 160px;
+}
+
+.hc-detail-meta {
+    color: #64748b;
+    font-size: 11px;
+    white-space: nowrap;
+    margin-left: auto;
+}
+
+.hc-detail-more {
+    padding: 6px 0;
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    text-align: center;
+}
+
+.hc-detail-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.hc-detail-dot--memory { background: #8b5cf6; }
+.hc-detail-dot--math { background: #f59e0b; }
+.hc-detail-dot--sequencing { background: #06b6d4; }
+
+.hc-detail-loading {
+    width: 100%;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #e2e8f0;
+    font-size: 12px;
+    color: #94a3b8;
+}
+
 /* Legend */
 .hc-legend {
     grid-column: 1 / -1;
@@ -945,6 +1277,41 @@
 }
 .hc-ldot--overdue { 
     background: linear-gradient(135deg, #f43f5e 0%, #dc2626 100%);
+}
+
+/* Game type bar segments and legend dots */
+.hc-seg--memory {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+}
+.hc-seg--math {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+.hc-seg--sequencing {
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+}
+
+.hc-ldot--memory {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+}
+.hc-ldot--math {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+.hc-ldot--sequencing {
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+}
+
+.hc-callout-stat--memory .hc-callout-dot {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+}
+.hc-callout-stat--math .hc-callout-dot {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+.hc-callout-stat--sequencing .hc-callout-dot {
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+}
+
+.act-kpis--games {
+    margin-bottom: 12px;
 }
 
 .act-chart-fullscreen {
@@ -1014,6 +1381,11 @@
 
 .act-chart-fullscreen-body .hc-bars {
     height: 360px;
+}
+
+.act-chart-fullscreen-body .perf-svg {
+    min-height: 320px;
+    max-height: 500px;
 }
 
 .act-bar-summary {
@@ -1369,6 +1741,10 @@
         width: 100%;
     }
 
+    .act-chart--perf {
+        min-width: 0;
+    }
+
     .act-kpis {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -1381,4 +1757,9 @@
         justify-self: start;
         margin-left: 68px;
     }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
 }

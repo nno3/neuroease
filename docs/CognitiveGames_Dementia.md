@@ -122,3 +122,82 @@ The three levels are informed by research on arithmetic-based cognitive training
 
 [7] R. Nouchi et al., "Reading Aloud and Solving Simple Arithmetic Calculation Intervention (Learning Therapy) Improves Inhibition, Verbal Episodic Memory, Focus Attention and Processing Speed in Healthy Elderly People: Evidence from a Randomized Controlled Trial," *Front. Hum. Neurosci.*, vol. 10, art. 217, May 2016. [Online]. Available: [https://doi.org/10.3389/fnhum.2016.00217](https://doi.org/10.3389/fnhum.2016.00217)  
 (RCT of “learning therapy” (reading aloud + simple arithmetic) in older adults; lowest difficulty: single-digit addition e.g. 1+3; highest: three-figure division e.g. 156÷3; tasks selected to be simple and low-stress; supports scaffolding from single-digit to harder arithmetic.)
+
+---
+
+## 8. Game Metrics & Performance Analytics
+
+### 8.1 How Each Game Records Data
+
+Each game session is saved to the backend (`POST /api/games`) with four fields: `gameType`, `score`, `duration`, and `accuracy`. However, **score and accuracy mean fundamentally different things** between the two games:
+
+| Field | Math Practice | Memory Match |
+|-------|--------------|--------------|
+| `score` | Number of questions answered correctly (unbounded, higher = better) | Total card flips/moves to complete the game (unbounded, **lower = better**) |
+| `accuracy` | `correctAnswers / totalAttempts` (0.0–1.0) | `totalPairs / moves` (0.0–1.0, pair efficiency) |
+| `duration` | Session length in seconds | Session length in seconds |
+| Direction | Higher score + higher accuracy = better | **Lower** score + higher accuracy = better |
+
+**Accuracy is `null`** when a patient opens the game but quits before interacting (0 attempts in Math, or 0 moves in Memory). This is common with dementia patients who may become confused or distracted before gameplay begins.
+
+### 8.2 Why the Performance Chart Separates Game Types
+
+The caregiver dashboard's performance trend chart lets caregivers toggle between **Math Practice** and **Memory Match** rather than combining them into one view. This is a deliberate design decision for three reasons:
+
+#### Score semantics are incompatible
+
+Averaging Math scores (correct answers, higher = better) with Memory scores (moves, lower = better) produces a meaningless number. A combined average of 10 could mean "10 correct math answers" (good) or "10 moves in memory" (excellent) — the caregiver cannot tell.
+
+#### Different cognitive domains
+
+The games target different cognitive abilities. Research on dementia monitoring emphasises tracking **specific cognitive domains** separately rather than collapsing them into a single composite score [1]:
+
+- **Math Practice** → executive function, working memory, processing speed
+- **Memory Match** → visuospatial memory, pattern recognition
+
+A patient improving in memory but declining in math would be invisible on a combined chart. Separating them allows caregivers and clinicians to identify which specific abilities are changing.
+
+#### Chart axis handling
+
+For Math Practice, the score Y-axis runs bottom-to-top (higher = better). For Memory Match, the score axis is **inverted** (lower = better, line going down indicates improvement with fewer moves needed). This inversion is handled automatically when the caregiver switches game type via the toggle.
+
+### 8.3 Handling Incomplete Sessions
+
+The `sessionsWithAccuracy` field tracks how many sessions actually contain gameplay data (accuracy ≠ null). When this differs from the total session count, the callout explains the discrepancy:
+
+- **Correct / session: 0.5** *(1 session had no answers)* — the patient opened the game twice but only played once
+- **Accuracy: 100%** *(based on 1 of 2)* — only the session with actual gameplay is included in the accuracy average
+
+This prevents misleading statistics and gives caregivers honest context about the data.
+
+### 8.4 Data Flow
+
+```
+Patient App                    Backend                        Caregiver Dashboard
+─────────────                  ───────                        ───────────────────
+MathGame.jsx ──POST /api/games──▶ GameSession model           Activity.jsx
+MemoryGame.jsx─────────────────▶ (gameType, score,           ├─ Bar chart: sessions by type
+                                   duration, accuracy,        ├─ Performance chart: per-type
+                                   playedAt)                  │  trend with Math/Memory toggle
+                                                              └─ Click callout: detailed
+                                GET /api/activity/               breakdown per data point
+                                  games-summary ─────────────▶
+                                  (returns seriesByDay with
+                                   perfByType per day)
+```
+
+### 8.5 Backend Aggregation (`getGamesSummary`)
+
+The `GET /api/activity/games-summary` endpoint accepts `from`, `to`, and `patientId` query parameters and returns:
+
+- **`seriesByDay`** — one entry per day with:
+  - Total session counts and per-game-type counts (`memory`, `math`, `sequencing`)
+  - Combined averages (`avgScore`, `avgAccuracy`, `sessionsWithAccuracy`)
+  - **`perfByType`** — per-game-type breakdown, each containing `count`, `avgScore`, `avgAccuracy`, and `sessionsWithAccuracy`
+- **`totals`** — same structure aggregated over the full date range
+
+The per-type breakdown (`perfByType`) enables the frontend to show accurate, game-specific performance trends at all zoom levels (day, week, month, 6-month, year).
+
+### 8.6 Frontend Bucketing
+
+For the "6 Month" and "Year" period views, daily data points are aggregated into weekly or monthly buckets. The `perfByType` data is carried through this bucketing process so the game-type toggle produces correct averages even at coarse granularities. Weighted averaging is used: each day's average is weighted by its session count to avoid distortion from days with few sessions.

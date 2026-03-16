@@ -14,6 +14,8 @@ router.get("/log", verifyToken, activityController.getActivityLog);
 router.get("/games-today", verifyToken, activityController.getGamesPlayedToday);
 // GET /api/activity/patient-summaries?patientId=optional — per-patient activity summary for today
 router.get("/patient-summaries", verifyToken, activityController.getPatientSummaries);
+// GET /api/activity/games-summary?from=YYYY-MM-DD&to=YYYY-MM-DD&patientId=all|<id> — chart-ready game session aggregates
+router.get("/games-summary", verifyToken, activityController.getGamesSummary);
 // GET /api/activity/recent-games?limit=20 — recent game sessions for dashboard activity feed
 router.get("/recent-games", verifyToken, activityController.getRecentGameSessions);
 module.exports = router;

@@ -683,6 +683,172 @@ const activityController = {
     },
 
     /**
+     * GET /api/activity/games-summary?from=YYYY-MM-DD&to=YYYY-MM-DD&patientId=all|<id>
+     * Chart-ready aggregate of game sessions by day and game type.
+     */
+    getGamesSummary: async (req, res) => {
+        try {
+            const patientIdRaw = req.query.patientId ?? 'all';
+            const fromRaw = req.query.from;
+            const toRaw = req.query.to;
+
+            if (!fromRaw || !toRaw) {
+                return res.status(400).json({ success: false, message: "Query params 'from' and 'to' are required (YYYY-MM-DD)." });
+            }
+
+            const rangeStart = parseDateOnly(fromRaw, { endOfDay: false });
+            const rangeEnd = parseDateOnly(toRaw, { endOfDay: true });
+            if (!rangeStart || !rangeEnd) {
+                return res.status(400).json({ success: false, message: "Invalid date format. Use YYYY-MM-DD." });
+            }
+            if (rangeStart > rangeEnd) {
+                return res.status(400).json({ success: false, message: "'from' cannot be after 'to'." });
+            }
+
+            const caregiver = await User.findByPk(req.user.userId);
+            if (!caregiver) return res.status(404).json({ success: false, message: 'Caregiver not found' });
+
+            const assignedPatients = await caregiver.getPatients({ where: { isArchived: false }, attributes: ['id'] });
+            const assignedIds = assignedPatients.map((p) => p.id);
+
+            if (assignedIds.length === 0) {
+                const empty = [];
+                for (let cur = new Date(startOfDay(rangeStart)); cur <= startOfDay(rangeEnd); cur = addDays(cur, 1)) {
+                    empty.push({ date: dateKey(cur), count: 0, memory: 0, math: 0, sequencing: 0, avgScore: null, avgAccuracy: null });
+                }
+                return res.json({ success: true, data: { seriesByDay: empty, totals: { total: 0, memory: 0, math: 0, sequencing: 0, avgScore: null, avgAccuracy: null } } });
+            }
+
+            let targetIds = assignedIds;
+            if (String(patientIdRaw) !== 'all') {
+                const pid = parseInt(String(patientIdRaw), 10);
+                if (!Number.isFinite(pid)) return res.status(400).json({ success: false, message: 'Invalid patientId' });
+                if (!assignedIds.includes(pid)) {
+                    return res.status(403).json({ success: false, message: 'Access denied. Patient not assigned to you.' });
+                }
+                targetIds = [pid];
+            }
+
+            const sessions = await GameSession.findAll({
+                where: {
+                    patientId: { [Op.in]: targetIds },
+                    playedAt: { [Op.between]: [rangeStart, rangeEnd] },
+                },
+                attributes: ['gameType', 'score', 'accuracy', 'playedAt'],
+                order: [['playedAt', 'ASC']],
+            });
+
+            function newDayEntry(dk) {
+                return {
+                    date: dk, count: 0, memory: 0, math: 0, sequencing: 0,
+                    scoreSum: 0, accuracySum: 0, accuracyCount: 0,
+                    byType: {
+                        math:       { count: 0, scoreSum: 0, accSum: 0, accCount: 0 },
+                        memory:     { count: 0, scoreSum: 0, accSum: 0, accCount: 0 },
+                        sequencing: { count: 0, scoreSum: 0, accSum: 0, accCount: 0 },
+                    },
+                };
+            }
+
+            const seriesMap = new Map();
+            for (let cur = new Date(startOfDay(rangeStart)); cur <= startOfDay(rangeEnd); cur = addDays(cur, 1)) {
+                const dk = dateKey(cur);
+                seriesMap.set(dk, newDayEntry(dk));
+            }
+
+            const totals = {
+                total: 0, memory: 0, math: 0, sequencing: 0,
+                scoreSum: 0, accuracySum: 0, accuracyCount: 0,
+                byType: {
+                    math:       { count: 0, scoreSum: 0, accSum: 0, accCount: 0 },
+                    memory:     { count: 0, scoreSum: 0, accSum: 0, accCount: 0 },
+                    sequencing: { count: 0, scoreSum: 0, accSum: 0, accCount: 0 },
+                },
+            };
+
+            sessions.forEach((s) => {
+                const dk = dateKey(new Date(s.playedAt));
+                const entry = seriesMap.get(dk);
+                if (!entry) return;
+                const gt = s.gameType || 'math';
+                const sc = Number(s.score) || 0;
+                const hasAcc = s.accuracy != null;
+                const acc = hasAcc ? Number(s.accuracy) : 0;
+
+                entry.count += 1;
+                entry[gt] = (entry[gt] || 0) + 1;
+                entry.scoreSum += sc;
+                if (hasAcc) { entry.accuracySum += acc; entry.accuracyCount += 1; }
+
+                const bt = entry.byType[gt] || entry.byType.math;
+                bt.count += 1; bt.scoreSum += sc;
+                if (hasAcc) { bt.accSum += acc; bt.accCount += 1; }
+
+                totals.total += 1;
+                totals[gt] = (totals[gt] || 0) + 1;
+                totals.scoreSum += sc;
+                if (hasAcc) { totals.accuracySum += acc; totals.accuracyCount += 1; }
+
+                const tb = totals.byType[gt] || totals.byType.math;
+                tb.count += 1; tb.scoreSum += sc;
+                if (hasAcc) { tb.accSum += acc; tb.accCount += 1; }
+            });
+
+            function typeAvgs(bt) {
+                return {
+                    count: bt.count,
+                    avgScore: bt.count > 0 ? Math.round((bt.scoreSum / bt.count) * 10) / 10 : null,
+                    avgAccuracy: bt.accCount > 0 ? Math.round((bt.accSum / bt.accCount) * 1000) / 10 : null,
+                    sessionsWithAccuracy: bt.accCount,
+                };
+            }
+
+            const seriesByDay = Array.from(seriesMap.values()).map((d) => ({
+                date: d.date,
+                count: d.count,
+                memory: d.memory,
+                math: d.math,
+                sequencing: d.sequencing,
+                avgScore: d.count > 0 ? Math.round((d.scoreSum / d.count) * 10) / 10 : null,
+                avgAccuracy: d.accuracyCount > 0 ? Math.round((d.accuracySum / d.accuracyCount) * 1000) / 10 : null,
+                sessionsWithAccuracy: d.accuracyCount,
+                perfByType: {
+                    math: typeAvgs(d.byType.math),
+                    memory: typeAvgs(d.byType.memory),
+                    sequencing: typeAvgs(d.byType.sequencing),
+                },
+            })).sort((a, b) => a.date.localeCompare(b.date));
+
+            const avgScore = totals.total > 0 ? Math.round((totals.scoreSum / totals.total) * 10) / 10 : null;
+            const avgAccuracy = totals.accuracyCount > 0 ? Math.round((totals.accuracySum / totals.accuracyCount) * 1000) / 10 : null;
+
+            return res.json({
+                success: true,
+                data: {
+                    seriesByDay,
+                    totals: {
+                        total: totals.total,
+                        memory: totals.memory,
+                        math: totals.math,
+                        sequencing: totals.sequencing,
+                        avgScore,
+                        avgAccuracy,
+                        sessionsWithAccuracy: totals.accuracyCount,
+                        perfByType: {
+                            math: typeAvgs(totals.byType.math),
+                            memory: typeAvgs(totals.byType.memory),
+                            sequencing: typeAvgs(totals.byType.sequencing),
+                        },
+                    },
+                },
+            });
+        } catch (error) {
+            console.error('Games summary error:', error);
+            return res.status(500).json({ success: false, message: 'Error generating games summary' });
+        }
+    },
+
+    /**
      * GET /api/activity/recent-games?limit=20&patientId=optional
      * Returns recent game sessions for caregiver's assigned patients (for dashboard activity feed).
      * If patientId is provided, filters to that patient only.
@@ -715,8 +881,20 @@ const activityController = {
                 targetIds = [pid];
             }
 
+            const sessionWhere = { patientId: { [Op.in]: targetIds } };
+
+            const fromRaw = req.query.from;
+            const toRaw = req.query.to;
+            if (fromRaw && toRaw) {
+                const rangeStart = parseDateOnly(fromRaw, { endOfDay: false });
+                const rangeEnd = parseDateOnly(toRaw, { endOfDay: true });
+                if (rangeStart && rangeEnd) {
+                    sessionWhere.playedAt = { [Op.between]: [rangeStart, rangeEnd] };
+                }
+            }
+
             const sessions = await GameSession.findAll({
-                where: { patientId: { [Op.in]: targetIds } },
+                where: sessionWhere,
                 order: [["playedAt", "DESC"]],
                 limit,
                 attributes: ["id", "patientId", "gameType", "score", "duration", "accuracy", "playedAt"],
