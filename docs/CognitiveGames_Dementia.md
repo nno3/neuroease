@@ -161,7 +161,18 @@ A patient improving in memory but declining in math would be invisible on a comb
 
 For Math Practice, the score Y-axis runs bottom-to-top (higher = better). For Memory Match, the score axis is **inverted** (lower = better, line going down indicates improvement with fewer moves needed). This inversion is handled automatically when the caregiver switches game type via the toggle.
 
-### 8.3 Handling Incomplete Sessions
+### 8.3 KPI Cards (Per-Game-Type Metrics)
+
+The Activity page Games section shows **separate** KPIs for each game type, because combining them would be misleading:
+
+| KPI | Math Practice | Memory Match |
+|-----|---------------|--------------|
+| **Score** | Correct / session — questions answered correctly (higher = better) | Moves to win — card flips to complete game (lower = better) |
+| **Accuracy** | % of questions answered correctly | Pair efficiency: pairs ÷ moves (higher = more efficient) |
+
+Hover over each KPI for a tooltip explaining what it measures.
+
+### 8.4 Handling Incomplete Sessions
 
 The `sessionsWithAccuracy` field tracks how many sessions actually contain gameplay data (accuracy ≠ null). When this differs from the total session count, the callout explains the discrepancy:
 
@@ -170,7 +181,7 @@ The `sessionsWithAccuracy` field tracks how many sessions actually contain gamep
 
 This prevents misleading statistics and gives caregivers honest context about the data.
 
-### 8.4 Data Flow
+### 8.5 Data Flow
 
 ```
 Patient App                    Backend                        Caregiver Dashboard
@@ -186,7 +197,7 @@ MemoryGame.jsx─────────────────▶ (gameType, 
                                    perfByType per day)
 ```
 
-### 8.5 Backend Aggregation (`getGamesSummary`)
+### 8.6 Backend Aggregation (`getGamesSummary`)
 
 The `GET /api/activity/games-summary` endpoint accepts `from`, `to`, and `patientId` query parameters and returns:
 
@@ -198,6 +209,6 @@ The `GET /api/activity/games-summary` endpoint accepts `from`, `to`, and `patien
 
 The per-type breakdown (`perfByType`) enables the frontend to show accurate, game-specific performance trends at all zoom levels (day, week, month, 6-month, year).
 
-### 8.6 Frontend Bucketing
+### 8.7 Frontend Bucketing
 
 For the "6 Month" and "Year" period views, daily data points are aggregated into weekly or monthly buckets. The `perfByType` data is carried through this bucketing process so the game-type toggle produces correct averages even at coarse granularities. Weighted averaging is used: each day's average is weighted by its session count to avoid distortion from days with few sessions.

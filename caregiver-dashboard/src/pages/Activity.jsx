@@ -178,6 +178,14 @@ const TYPES = [
     { label: "Tasks", value: "general" },
 ];
 
+const FEED_FILTERS = [
+    { label: "All", value: "all" },
+    { label: "Reminders", value: "reminders" },
+    { label: "Games", value: "games" },
+];
+
+const GAME_TYPE_LABELS = { memory: "Memory Match", math: "Math Practice", sequencing: "Sequencing" };
+
 const PERIODS = [
     { label: "D", value: "day", title: "Day" },
     { label: "W", value: "week", title: "Week" },
@@ -317,16 +325,18 @@ export default function Activity() {
 
     const LOG_LIMIT = 25;
     const [logItems, setLogItems] = useState([]);
-    const [logPage, setLogPage] = useState(1);
-    const [logHasMore, setLogHasMore] = useState(false);
+    const [gameFeedItems, setGameFeedItems] = useState([]);
     const [logLoading, setLogLoading] = useState(false);
     const [logError, setLogError] = useState("");
+    const [feedFilter, setFeedFilter] = useState("all");
+    const [feedDisplayCount, setFeedDisplayCount] = useState(25);
 
     const logLimit = period === "6month" || period === "year" ? 500 : period === "month" ? 200 : period === "week" ? 100 : period === "day" ? 500 : LOG_LIMIT;
 
     useEffect(() => {
-        setLogPage(1);
         setLogItems([]);
+        setGameFeedItems([]);
+        setFeedDisplayCount(25);
         setSelectedPerfIdx(null);
     }, [patientId, type, fromDate, toDate, refreshKey, period]);
 
@@ -339,46 +349,40 @@ export default function Activity() {
 
             const safeFrom = fromDate ? startOfDay(fromDate) : addDays(new Date(), -13);
             const safeTo = toDate ? endOfDay(toDate) : endOfDay(new Date());
-
-            const params = new URLSearchParams({
-                patientId: String(patientId),
-                type: String(type),
-                from: toISODateOnly(safeFrom),
-                to: toISODateOnly(safeTo),
-                page: String(logPage),
-                limit: String(logLimit),
-            });
-
-            try {
-                const token =
+            const fromStr = toISODateOnly(safeFrom);
+            const toStr = toISODateOnly(safeTo);
+            const token =
                     localStorage.getItem("token") ||
                     localStorage.getItem("authToken") ||
                     localStorage.getItem("accessToken");
+            const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+            const opts = { method: "GET", headers, credentials: "include", signal: ac.signal };
 
-                const res = await fetch(`/api/activity/log?${params.toString()}`, {
-                    method: "GET",
-                    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-                    credentials: "include",
-                    signal: ac.signal,
-                });
+            try {
+                const [logRes, gamesRes] = await Promise.all([
+                    fetch(`/api/activity/log?${new URLSearchParams({ patientId: String(patientId), type: String(type), from: fromStr, to: toStr, page: "1", limit: String(logLimit) })}`, opts),
+                    fetch(`/api/activity/recent-games?${new URLSearchParams({ patientId: String(patientId), from: fromStr, to: toStr, limit: "100" })}`, opts),
+                ]);
 
-                if (!res.ok) {
-                    let msg = `Activity log error (${res.status})`;
-                    try {
-                        const j = await res.json();
-                        msg = j?.message || msg;
-                    } catch {}
+                if (!logRes.ok) {
+                    let msg = `Activity log error (${logRes.status})`;
+                    try { const j = await logRes.json(); msg = j?.message || msg; } catch {}
                     throw new Error(msg);
                 }
 
-                const json = await res.json();
-                const data = json?.data ?? json;
+                const logJson = await logRes.json();
+                const logData = logJson?.data ?? logJson;
+                const reminderItems = Array.isArray(logData?.items) ? logData.items : [];
 
-                const items = Array.isArray(data?.items) ? data.items : [];
-                const hasMore = Boolean(data?.hasMore);
+                let gameItems = [];
+                if (gamesRes.ok) {
+                    const gamesJson = await gamesRes.json();
+                    const gamesData = gamesJson?.data ?? gamesJson;
+                    gameItems = Array.isArray(gamesData?.items) ? gamesData.items : [];
+                }
 
-                setLogItems((prev) => (logPage === 1 ? items : [...prev, ...items]));
-                setLogHasMore(hasMore);
+                setLogItems(reminderItems);
+                setGameFeedItems(gameItems);
             } catch (e) {
                 if (e?.name === "AbortError") return;
                 setLogError(e?.message || "Unable to load activity log.");
@@ -388,7 +392,7 @@ export default function Activity() {
         })();
 
         return () => ac.abort();
-    }, [patientId, type, fromDate, toDate, refreshKey, logPage, logLimit]);
+    }, [patientId, type, fromDate, toDate, refreshKey, logLimit]);
 
 
     useEffect(() => {
@@ -605,9 +609,33 @@ export default function Activity() {
         }).slice(0, 10);
     }, [selectedBarDate, logItems, period]);
 
+    // Combined activity feed: reminders + game sessions, sorted chronologically (newest first)
+    const mergedFeedItems = useMemo(() => {
+        const reminders = (logItems || []).map((it) => ({ ...it, _feedType: "reminder" }));
+        const games = (gameFeedItems || []).map((it) => ({ ...it, _feedType: "game" }));
+        return [...reminders, ...games].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    }, [logItems, gameFeedItems]);
+
+    const filteredFeedItems = useMemo(() => {
+        if (feedFilter === "reminders") return mergedFeedItems.filter((it) => it._feedType === "reminder");
+        if (feedFilter === "games") return mergedFeedItems.filter((it) => it._feedType === "game");
+        return mergedFeedItems;
+    }, [mergedFeedItems, feedFilter]);
+
+    const displayedFeedItems = useMemo(
+        () => filteredFeedItems.slice(0, feedDisplayCount),
+        [filteredFeedItems, feedDisplayCount]
+    );
+    const feedHasMore = displayedFeedItems.length < filteredFeedItems.length;
+
     // --- Games chart data ---
     const gamesRawSeries = gamesData?.seriesByDay || [];
-    const gamesTotals = gamesData?.totals || { total: 0, memory: 0, math: 0, sequencing: 0, avgScore: null, avgAccuracy: null };
+    const gamesTotals = gamesData?.totals || {
+        total: 0, memory: 0, math: 0, sequencing: 0,
+        perfByType: { math: {}, memory: {}, sequencing: {} },
+    };
+    const mathPerf = gamesTotals.perfByType?.math || {};
+    const memoryPerf = gamesTotals.perfByType?.memory || {};
 
     function newTypeBucket() { return { count: 0, scoreSum: 0, accSum: 0, accCount: 0 }; }
     function newGameBucket(key, label) {
@@ -1381,16 +1409,22 @@ export default function Activity() {
                                         <div className="act-kpi-value">{gamesTotals.sequencing}</div>
                                     </div>
                                 )}
-                                {gamesTotals.avgScore != null && (
-                                    <div className="act-kpi">
-                                        <div className="act-kpi-label">Correct / Session</div>
-                                        <div className="act-kpi-value">{gamesTotals.avgScore}</div>
+                                {mathPerf.avgAccuracy != null && mathPerf.count > 0 && (
+                                    <div className="act-kpi" title="Math: % of questions answered correctly">
+                                        <div className="act-kpi-label">Math accuracy{mathPerf.sessionsWithAccuracy != null && mathPerf.sessionsWithAccuracy < mathPerf.count ? ` (${mathPerf.sessionsWithAccuracy}/${mathPerf.count})` : ""}</div>
+                                        <div className="act-kpi-value">{mathPerf.avgAccuracy}%</div>
                                     </div>
                                 )}
-                                {gamesTotals.avgAccuracy != null && (
-                                    <div className="act-kpi">
-                                        <div className="act-kpi-label">Avg Accuracy{gamesTotals.sessionsWithAccuracy != null && gamesTotals.sessionsWithAccuracy < gamesTotals.total ? ` (${gamesTotals.sessionsWithAccuracy}/${gamesTotals.total} sessions)` : ""}</div>
-                                        <div className="act-kpi-value">{gamesTotals.avgAccuracy}%</div>
+                                {memoryPerf.avgScore != null && memoryPerf.count > 0 && (
+                                    <div className="act-kpi" title="Memory: average moves to complete game (lower = better)">
+                                        <div className="act-kpi-label">Memory: Moves to win</div>
+                                        <div className="act-kpi-value">{memoryPerf.avgScore}</div>
+                                    </div>
+                                )}
+                                {memoryPerf.avgAccuracy != null && memoryPerf.count > 0 && (
+                                    <div className="act-kpi" title="Memory: pair efficiency (pairs ÷ moves, higher = more efficient)">
+                                        <div className="act-kpi-label">Memory accuracy{memoryPerf.sessionsWithAccuracy != null && memoryPerf.sessionsWithAccuracy < memoryPerf.count ? ` (${memoryPerf.sessionsWithAccuracy}/${memoryPerf.count})` : ""}</div>
+                                        <div className="act-kpi-value">{memoryPerf.avgAccuracy}%</div>
                                     </div>
                                 )}
                             </div>
@@ -1452,61 +1486,90 @@ export default function Activity() {
                             <div className="act-listhead">
                                 <div className="act-listtitle">Activity log</div>
                                 <div className="act-listmeta">
-                                    {logLoading && logPage === 1 ? "Loading…" : `${logItems.length} items`}
+                                    {logLoading ? "Loading…" : `${filteredFeedItems.length} items`}
                                 </div>
                             </div>
 
-                            {logLoading && logPage === 1 ? (
+                            <div className="act-feed-tabs">
+                                {FEED_FILTERS.map((f) => (
+                                    <button
+                                        key={f.value}
+                                        type="button"
+                                        className={`act-feed-tab ${feedFilter === f.value ? "is-active" : ""}`}
+                                        onClick={() => setFeedFilter(f.value)}
+                                    >
+                                        {f.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {logLoading ? (
                                 <div className="act-state">Loading activity…</div>
-                            ) : logItems.length === 0 ? (
+                            ) : displayedFeedItems.length === 0 ? (
                                 <div className="act-state">No activity found for the current filters.</div>
                             ) : (
                                 <div className="act-list">
-                                    {logItems.map((it) => {
+                                    {displayedFeedItems.map((it) => {
                                         const occursAt = safeDate(it.timestamp);
                                         const timeStr = occursAt
-                                            ? occursAt.toLocaleTimeString("en-GB", {hour: "2-digit", minute: "2-digit"})
+                                            ? occursAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
                                             : "—";
                                         const dateStr = occursAt
-                                            ? occursAt.toLocaleDateString("en-GB", {
-                                                day: "2-digit",
-                                                month: "short",
-                                                year: "numeric"
-                                            })
+                                            ? occursAt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
                                             : "—";
+
+                                        if (it._feedType === "game") {
+                                            const gameLabel = GAME_TYPE_LABELS[it.gameType] || it.gameType || "Game";
+                                            const accStr = it.accuracy != null ? ` · ${Math.round(it.accuracy * 100)}%` : "";
+                                            const dur = it.duration != null ? (it.duration >= 60 ? `${Math.floor(it.duration / 60)}m ${it.duration % 60}s` : `${it.duration}s`) : "";
+                                            return (
+                                                <div className="act-card act-card--game" key={`game-${it.id ?? it.timestamp}-${it.patientId}`}>
+                                                    <div className="act-iconbox is-game">
+                                                        <Gamepad2 size={18} />
+                                                    </div>
+                                                    <div className="act-card-main">
+                                                        <div className="act-card-title">{it.patientName} played {gameLabel}</div>
+                                                        <div className="act-lines">
+                                                            <div className="act-line">
+                                                                <span className="act-line-label">Score:</span>
+                                                                <span className="act-line-value">{it.score ?? "—"}{accStr}</span>
+                                                            </div>
+                                                            <div className="act-line">
+                                                                <span className="act-line-label">When:</span>
+                                                                <span className="act-line-value">{dateStr} • {timeStr}{dur ? ` · ${dur}` : ""}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
 
                                         const t = it.details?.reminderType || "general";
                                         const st = it.status || "pending";
-
                                         return (
                                             <div className="act-card" key={`${it.details?.reminderId}-${it.timestamp}`}>
                                                 <div className={`act-iconbox is-${t}`}>
-                                                    <TypeIcon type={t} size={18}/>
+                                                    <TypeIcon type={t} size={18} />
                                                 </div>
-
                                                 <div className="act-card-main">
                                                     <div className="act-card-title">{it.details?.title || "Reminder"}</div>
-
                                                     <div className="act-lines">
                                                         <div className="act-line">
                                                             <span className="act-line-label">Patient:</span>
                                                             <span className="act-line-value">{it.patientName}</span>
                                                         </div>
-
                                                         <div className="act-line">
                                                             <span className="act-line-label">When:</span>
                                                             <span className="act-line-value">{dateStr} • {timeStr}</span>
                                                         </div>
-
                                                         <div className="act-line">
                                                             <span className="act-line-label">Action:</span>
                                                             <span className="act-line-value">{it.actionType}</span>
                                                         </div>
                                                     </div>
                                                 </div>
-
                                                 <div className={`act-status is-${st}`}>
-                                                    <StatusIcon status={st}/>
+                                                    <StatusIcon status={st} />
                                                     <span>{statusLabel(st)}</span>
                                                 </div>
                                             </div>
@@ -1517,22 +1580,21 @@ export default function Activity() {
 
                             {logError && <div className="act-error">{logError}</div>}
 
-                            {logHasMore && (
-                                <div style={{padding: "0 12px 12px"}}>
+                            {feedHasMore && (
+                                <div style={{ padding: "0 12px 12px" }}>
                                     <button
                                         className="act-btn"
                                         type="button"
-                                        disabled={logLoading}
-                                        onClick={() => setLogPage((p) => p + 1)}
+                                        onClick={() => setFeedDisplayCount((c) => c + 25)}
                                     >
-                                        {logLoading ? "Loading…" : "Load more"}
+                                        Load more
                                     </button>
                                 </div>
                             )}
                         </div>
 
                         <div className="act-footnote">
-                            Charts use <b>GET /api/activity/summary</b>. Activity log uses <b>GET /api/activity/log</b>.
+                            Charts use <b>GET /api/activity/summary</b>. Activity log uses <b>GET /api/activity/log</b> and <b>GET /api/activity/recent-games</b>.
                         </div>
                     </div>
                 </div>

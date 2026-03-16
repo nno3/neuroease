@@ -1606,6 +1606,35 @@
     color: #64748b;
 }
 
+.act-feed-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid #eef2f7;
+}
+
+.act-feed-tab {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+    background: transparent;
+    border: 1px solid transparent;
+    cursor: pointer;
+}
+
+.act-feed-tab:hover {
+    background: #f8fafc;
+    color: #334155;
+}
+
+.act-feed-tab.is-active {
+    background: #e6f2ff;
+    border-color: rgba(74, 144, 226, 0.35);
+    color: #1e40af;
+}
+
 .act-state {
     padding: 14px;
     color: #64748b;
@@ -1647,6 +1676,11 @@
 .act-iconbox.is-medication { background: #e6f2ff; color: #2563eb; }
 .act-iconbox.is-appointment { background: #fff3e6; color: #b45309; }
 .act-iconbox.is-general { background: #eaf7ee; color: #0f766e; }
+.act-iconbox.is-game { background: #fef3c7; color: #b45309; }
+
+.act-card--game {
+    grid-template-columns: 56px 1fr;
+}
 
 .act-card-main {
     min-width: 0;

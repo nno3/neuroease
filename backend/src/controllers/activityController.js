@@ -855,7 +855,7 @@ const activityController = {
      */
     getRecentGameSessions: async (req, res) => {
         try {
-            const limit = Math.min(50, Math.max(1, parseInt(String(req.query.limit ?? "20"), 10) || 20));
+            const limit = Math.min(200, Math.max(1, parseInt(String(req.query.limit ?? "20"), 10) || 20));
             const patientIdRaw = req.query.patientId;
             const caregiver = await User.findByPk(req.user.userId);
             if (!caregiver) return res.status(404).json({ success: false, message: "Caregiver not found" });
@@ -901,6 +901,7 @@ const activityController = {
             });
 
             const items = sessions.map((s) => ({
+                id: s.id,
                 timestamp: s.playedAt,
                 patientId: s.patientId,
                 patientName: patientNameById.get(s.patientId) || `Patient ${s.patientId}`,
