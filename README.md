@@ -16,6 +16,7 @@ Please choose the structure of the contents of this repository that suits the ne
 - **Caregiver Dashboard**: [`/caregiver-dashboard`](./caregiver-dashboard) - React web application
 - **Patient Application**: [`/patient-app`](./patient-app) - React PWA for elderly users
 - **Documentation**: [`/docs`](./docs) - Architecture diagrams, API docs, testing plans
+- **Sprints**: [`/docs/sprints`](./docs/sprints) - Sprint plans and issues (e.g. Geolocation Sharing)
 
 ### Key Files
 - [`DoD.md`](./DoD.md) - Definition of Done criteria

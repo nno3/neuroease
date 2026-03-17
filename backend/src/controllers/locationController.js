@@ -166,6 +166,105 @@ const locationController = {
     },
 
     /**
+     * POST /api/location/patient/update
+     * Patient-only: body { latitude, longitude, timestamp?, accuracy? }.
+     * Uses req.user.userId as patientId. Requires locationConsent.
+     */
+    patientUpdate: async (req, res) => {
+        try {
+            const pid = req.user.userId;
+            const { latitude, longitude, timestamp, accuracy } = req.body;
+
+            const lat = Number(latitude);
+            const lng = Number(longitude);
+            if (latitude == null || longitude == null || Number.isNaN(lat) || Number.isNaN(lng)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'latitude and longitude are required and must be valid numbers',
+                });
+            }
+
+            const hasConsent = await getLocationConsent(pid);
+            if (!hasConsent) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Location sharing is not enabled. Enable it in Profile to share your location.',
+                });
+            }
+
+            const ts = timestamp ? new Date(timestamp) : new Date();
+            if (Number.isNaN(ts.getTime())) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid timestamp',
+                });
+            }
+
+            const zones = await SafeZone.findAll({
+                where: { patientId: pid, isActive: true },
+            });
+            const previousLog = await LocationLog.findOne({
+                where: { patientId: pid },
+                order: [['timestamp', 'DESC']],
+            });
+            const previousInside =
+                zones.length > 0 &&
+                previousLog &&
+                zones.some((z) => isInsideZone(previousLog.latitude, previousLog.longitude, z));
+            const currentInside =
+                zones.length > 0 && zones.some((z) => isInsideZone(lat, lng, z));
+
+            const logData = {
+                patientId: pid,
+                latitude: lat,
+                longitude: lng,
+                timestamp: ts,
+            };
+            if (accuracy != null && !Number.isNaN(Number(accuracy))) {
+                logData.accuracy = Number(accuracy);
+            }
+            const log = await LocationLog.create(logData);
+
+            if (previousInside && !currentInside) {
+                await LocationAlert.create({
+                    patientId: pid,
+                    latitude: lat,
+                    longitude: lng,
+                    timestamp: ts,
+                    message: 'Left safe zone',
+                });
+            }
+            if (!previousInside && currentInside && previousLog) {
+                await LocationAlert.create({
+                    patientId: pid,
+                    latitude: lat,
+                    longitude: lng,
+                    timestamp: ts,
+                    message: 'Returned to safe zone',
+                });
+            }
+
+            return res.status(201).json({
+                success: true,
+                message: 'Location updated',
+                data: {
+                    id: log.id,
+                    patientId: log.patientId,
+                    latitude: log.latitude,
+                    longitude: log.longitude,
+                    timestamp: log.timestamp,
+                },
+            });
+        } catch (err) {
+            console.error('Location patient update error:', err);
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to update location',
+            });
+        }
+    },
+
+    /**
      * GET /api/location/latest?patientId=
      * patientId = patient's User id. Returns the most recent location; 404 if none.
      */
