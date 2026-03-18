@@ -2,10 +2,12 @@
  * User model – caregivers and patients. Stores credentials, email verification,
  * and for patients: invite token (activate) and magic-link token (login).
  * Passwords hashed with bcrypt; validatePassword() used at login.
+ * Name is encrypted at rest when ENCRYPTION_KEY is set.
  */
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const bcrypt = require('bcrypt');
+const { encryptedGetter, encryptedSetter, hashEmail } = require('../utils/encryption');
 
 const User = sequelize.define('User', {
     id: {
@@ -14,20 +16,36 @@ const User = sequelize.define('User', {
         autoIncrement: true
     },
     email: {
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         allowNull: false,
-        unique: true,
-        validate: {
-            isEmail: true
+        get: encryptedGetter('email'),
+        set(value) {
+            const normalized = value != null && value !== '' ? String(value).trim().toLowerCase() : null;
+            if (normalized) {
+                const { encrypt } = require('../utils/encryption');
+                this.setDataValue('email', encrypt(normalized));
+                this.setDataValue('emailHash', hashEmail(normalized));
+            } else {
+                this.setDataValue('email', null);
+                this.setDataValue('emailHash', null);
+            }
         }
+    },
+    emailHash: {
+        type: DataTypes.STRING(64),
+        allowNull: true,
+        unique: true,
+        field: 'email_hash'
     },
     password: {
         type: DataTypes.STRING,
         allowNull: false
     },
     name: {
-        type: DataTypes.STRING,
-        allowNull: false
+        type: DataTypes.TEXT,
+        allowNull: false,
+        get: encryptedGetter('name'),
+        set: encryptedSetter('name'),
     },
     userType: {
         type: DataTypes.ENUM('caregiver', 'patient'),
@@ -61,11 +79,15 @@ const User = sequelize.define('User', {
     },
     archiveReason: {
         type: DataTypes.TEXT,
-        allowNull: true
+        allowNull: true,
+        get: encryptedGetter('archiveReason'),
+        set: encryptedSetter('archiveReason'),
     },
     archiveNotes: {
         type: DataTypes.TEXT,
-        allowNull: true
+        allowNull: true,
+        get: encryptedGetter('archiveNotes'),
+        set: encryptedSetter('archiveNotes'),
     },
     archivedBy: {
         type: DataTypes.INTEGER,
@@ -81,7 +103,9 @@ const User = sequelize.define('User', {
     },
     unarchiveNotes: {
         type: DataTypes.TEXT,
-        allowNull: true
+        allowNull: true,
+        get: encryptedGetter('unarchiveNotes'),
+        set: encryptedSetter('unarchiveNotes'),
     },
     avatar: {
         type: DataTypes.TEXT,

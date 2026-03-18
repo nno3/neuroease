@@ -1,5 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
+const { encryptedGetter, encryptedSetter } = require('../utils/encryption');
 
 const Patient = sequelize.define('Patient', {
     id: {
@@ -12,55 +13,77 @@ const Patient = sequelize.define('Patient', {
         allowNull: false
     },
     dateOfBirth: {
-        type: DataTypes.DATE,
-        allowNull: true
+        type: DataTypes.TEXT,
+        allowNull: true,
+        get: encryptedGetter('dateOfBirth'),
+        set: encryptedSetter('dateOfBirth'),
     },
-
     address: {
         type: DataTypes.TEXT,
-        allowNull: true
+        allowNull: true,
+        get: encryptedGetter('address'),
+        set: encryptedSetter('address'),
     },
     gender: {
-        type: DataTypes.STRING(50),
-        allowNull: true
+        type: DataTypes.TEXT,
+        allowNull: true,
+        get: encryptedGetter('gender'),
+        set: encryptedSetter('gender'),
     },
     phoneNumber: {
-        type: DataTypes.STRING(50),
-        allowNull: true
+        type: DataTypes.TEXT,
+        allowNull: true,
+        get: encryptedGetter('phoneNumber'),
+        set: encryptedSetter('phoneNumber'),
     },
-    // Care & Emergency – structured fields
     preferredCommunication: {
-        type: DataTypes.STRING(50),
-        allowNull: true
+        type: DataTypes.TEXT,
+        allowNull: true,
+        get: encryptedGetter('preferredCommunication'),
+        set: encryptedSetter('preferredCommunication'),
     },
 
     careNotes: {
         type: DataTypes.TEXT,
-        allowNull: true
+        allowNull: true,
+        get: encryptedGetter('careNotes'),
+        set: encryptedSetter('careNotes'),
     },
     emergencyContactName: {
-        type: DataTypes.STRING(255),
-        allowNull: true
+        type: DataTypes.TEXT,
+        allowNull: true,
+        get: encryptedGetter('emergencyContactName'),
+        set: encryptedSetter('emergencyContactName'),
     },
     emergencyContactRelationship: {
-        type: DataTypes.STRING(100),
-        allowNull: true
+        type: DataTypes.TEXT,
+        allowNull: true,
+        get: encryptedGetter('emergencyContactRelationship'),
+        set: encryptedSetter('emergencyContactRelationship'),
     },
     emergencyContactPhone: {
-        type: DataTypes.STRING(50),
-        allowNull: true
+        type: DataTypes.TEXT,
+        allowNull: true,
+        get: encryptedGetter('emergencyContactPhone'),
+        set: encryptedSetter('emergencyContactPhone'),
     },
     emergencyContact: {
         type: DataTypes.TEXT,
-        allowNull: true
+        allowNull: true,
+        get: encryptedGetter('emergencyContact'),
+        set: encryptedSetter('emergencyContact'),
     },
     medicalConditions: {
         type: DataTypes.TEXT,
-        allowNull: true
+        allowNull: true,
+        get: encryptedGetter('medicalConditions'),
+        set: encryptedSetter('medicalConditions'),
     },
     medicalHistory: {
         type: DataTypes.TEXT,
-        allowNull: true
+        allowNull: true,
+        get: encryptedGetter('medicalHistory'),
+        set: encryptedSetter('medicalHistory'),
     },
     locationConsent: {
         type: DataTypes.BOOLEAN,

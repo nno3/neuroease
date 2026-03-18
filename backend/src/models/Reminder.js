@@ -1,5 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
+const { encryptedGetter, encryptedSetter } = require('../utils/encryption');
 
 const Reminder = sequelize.define('Reminder', {
     id: {
@@ -12,12 +13,16 @@ const Reminder = sequelize.define('Reminder', {
         allowNull: false
     },
     title: {
-        type: DataTypes.STRING,
-        allowNull: false
+        type: DataTypes.TEXT,
+        allowNull: false,
+        get: encryptedGetter('title'),
+        set: encryptedSetter('title'),
     },
     message: {
         type: DataTypes.TEXT,
-        allowNull: false
+        allowNull: false,
+        get: encryptedGetter('message'),
+        set: encryptedSetter('message'),
     },
     reminderType: {
         type: DataTypes.ENUM('medication', 'appointment', 'general'),

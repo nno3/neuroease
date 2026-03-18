@@ -103,6 +103,29 @@ const startServer = async () => {
         await sequelize.sync({ alter: true });
         console.log('Database tables synchronized');
 
+        // Backfill email_hash for existing users (when email is stored but emailHash is null)
+        try {
+            const { User } = require('./src/models');
+            const { hashEmail } = require('./src/utils/encryption');
+            const [cols] = await sequelize.query(
+                `SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'email_hash'`
+            );
+            if (Array.isArray(cols) && cols.length > 0) {
+                const users = await User.findAll({ where: { emailHash: null }, attributes: ['id', 'email'] });
+                for (const u of users) {
+                    const plain = u.email;
+                    if (plain && String(plain).trim()) {
+                        await u.update({ emailHash: hashEmail(plain) });
+                    }
+                }
+                if (users.length > 0) {
+                    console.log(`Backfilled email_hash for ${users.length} user(s).`);
+                }
+            }
+        } catch (e) {
+            // Ignore migration errors
+        }
+
         // Ensure push_subscriptions has created_at/updated_at (sync may have dropped them in a prior run)
         try {
             const [cols] = await sequelize.query(

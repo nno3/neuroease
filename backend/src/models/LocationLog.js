@@ -1,5 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
+const { encryptedNumberGetter, encryptedNumberSetter } = require('../utils/encryption');
 
 const LocationLog = sequelize.define('LocationLog', {
     id: {
@@ -12,12 +13,16 @@ const LocationLog = sequelize.define('LocationLog', {
         allowNull: false
     },
     latitude: {
-        type: DataTypes.FLOAT,
-        allowNull: false
+        type: DataTypes.TEXT,
+        allowNull: false,
+        get: encryptedNumberGetter('latitude'),
+        set: encryptedNumberSetter('latitude'),
     },
     longitude: {
-        type: DataTypes.FLOAT,
-        allowNull: false
+        type: DataTypes.TEXT,
+        allowNull: false,
+        get: encryptedNumberGetter('longitude'),
+        set: encryptedNumberSetter('longitude'),
     },
     accuracy: {
         type: DataTypes.FLOAT,

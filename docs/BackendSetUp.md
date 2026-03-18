@@ -93,6 +93,9 @@ SMTP_SECURE=false
 SMTP_USER=neuroease.noreply@gmail.com
 SMTP_PASS=lojsdfsmdvbmzmff
 
+# Optional: encrypt sensitive patient data at rest (see docs/DataEncryption.md)
+# ENCRYPTION_KEY=<64-char hex from: openssl rand -hex 32>
+
 ```
 
 ### Email verification

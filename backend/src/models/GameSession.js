@@ -1,5 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
+const { encryptedGetter, encryptedSetter, encryptedNumberGetter, encryptedNumberSetter } = require('../utils/encryption');
 
 const GameSession = sequelize.define('GameSession', {
     id: {
@@ -12,20 +13,28 @@ const GameSession = sequelize.define('GameSession', {
         allowNull: false
     },
     gameType: {
-        type: DataTypes.ENUM('memory', 'math', 'sequencing'),
-        allowNull: false
+        type: DataTypes.TEXT,
+        allowNull: false,
+        get: encryptedGetter('gameType'),
+        set: encryptedSetter('gameType'),
     },
     score: {
-        type: DataTypes.INTEGER,
-        allowNull: false
+        type: DataTypes.TEXT,
+        allowNull: false,
+        get: encryptedNumberGetter('score'),
+        set: encryptedNumberSetter('score'),
     },
     duration: {
-        type: DataTypes.INTEGER,
-        allowNull: false
+        type: DataTypes.TEXT,
+        allowNull: false,
+        get: encryptedNumberGetter('duration'),
+        set: encryptedNumberSetter('duration'),
     },
     accuracy: {
-        type: DataTypes.FLOAT,
-        allowNull: true
+        type: DataTypes.TEXT,
+        allowNull: true,
+        get: encryptedNumberGetter('accuracy'),
+        set: encryptedNumberSetter('accuracy'),
     },
     playedAt: {
         type: DataTypes.DATE,

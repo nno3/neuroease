@@ -6,6 +6,7 @@
 const crypto = require('crypto');
 const { User, Patient } = require('../models');
 const { sendPatientInviteEmail } = require('../utils/emailService');
+const { hashEmail } = require('../utils/encryption');
 
 const INVITE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -168,7 +169,7 @@ const patientController = {
       const normalizedEmail = String(email || "").trim().toLowerCase();
 
       // Check if patient already exists (case-insensitive once normalised)
-      const existingPatient = await User.findOne({ where: { email: normalizedEmail } });
+      const existingPatient = await User.findOne({ where: { emailHash: hashEmail(normalizedEmail) } });
 
       if (existingPatient) {
         return res.status(409).json({
@@ -436,7 +437,7 @@ const patientController = {
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
           return res.status(400).json({ success: false, message: 'Invalid email format.' });
         }
-        const existing = await User.findOne({ where: { email: newEmail } });
+        const existing = await User.findOne({ where: { emailHash: hashEmail(newEmail) } });
         if (existing && existing.id !== patientId) {
           return res.status(409).json({ success: false, message: 'Another patient or user already has this email.' });
         }

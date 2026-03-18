@@ -10,6 +10,7 @@ const { Op } = require('sequelize');
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const { sendVerificationEmail, sendPatientInviteEmail, sendPatientMagicLinkEmail } = require('../utils/emailService');
+const { hashEmail } = require('../utils/encryption');
 
 const VERIFICATION_EXPIRY_MS = 24 * 60 * 60 * 1000;   // 24 hours
 const INVITE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;    // 7 days
@@ -22,7 +23,7 @@ const authController = {
             const { email, password, name, userType } = req.body;
             const normalizedEmail = (email || '').trim().toLowerCase();
 
-            const existingUser = await User.findOne({ where: { email: normalizedEmail } });
+            const existingUser = await User.findOne({ where: { emailHash: hashEmail(normalizedEmail) } });
             if (existingUser) {
                 return res.status(409).json({
                     success: false,
@@ -98,7 +99,7 @@ const authController = {
             const { email, password } = req.body;
             const normalizedEmail = (email || '').trim().toLowerCase();
 
-            const user = await User.findOne({ where: { email: normalizedEmail } });
+            const user = await User.findOne({ where: { emailHash: hashEmail(normalizedEmail) } });
             if (!user) {
                 return res.status(401).json({
                     success: false,
@@ -214,7 +215,7 @@ const authController = {
                 if (!trimmed) return res.status(400).json({ success: false, message: 'Email cannot be empty' });
                 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                 if (!emailRegex.test(trimmed)) return res.status(400).json({ success: false, message: 'Invalid email format' });
-                const existing = await User.findOne({ where: { email: trimmed } });
+                const existing = await User.findOne({ where: { emailHash: hashEmail(trimmed) } });
                 if (existing && existing.id !== userId) {
                     return res.status(409).json({ success: false, message: 'A user with this email already exists' });
                 }
@@ -317,7 +318,7 @@ const authController = {
                 return res.status(400).json({ success: false, message: 'Email is required' });
             }
 
-            const user = await User.findOne({ where: { email } });
+            const user = await User.findOne({ where: { emailHash: hashEmail(email) } });
             if (!user) {
                 return res.status(404).json({
                     success: false,
@@ -433,7 +434,7 @@ const authController = {
                 });
             }
             const user = await User.findOne({
-                where: { email, userType: 'patient' }
+                where: { emailHash: hashEmail(email), userType: 'patient' }
             });
             if (!user) {
                 return res.status(404).json({
@@ -551,7 +552,7 @@ const authController = {
             }
             const user = await User.findOne({
                 where: {
-                    email,
+                    emailHash: hashEmail(email),
                     userType: 'patient',
                     magicLinkShortCode: code,
                     magicLinkTokenExpires: { [Op.gt]: new Date() }

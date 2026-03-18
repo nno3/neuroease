@@ -1,5 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
+const { encryptedGetter, encryptedSetter, encryptedNumberGetter, encryptedNumberSetter } = require('../utils/encryption');
 
 const SafeZone = sequelize.define('SafeZone', {
     id: {
@@ -12,17 +13,23 @@ const SafeZone = sequelize.define('SafeZone', {
         allowNull: false
     },
     name: {
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         allowNull: false,
-        defaultValue: 'Home'
+        defaultValue: 'Home',
+        get: encryptedGetter('name'),
+        set: encryptedSetter('name'),
     },
     centerLat: {
-        type: DataTypes.FLOAT,
-        allowNull: false
+        type: DataTypes.TEXT,
+        allowNull: false,
+        get: encryptedNumberGetter('centerLat'),
+        set: encryptedNumberSetter('centerLat'),
     },
     centerLng: {
-        type: DataTypes.FLOAT,
-        allowNull: false
+        type: DataTypes.TEXT,
+        allowNull: false,
+        get: encryptedNumberGetter('centerLng'),
+        set: encryptedNumberSetter('centerLng'),
     },
     radius: {
         type: DataTypes.INTEGER,
