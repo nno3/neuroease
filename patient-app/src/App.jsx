@@ -4,6 +4,7 @@
  */
 import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { LocationSharingProvider } from "./context/LocationSharingContext";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
@@ -18,6 +19,7 @@ import Profile from "./pages/Profile";
 function App() {
   return (
     <AuthProvider>
+      <LocationSharingProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/activate" element={<Activate />} />
@@ -38,6 +40,7 @@ function App() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </LocationSharingProvider>
     </AuthProvider>
   );
 }

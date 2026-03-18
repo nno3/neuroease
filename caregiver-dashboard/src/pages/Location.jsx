@@ -400,6 +400,15 @@ export default function Location() {
         return () => { cancelled = true; };
     }, [idsToFetch.join(","), patientList.length, refreshKey]);
 
+    // Auto-refresh location every 30 seconds when page is visible
+    useEffect(() => {
+        if (idsToFetch.length === 0) return;
+        const interval = setInterval(() => {
+            if (document.visibilityState === "visible") setRefreshKey((k) => k + 1);
+        }, 30000);
+        return () => clearInterval(interval);
+    }, [idsToFetch.length]);
+
     const hasRecentAlert = (pid) => {
         const list = alertsByPatient[pid] ?? [];
         if (list.length === 0) return false;

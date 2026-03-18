@@ -5,6 +5,7 @@
  */
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useLocationSharing } from "../context/LocationSharingContext";
 import { apiRequest } from "../services/apiClient";
 import {
   getVoiceAssistEnabled,
@@ -17,7 +18,7 @@ import {
   speakTest,
 } from "../utils/voiceAssist";
 import { getGameSoundsEnabled, setGameSoundsEnabled } from "../utils/gameSounds";
-import { Volume2 } from "lucide-react";
+import { Volume2, MapPin } from "lucide-react";
 import "./Profile.css";
 
 function urlBase64ToUint8Array(base64String) {
@@ -31,6 +32,16 @@ function urlBase64ToUint8Array(base64String) {
 
 export default function Profile() {
   const { user } = useAuth();
+  const {
+    locationConsent,
+    setLocationConsent,
+    geoPermissionStatus,
+    locationError,
+    isGeolocationSupported,
+    recheckPermission,
+    openLocationSettings,
+    sendLocationNow,
+  } = useLocationSharing();
   const [channel, setChannel] = useState("none");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -45,6 +56,8 @@ export default function Profile() {
   const [selectedVoice, setSelectedVoice] = useState("");
   const [speechRate, setSpeechRate] = useState(1);
   const [gameSoundsEnabled, setGameSoundsEnabledState] = useState(true);
+  const [locationRechecking, setLocationRechecking] = useState(false);
+  const [locationSending, setLocationSending] = useState(false);
 
   useEffect(() => {
     setGameSoundsEnabledState(getGameSoundsEnabled());
@@ -79,6 +92,7 @@ export default function Profile() {
         const profile = res?.data?.patient?.Patient ?? res?.data?.patient?.profile ?? null;
         const ch = (profile?.reminderNotificationChannel ?? "none").toLowerCase();
         setChannel(ch === "email" || ch === "push" ? ch : "none");
+        if (profile?.locationConsent !== undefined) setLocationConsent(profile.locationConsent);
         if ("Notification" in window) setPermissionStatus(Notification.permission);
       })
       .catch((err) => {
@@ -88,7 +102,7 @@ export default function Profile() {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [user?.id]);
+  }, [user?.id, setLocationConsent]);
 
   // Keep permission status in sync (e.g. user changed it in Settings)
   useEffect(() => {
@@ -164,6 +178,26 @@ export default function Profile() {
         body: JSON.stringify({ reminderNotificationChannel: newChannel }),
       });
         setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      setError(err?.message || "Could not save. Try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleLocationConsentChange = async (enabled) => {
+    if (!user?.id) return;
+    setError(null);
+    setSaveSuccess(false);
+    setSaving(true);
+    try {
+      await apiRequest(`/api/patients/${user.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ locationConsent: enabled }),
+      });
+      setLocationConsent(enabled);
+      setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
       setError(err?.message || "Could not save. Try again.");
@@ -418,6 +452,94 @@ export default function Profile() {
           </label>
         </div>
       </div>
+
+      {/* Location sharing card */}
+      {isGeolocationSupported && (
+        <div className="pa-profile-card" role="region" aria-labelledby="pa-location-heading">
+          <h3 id="pa-location-heading" className="pa-profile-card-title">
+            <MapPin className="pa-profile-card-icon" aria-hidden />
+            Location sharing
+          </h3>
+          <hr className="pa-profile-card-divider" aria-hidden />
+          <p className="pa-profile-row-desc pa-profile-location-desc">
+            Share your location with your caregiver so they can see where you are and get alerts if you leave a safe zone.
+          </p>
+          <p className="pa-profile-location-note">
+            <strong>For caregivers:</strong> Location is sent automatically. No need for the patient to do anything. When using the app in a browser, tracking works while the app is open. For <strong>24/7 tracking</strong> (even when the app is closed), install the native iOS/Android app – see setup guide in the project docs.
+          </p>
+          <div className="pa-profile-toggle-row">
+            <div className="pa-profile-toggle-text">
+              <span className="pa-profile-row-label">Location sharing</span>
+              <span className="pa-profile-row-desc" id="pa-location-desc">
+                {locationConsent
+                  ? geoPermissionStatus === "denied" || locationError
+                    ? "On – enable location in Settings to share"
+                    : "On – sending location automatically"
+                  : "Off"}
+              </span>
+            </div>
+            <label className="pa-profile-toggle">
+              <input
+                type="checkbox"
+                checked={locationConsent === true}
+                onChange={(e) => handleLocationConsentChange(e.target.checked)}
+                disabled={saving}
+                aria-describedby="pa-location-desc"
+              />
+              <span className="pa-profile-toggle-slider" />
+            </label>
+          </div>
+          {locationConsent && !(geoPermissionStatus === "denied" || locationError) && (
+            <button
+              type="button"
+              className="pa-btn pa-profile-location-send-now"
+              onClick={() => {
+                setLocationSending(true);
+                sendLocationNow();
+                setTimeout(() => setLocationSending(false), 2000);
+              }}
+              disabled={locationSending}
+              aria-label="Send location now"
+            >
+              {locationSending ? "Sending…" : "Send location now"}
+            </button>
+          )}
+          {locationConsent && (geoPermissionStatus === "denied" || locationError) && (
+            <div className="pa-profile-location-warning" role="alert">
+              <p className="pa-profile-permission-text">
+                {geoPermissionStatus === "denied"
+                  ? "Your device has blocked location access for this app. Turn it on in Settings so we can share your location with your caregiver."
+                  : locationError}
+              </p>
+              <p className="pa-profile-permission-iphone">
+                <strong>On iPhone:</strong> Settings → Privacy & Security → Location Services. Find this app (or Safari) and set to &quot;While Using the App&quot; or &quot;Always&quot;.
+              </p>
+              <div className="pa-profile-location-actions">
+                <button
+                  type="button"
+                  className="pa-btn pa-btn--primary pa-profile-location-btn"
+                  onClick={() => {
+                    setLocationRechecking(true);
+                    recheckPermission().finally(() => setLocationRechecking(false));
+                  }}
+                  disabled={locationRechecking}
+                  aria-label="Check if location permission was enabled"
+                >
+                  {locationRechecking ? "Checking…" : "Check again"}
+                </button>
+                <button
+                  type="button"
+                  className="pa-btn pa-profile-location-btn pa-profile-location-btn--secondary"
+                  onClick={openLocationSettings}
+                  aria-label="Open device Settings"
+                >
+                  Open Settings
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Permission box - when push selected but not granted */}
       {channel === "push" && "Notification" in window && permissionStatus !== "granted" && (

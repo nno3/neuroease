@@ -14,6 +14,68 @@
   font-weight: 700;
   color: var(--pa-text);
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pa-profile-card-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  color: var(--pa-primary);
+}
+
+.pa-profile-location-desc {
+  margin-bottom: 0.5rem;
+}
+
+.pa-profile-location-note {
+  font-size: 0.8125rem;
+  color: var(--pa-text-muted);
+  line-height: 1.4;
+  margin: 0.75rem 0 0;
+  padding: 0.75rem;
+  background: var(--pa-bg, #f8fafc);
+  border-radius: 8px;
+  border-left: 3px solid var(--pa-primary);
+}
+
+.pa-profile-location-warning {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--pa-bg-subtle, #fef3c7);
+  border: 1px solid var(--pa-border);
+  border-radius: 8px;
+}
+
+.pa-profile-location-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.pa-profile-location-btn {
+  flex: 1;
+  min-width: 120px;
+}
+
+.pa-profile-location-btn--secondary {
+  background: var(--pa-surface);
+  color: var(--pa-primary);
+  border: 2px solid var(--pa-primary);
+}
+
+.pa-profile-location-btn--secondary:hover:not(:disabled) {
+  background: var(--pa-primary-light, #2d4a6f);
+  color: white;
+}
+
+.pa-profile-location-send-now {
+  margin-top: 0.75rem;
+  width: 100%;
+  font-size: 0.9375rem;
 }
 
 .pa-profile-card-divider {
