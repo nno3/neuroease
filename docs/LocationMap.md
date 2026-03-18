@@ -4,6 +4,8 @@
 
 The caregiver dashboard includes a **Location** page where caregivers can view patient locations and define **safe zones** (geofences) on a map. This document describes how the map is implemented and why this approach was chosen.
 
+**For user-facing instructions** (how patients and caregivers use location sharing), see [GeolocationSharing.md](GeolocationSharing.md).
+
 ---
 
 ## Map Stack
@@ -63,7 +65,7 @@ The **"Go to location"** button opens Google Maps (not OpenStreetMap) because:
    The Location page uses `MapContainer`, `TileLayer`, `Circle`, and `Marker` from react-leaflet. Tiles are loaded from `https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png` (OpenStreetMap).
 
 2. **Patient locations**  
-   Latest location per patient comes from our backend (`GET /api/location/latest?patientId=...`). Coordinates are shown as markers (green = inside a zone, red = outside or no zone).
+   Latest location per patient comes from our backend (`GET /api/location/latest?patientId=...`). The patient app sends updates via `POST /api/location/patient/update`. When offline, the patient app queues updates locally and sends them when back online. Coordinates are shown as markers (green = inside a zone, red = outside or no zone).
 
 3. **Safe zones**  
    Zones are stored in our database (centre + radius). The frontend draws them as Leaflet `Circle` components. Caregivers add or edit zones by clicking the map or searching for a place (Nominatim); they do not enter raw coordinates.
