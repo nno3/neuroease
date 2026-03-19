@@ -581,6 +581,11 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                                 onChange={(e) => setField("email", e.target.value)}
                                 placeholder="e.g. margaret.thompson@email.com"
                             />
+                            {import.meta.env.VITE_USABILITY_TESTING === "1" && (
+                                <div className="disclaimer-box disclaimer-box--info">
+                                    <strong>Important:</strong> Use your own real email address so you receive the activation link for the Patient App. Use fake data for name, date of birth, phone, address, etc.
+                                </div>
+                            )}
                             {isEdit && (
                                 <div className="pfm-help pfm-help-muted">If you change the email, use &quot;Resend invite&quot; in the patient details to send the activation link to the new address.</div>
                             )}

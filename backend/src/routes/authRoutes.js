@@ -17,6 +17,9 @@ router.get('/verify-email', authController.verifyEmail);
 router.post('/verify-email', authController.verifyEmail);
 router.post('/resend-verification', authController.resendVerification);
 
+// Usability testing: skip login (requires USABILITY_TESTING=1, TEST_PATIENT_ID)
+router.get('/test-session', authController.testSession);
+
 // Patient: invite link activates account (passwordless), magic link for login
 router.post('/activate', authController.activatePatient);
 router.get('/activate', authController.activatePatient);

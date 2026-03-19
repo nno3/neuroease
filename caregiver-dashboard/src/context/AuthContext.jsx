@@ -90,6 +90,15 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('user');
         return { success: true };
     };
+
+    /** Usability testing: log in with token from test-session API (no password). */
+    const loginWithToken = (userData, token) => {
+        if (!userData || !token) return { success: false, error: 'Invalid session' };
+        setUser(userData);
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(userData));
+        return { success: true };
+    };
     const token = localStorage.getItem("token");
 
     const updateUser = (userData) => {
@@ -104,6 +113,7 @@ export const AuthProvider = ({ children }) => {
             user,
             token,
             login,
+            loginWithToken,
             logout,
             updateUser,
             loading,

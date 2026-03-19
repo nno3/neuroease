@@ -284,6 +284,60 @@ export function getGeolocationPermissionState() {
 }
 
 /**
+ * Preset locations for usability testing (simulated, no real GPS).
+ * Used when VITE_USABILITY_TESTING=1 to avoid requesting device location.
+ */
+export const SIMULATED_LOCATIONS = [
+  { id: "home", name: "Home", lat: 52.2053, lng: 0.1218 },
+  { id: "park", name: "Park", lat: 52.2104, lng: 0.1165 },
+  { id: "supermarket", name: "Supermarket", lat: 52.1989, lng: 0.1302 },
+  { id: "pharmacy", name: "Pharmacy", lat: 52.2071, lng: 0.1256 },
+  { id: "cafe", name: "Café", lat: 52.2034, lng: 0.1189 },
+  { id: "outside", name: "Outside safe zone", lat: 52.25, lng: 0.2 },
+];
+
+let simulatedInterval = null;
+
+/**
+ * Send a simulated location (usability testing only). No real GPS.
+ */
+export async function sendSimulatedLocation(lat, lng) {
+  const payload = { latitude: lat, longitude: lng, timestamp: Date.now() };
+  if (!navigator.onLine) {
+    addToQueue(payload);
+    return;
+  }
+  try {
+    await apiRequest("/api/location/patient/update", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    if (err?.status === 403) return;
+    addToQueue(payload);
+  }
+}
+
+/**
+ * Start sending simulated location every 30s (usability testing).
+ */
+export function startSimulatedLocationSharing(lat, lng) {
+  stopSimulatedLocationSharing();
+  sendSimulatedLocation(lat, lng);
+  simulatedInterval = setInterval(() => sendSimulatedLocation(lat, lng), THROTTLE_MS);
+}
+
+/**
+ * Stop simulated location sharing.
+ */
+export function stopSimulatedLocationSharing() {
+  if (simulatedInterval) {
+    clearInterval(simulatedInterval);
+    simulatedInterval = null;
+  }
+}
+
+/**
  * Attempt to open device Location Settings. Works in some environments (e.g. Android WebView,
  * certain PWAs); often does nothing in standard mobile browsers due to security restrictions.
  */

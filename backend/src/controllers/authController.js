@@ -596,6 +596,45 @@ const authController = {
         }
     },
 
+    /**
+     * GET /api/auth/test-session
+     * Usability testing only: returns JWT for a test user. Requires USABILITY_TESTING=1.
+     * ?role=patient -> TEST_PATIENT_ID; ?role=caregiver -> TEST_CAREGIVER_ID.
+     */
+    testSession: async (req, res) => {
+        try {
+            if (process.env.USABILITY_TESTING !== '1') {
+                return res.status(404).json({ success: false, message: 'Not available' });
+            }
+            const role = (req.query.role || 'patient').toLowerCase();
+            const envKey = role === 'caregiver' ? 'TEST_CAREGIVER_ID' : 'TEST_PATIENT_ID';
+            const testId = parseInt(process.env[envKey], 10);
+            if (!Number.isFinite(testId)) {
+                return res.status(500).json({ success: false, message: `${envKey} not configured` });
+            }
+            const user = await User.findByPk(testId);
+            const expectedType = role === 'caregiver' ? 'caregiver' : 'patient';
+            if (!user || user.userType !== expectedType) {
+                return res.status(404).json({ success: false, message: `Test ${role} not found` });
+            }
+            const token = jwt.sign(
+                { userId: user.id, userType: user.userType },
+                process.env.JWT_SECRET,
+                { expiresIn: '7d' }
+            );
+            res.json({
+                success: true,
+                data: {
+                    user: { id: user.id, name: user.name, email: user.email, userType: user.userType },
+                    token,
+                },
+            });
+        } catch (err) {
+            console.error('Test session error:', err);
+            res.status(500).json({ success: false, message: 'Failed to create test session' });
+        }
+    },
+
     deleteAccount: async (req, res) => {
         try {
             const userId = req.user.userId;

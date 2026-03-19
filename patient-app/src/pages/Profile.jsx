@@ -19,6 +19,7 @@ import {
 } from "../utils/voiceAssist";
 import { getGameSoundsEnabled, setGameSoundsEnabled } from "../utils/gameSounds";
 import { Volume2, MapPin } from "lucide-react";
+import { SIMULATED_LOCATIONS } from "../services/locationService";
 import "./Profile.css";
 
 function urlBase64ToUint8Array(base64String) {
@@ -38,9 +39,13 @@ export default function Profile() {
     geoPermissionStatus,
     locationError,
     isGeolocationSupported,
+    isUsabilityTesting,
     recheckPermission,
     openLocationSettings,
     sendLocationNow,
+    sendSimulatedLocation,
+    startSimulatedLocationSharing,
+    stopSimulatedLocationSharing,
   } = useLocationSharing();
   const [channel, setChannel] = useState("none");
   const [loading, setLoading] = useState(true);
@@ -58,6 +63,7 @@ export default function Profile() {
   const [gameSoundsEnabled, setGameSoundsEnabledState] = useState(true);
   const [locationRechecking, setLocationRechecking] = useState(false);
   const [locationSending, setLocationSending] = useState(false);
+  const [simulatedLocationId, setSimulatedLocationId] = useState("home");
 
   useEffect(() => {
     setGameSoundsEnabledState(getGameSoundsEnabled());
@@ -136,6 +142,17 @@ export default function Profile() {
       });
     return () => { cancelled = true; };
   }, [channel, user?.id, saveSuccess]);
+
+  // Usability testing: start/stop simulated location when consent or selection changes
+  useEffect(() => {
+    if (!isUsabilityTesting || !user?.id) return;
+    if (locationConsent === true) {
+      const loc = SIMULATED_LOCATIONS.find((l) => l.id === simulatedLocationId) || SIMULATED_LOCATIONS[0];
+      startSimulatedLocationSharing(loc.lat, loc.lng);
+      return () => stopSimulatedLocationSharing();
+    }
+    stopSimulatedLocationSharing();
+  }, [locationConsent, simulatedLocationId, isUsabilityTesting, user?.id]);
 
   const handleChannelChange = async (value) => {
     const newChannel = value === "email" ? "email" : value === "push" ? "push" : "none";
@@ -454,27 +471,51 @@ export default function Profile() {
       </div>
 
       {/* Location sharing card */}
-      {isGeolocationSupported && (
+      {(isGeolocationSupported || isUsabilityTesting) && (
         <div className="pa-profile-card" role="region" aria-labelledby="pa-location-heading">
           <h3 id="pa-location-heading" className="pa-profile-card-title">
             <MapPin className="pa-profile-card-icon" aria-hidden />
             Location sharing
           </h3>
           <hr className="pa-profile-card-divider" aria-hidden />
+          {isUsabilityTesting && (
+            <p className="pa-profile-location-note pa-profile-simulated-banner" role="status">
+              <strong>Usability testing:</strong> Choose a simulated location below. Your real location is not shared.
+            </p>
+          )}
           <p className="pa-profile-row-desc pa-profile-location-desc">
             Share your location with your caregiver so they can see where you are and get alerts if you leave a safe zone.
           </p>
           <p className="pa-profile-location-note">
             <strong>For caregivers:</strong> Location is sent automatically. No need for the patient to do anything. When using the app in a browser, tracking works while the app is open. For <strong>24/7 tracking</strong> (even when the app is closed), install the native iOS/Android app – see setup guide in the project docs.
           </p>
+          {isUsabilityTesting && (
+            <div className="pa-profile-simulated-row">
+              <label htmlFor="pa-simulated-location" className="pa-profile-row-label">Simulated location</label>
+              <select
+                id="pa-simulated-location"
+                className="pa-profile-select"
+                value={simulatedLocationId}
+                onChange={(e) => setSimulatedLocationId(e.target.value)}
+                aria-describedby="pa-simulated-desc"
+              >
+                {SIMULATED_LOCATIONS.map((loc) => (
+                  <option key={loc.id} value={loc.id}>{loc.name}</option>
+                ))}
+              </select>
+              <p id="pa-simulated-desc" className="pa-profile-row-desc">Select a preset location to simulate. No real GPS is used.</p>
+            </div>
+          )}
           <div className="pa-profile-toggle-row">
             <div className="pa-profile-toggle-text">
               <span className="pa-profile-row-label">Location sharing</span>
               <span className="pa-profile-row-desc" id="pa-location-desc">
                 {locationConsent
-                  ? geoPermissionStatus === "denied" || locationError
-                    ? "On – enable location in Settings to share"
-                    : "On – sending location automatically"
+                  ? isUsabilityTesting
+                    ? "On – sending simulated location"
+                    : geoPermissionStatus === "denied" || locationError
+                      ? "On – enable location in Settings to share"
+                      : "On – sending location automatically"
                   : "Off"}
               </span>
             </div>
@@ -489,13 +530,18 @@ export default function Profile() {
               <span className="pa-profile-toggle-slider" />
             </label>
           </div>
-          {locationConsent && !(geoPermissionStatus === "denied" || locationError) && (
+          {locationConsent && (isUsabilityTesting || !(geoPermissionStatus === "denied" || locationError)) && (
             <button
               type="button"
               className="pa-btn pa-profile-location-send-now"
-              onClick={() => {
+              onClick={async () => {
                 setLocationSending(true);
-                sendLocationNow();
+                if (isUsabilityTesting) {
+                  const loc = SIMULATED_LOCATIONS.find((l) => l.id === simulatedLocationId) || SIMULATED_LOCATIONS[0];
+                  await sendSimulatedLocation(loc.lat, loc.lng);
+                } else {
+                  sendLocationNow();
+                }
                 setTimeout(() => setLocationSending(false), 2000);
               }}
               disabled={locationSending}

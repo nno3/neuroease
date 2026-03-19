@@ -452,14 +452,14 @@
 }
 
 .pfm-btn-primary {
-    background-color: #2563eb;
+    background-color: #4A90E2;
     color: white;
-    border-color: #2563eb;
+    border-color: #4A90E2;
 }
 
 .pfm-btn-primary:hover:not(:disabled) {
-    background-color: #1d4ed8;
-    border-color: #1d4ed8;
+    background-color: #3a7bc9;
+    border-color: #3a7bc9;
 }
 
 .pfm-btn-danger {

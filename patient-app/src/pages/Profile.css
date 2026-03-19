@@ -41,6 +41,20 @@
   border-left: 3px solid var(--pa-primary);
 }
 
+.pa-profile-simulated-banner {
+  background: #eff6ff;
+  border-left-color: #2563eb;
+}
+
+.pa-profile-simulated-row {
+  margin: 1rem 0 0.75rem;
+}
+
+.pa-profile-simulated-row .pa-profile-select {
+  margin-top: 0.25rem;
+  width: 100%;
+}
+
 .pa-profile-location-warning {
   margin-top: 1rem;
   padding: 1rem;

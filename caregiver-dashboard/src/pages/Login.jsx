@@ -1,17 +1,17 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001/api';
+import { API_BASE } from '../services/apiClient';
 
 const Login = () => {
-    const { login } = useAuth();
+    const { login, loginWithToken } = useAuth();
     const navigate = useNavigate();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [showTestDisclaimer, setShowTestDisclaimer] = useState(false);
     const [resendStatus, setResendStatus] = useState(''); // '' | 'sending' | 'sent' | 'error'
     const [emailNotVerified, setEmailNotVerified] = useState(false);
 
@@ -62,20 +62,21 @@ const Login = () => {
             setError('Failed to send. Please try again.');
         }
     };
-    const handleQuickLogin = async () => {
+    const handleTestLogin = async () => {
         setLoading(true);
         setError('');
-
         try {
-            // Call login without credentials for quick login
-            const result = await login('test@example.com', 'Test123!');
-            if (result && result.success) {
-                navigate('/');
+            const res = await fetch(`${API_BASE}/auth/test-session?role=caregiver`);
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.success && data.data?.user && data.data?.token) {
+                const result = loginWithToken(data.data.user, data.data.token);
+                if (result.success) navigate('/');
+                else setError(result.error || 'Test login failed');
             } else {
-                setError('Quick login failed');
+                setError(data.message || 'Testing login unavailable. Set USABILITY_TESTING=1 and TEST_CAREGIVER_ID in backend .env.');
             }
-        } catch (error) {
-            setError('Quick login failed');
+        } catch (err) {
+            setError('Could not reach the server. Is the backend running?');
         } finally {
             setLoading(false);
         }
@@ -227,26 +228,118 @@ const Login = () => {
 
                 <div style={{ textAlign: 'center', marginBottom: '24px' }}>
                     <p style={{ color: '#64748b', marginBottom: '12px', fontSize: '14px' }}>
-                        For development testing:
+                        Usability testing:
                     </p>
                     <button
-                        onClick={handleQuickLogin}
+                        onClick={() => setShowTestDisclaimer(true)}
                         disabled={loading}
                         style={{
-                            padding: '10px 20px',
-                            background: '#f1f5f9',
-                            color: '#475569',
-                            border: '1px solid #e2e8f0',
+                            padding: '10px 24px',
+                            background: '#4A90E2',
+                            color: 'white',
+                            border: 'none',
                             borderRadius: '6px',
                             cursor: loading ? 'not-allowed' : 'pointer',
                             opacity: loading ? 0.7 : 1,
                             fontSize: '14px',
+                            fontWeight: '600',
                             transition: 'all 0.2s'
                         }}
                     >
-                        {loading ? 'Logging in...' : 'Quick Login as Caregiver'}
+                        Testing
                     </button>
+                    <p style={{ color: '#64748b', marginTop: '8px', fontSize: '12px' }}>
+                        Skip login and use a test caregiver account.
+                    </p>
                 </div>
+
+                {showTestDisclaimer && (
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="test-disclaimer-title"
+                        style={{
+                            position: 'fixed',
+                            inset: 0,
+                            background: 'rgba(0,0,0,0.5)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 1000,
+                            padding: '20px'
+                        }}
+                        onClick={(e) => e.target === e.currentTarget && setShowTestDisclaimer(false)}
+                    >
+                        <div
+                            style={{
+                                background: 'white',
+                                borderRadius: '12px',
+                                padding: '24px',
+                                maxWidth: '420px',
+                                width: '100%',
+                                boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <h2 id="test-disclaimer-title" style={{ margin: '0 0 16px 0', fontSize: '18px', color: '#1e293b' }}>
+                                Usability testing disclaimer
+                            </h2>
+                            <div style={{ marginBottom: '20px', fontSize: '14px', lineHeight: 1.6, color: '#475569' }}>
+                                <p style={{ margin: '0 0 12px 0' }}>
+                                    <strong>Before continuing, please note:</strong>
+                                </p>
+                                <ul style={{ margin: '0 0 12px 0', paddingLeft: '20px' }}>
+                                    <li>Use your <strong>real email</strong> when creating a patient so you receive the activation link for the Patient App.</li>
+                                    <li>All other data (names, medical info, reminders) is <strong>simulated</strong>.</li>
+                                    <li>On the Location page, use <strong>simulated locations only</strong> (e.g. University of Leicester, National Space Centre). Do not use your real address.</li>
+                                    <li>This study relates to memory difficulties/dementia. Some people may find this topic sensitive.</li>
+                                </ul>
+                                <p style={{ margin: 0 }}>
+                                    Participation is voluntary. You may withdraw at any time.
+                                </p>
+                            </div>
+                            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowTestDisclaimer(false)}
+                                    style={{
+                                        padding: '10px 20px',
+                                        background: '#f1f5f9',
+                                        color: '#475569',
+                                        border: '1px solid #e2e8f0',
+                                        borderRadius: '6px',
+                                        fontSize: '14px',
+                                        fontWeight: '500',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowTestDisclaimer(false);
+                                        handleTestLogin();
+                                    }}
+                                    disabled={loading}
+                                    style={{
+                                        padding: '10px 20px',
+                                        background: '#4A90E2',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        fontSize: '14px',
+                                        fontWeight: '600',
+                                        cursor: loading ? 'not-allowed' : 'pointer',
+                                        opacity: loading ? 0.7 : 1
+                                    }}
+                                >
+                                    I understand, continue
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <div style={{
                     textAlign: 'center',

@@ -519,6 +519,12 @@ export default function Location() {
                 </div>
             </div>
 
+            {import.meta.env.VITE_USABILITY_TESTING === "1" && (
+                <div className="disclaimer-box disclaimer-box--warning" style={{ marginBottom: 16 }}>
+                    <strong>Use simulated locations only:</strong> Click anywhere on the map to set the centre, or search for test locations (e.g. University of Leicester, Leicester National Space Centre). Do not use your real address or home location.
+                </div>
+            )}
+
             <div className="loc-panel">
 
                 {patientList.length > 0 && (

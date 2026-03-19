@@ -19,3 +19,43 @@
     padding: 24px;
     background-color: #f1f5f9;
 }
+
+/* Usability testing disclaimers – distinct colours for visibility */
+.disclaimer-banner {
+    padding: 12px 24px;
+    font-size: 14px;
+    line-height: 1.5;
+    flex-shrink: 0;
+}
+
+.disclaimer-banner--content {
+    background: #f3e8ff;
+    color: #5b21b6;
+    border-bottom: 2px solid #8b5cf6;
+}
+
+.disclaimer-banner--testing {
+    background: #dbeafe;
+    color: #1e40af;
+    border-bottom: 2px solid #3b82f6;
+}
+
+.disclaimer-box {
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 8px 0;
+}
+
+.disclaimer-box--info {
+    background: #dbeafe;
+    color: #1e40af;
+    border-left: 4px solid #3b82f6;
+}
+
+.disclaimer-box--warning {
+    background: #fef3c7;
+    color: #92400e;
+    border-left: 4px solid #f59e0b;
+}
