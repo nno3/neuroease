@@ -68,7 +68,7 @@ The **"Go to location"** button opens Google Maps (not OpenStreetMap) because:
    Latest location per patient comes from our backend (`GET /api/location/latest?patientId=...`). The patient app sends updates via `POST /api/location/patient/update`. When offline, the patient app queues updates locally and sends them when back online. Coordinates are shown as markers (green = inside a zone, red = outside or no zone).
 
 3. **Safe zones**  
-   Zones are stored in our database (centre + radius). The frontend draws them as Leaflet `Circle` components. Caregivers add or edit zones by clicking the map or searching for a place (Nominatim); they do not enter raw coordinates.
+   Zones are stored in our database (centre + radius). The frontend draws them as Leaflet `Circle` components. Caregivers add or edit zones by clicking the map or searching for a place (Nominatim); they do not enter raw coordinates. Radius can be set from **10 m to 5000 m**. The 10 m minimum is based on GPS accuracy: consumer GPS achieves ±5 m outdoors in optimal conditions, and geofencing accuracy in practice is typically 5–50 m depending on environment [1]. A 10 m radius is the lower bound for reliable entry/exit detection without excessive false triggers.
 
 4. **Place search**  
    “Search for a place” calls Nominatim: `https://nominatim.openstreetmap.org/search?q=...&format=json&limit=1`. Results are used to set the centre of a new or edited safe zone. A `User-Agent` header (e.g. `NeuroEaseCaregiver/1.0`) is sent to comply with Nominatim’s usage policy.
@@ -95,3 +95,4 @@ The **"Go to location"** button opens Google Maps (not OpenStreetMap) because:
 - [react-leaflet](https://react-leaflet.js.org/)
 - [OpenStreetMap tile usage policy](https://operations.osmfoundation.org/policies/tiles/)
 - [Nominatim usage policy](https://operations.osmfoundation.org/policies/nominatim/)
+- [1] Radar, "How accurate is geofencing? The truth about real-world precision" (2025). https://radar.com/blog/how-accurate-is-geofencing — GPS ±5 m outdoors; geofencing accuracy 5–50 m in practice.

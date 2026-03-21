@@ -15,6 +15,7 @@ router.post('/patient/update', requirePatient, locationController.patientUpdate)
 
 router.post('/update', requireCaregiver, locationController.update);
 router.get('/latest', requireCaregiver, locationController.latest);
+router.get('/history', requireCaregiver, locationController.history);
 router.get('/alerts', requireCaregiver, locationController.alerts);
 router.get('/status', requireCaregiver, locationController.status);
 

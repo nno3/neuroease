@@ -1,5 +1,5 @@
 /**
- * Logged-in shell: header (app name + logout), main content area, bottom nav (Home, Reminders).
+ * Logged-in shell: header (app name + logout), main content area, bottom nav (Games, Reminders, Profile).
  * Skip link and focus order support accessibility; touch targets and contrast in CSS.
  */
 import { Outlet, useNavigate, NavLink } from "react-router-dom";
@@ -40,13 +40,6 @@ export default function Layout() {
       </main>
       {user && (
         <nav className="pa-bottom-nav" aria-label="Main navigation">
-          <NavLink
-            to="/"
-            className={({ isActive }) => `pa-bottom-nav-link ${isActive ? "is-active" : ""}`}
-            end
-          >
-            Home
-          </NavLink>
           <NavLink
             to="/games"
             className={({ isActive }) => `pa-bottom-nav-link ${isActive ? "is-active" : ""}`}

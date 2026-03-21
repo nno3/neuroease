@@ -15,10 +15,9 @@ import {
   getVoiceAssistRate,
   setVoiceAssistRate,
   getAvailableVoices,
-  speakTest,
 } from "../utils/voiceAssist";
 import { getGameSoundsEnabled, setGameSoundsEnabled } from "../utils/gameSounds";
-import { Volume2, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
 import "./Profile.css";
 
 function urlBase64ToUint8Array(base64String) {
@@ -40,7 +39,6 @@ export default function Profile() {
     isGeolocationSupported,
     recheckPermission,
     openLocationSettings,
-    sendLocationNow,
   } = useLocationSharing();
   const [channel, setChannel] = useState("none");
   const [loading, setLoading] = useState(true);
@@ -51,13 +49,11 @@ export default function Profile() {
   const [requestingPermission, setRequestingPermission] = useState(false);
   const [pushSubscriptionCount, setPushSubscriptionCount] = useState(null); // null = unknown, number = count from API
   const [voiceAssistOnOpen, setVoiceAssistOnOpen] = useState(false);
-  const [testVoiceStatus, setTestVoiceStatus] = useState(null);
   const [voices, setVoices] = useState([]);
   const [selectedVoice, setSelectedVoice] = useState("");
   const [speechRate, setSpeechRate] = useState(1);
   const [gameSoundsEnabled, setGameSoundsEnabledState] = useState(true);
   const [locationRechecking, setLocationRechecking] = useState(false);
-  const [locationSending, setLocationSending] = useState(false);
 
   useEffect(() => {
     setGameSoundsEnabledState(getGameSoundsEnabled());
@@ -408,21 +404,6 @@ export default function Profile() {
           </div>
         )}
 
-        {/* Test Voice Reminder button */}
-        <button
-          type="button"
-          className="pa-btn pa-btn--primary pa-profile-test-btn"
-          onClick={() => {
-            setTestVoiceStatus(null);
-            const ok = speakTest(() => setTestVoiceStatus(null));
-            setTestVoiceStatus(ok ? "Playing…" : "Voice not supported in this browser.");
-          }}
-          aria-label="Test voice reminder"
-        >
-          <Volume2 className="pa-profile-test-btn-icon" aria-hidden />
-          Test Voice Reminder
-        </button>
-        {testVoiceStatus && <p className="pa-muted pa-profile-test-status">{testVoiceStatus}</p>}
       </div>
 
       {/* Games card */}
@@ -489,21 +470,6 @@ export default function Profile() {
               <span className="pa-profile-toggle-slider" />
             </label>
           </div>
-          {locationConsent && !(geoPermissionStatus === "denied" || locationError) && (
-            <button
-              type="button"
-              className="pa-btn pa-profile-location-send-now"
-              onClick={() => {
-                setLocationSending(true);
-                sendLocationNow();
-                setTimeout(() => setLocationSending(false), 2000);
-              }}
-              disabled={locationSending}
-              aria-label="Send location now"
-            >
-              {locationSending ? "Sending…" : "Send location now"}
-            </button>
-          )}
           {locationConsent && (geoPermissionStatus === "denied" || locationError) && (
             <div className="pa-profile-location-warning" role="alert">
               <p className="pa-profile-permission-text">

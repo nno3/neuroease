@@ -197,6 +197,72 @@
     max-width: 480px;
 }
 
+.stg-checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.stg-checkbox-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px 16px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.stg-checkbox-row:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+.stg-checkbox {
+    width: 20px;
+    height: 20px;
+    margin-top: 2px;
+    accent-color: #4a90e2;
+    flex-shrink: 0;
+}
+
+.stg-checkbox-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: #fff;
+    border-radius: 10px;
+    color: #64748b;
+    flex-shrink: 0;
+}
+
+.stg-checkbox-row:has(.stg-checkbox:checked) .stg-checkbox-icon {
+    background: #eff6ff;
+    color: #4a90e2;
+}
+
+.stg-checkbox-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.stg-checkbox-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #334155;
+}
+
+.stg-checkbox-desc {
+    font-size: 13px;
+    color: #64748b;
+    line-height: 1.4;
+}
+
 .stg-danger-zone {
     background: #fef2f2;
     border: 1px solid #fecaca;

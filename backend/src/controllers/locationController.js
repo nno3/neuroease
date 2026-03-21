@@ -7,6 +7,7 @@
  */
 const { Op } = require('sequelize');
 const { User, Patient, LocationLog, SafeZone, LocationAlert } = require('../models');
+const { notifyCaregiversLocationAlert, notifyCaregiversReturnedToZone } = require('../utils/caregiverNotifications');
 
 /** Distance in meters between two (lat, lng) points (Haversine). */
 function haversineMeters(lat1, lng1, lat2, lng2) {
@@ -125,6 +126,7 @@ const locationController = {
             });
 
             // Transition: inside -> outside = "left safe zone" alert; outside -> inside = return (for UI)
+            let shouldNotifyLocation = false;
             if (previousInside && !currentInside) {
                 await LocationAlert.create({
                     patientId: pid,
@@ -133,8 +135,33 @@ const locationController = {
                     timestamp: ts,
                     message: 'Left safe zone',
                 });
+                shouldNotifyLocation = true;
             }
-            // If patient was outside and is now inside, record return (for caregiver visibility)
+            // Patient is outside but no transition (e.g. first location is outside, or we missed the exit)
+            if (!currentInside && zones.length > 0 && !shouldNotifyLocation) {
+                const recentLeft = await LocationAlert.findOne({
+                    where: { patientId: pid, message: 'Left safe zone' },
+                    order: [['timestamp', 'DESC']],
+                });
+                const twoHoursAgo = new Date(ts.getTime() - 2 * 60 * 60 * 1000);
+                if (!recentLeft || recentLeft.timestamp < twoHoursAgo) {
+                    await LocationAlert.create({
+                        patientId: pid,
+                        latitude: lat,
+                        longitude: lng,
+                        timestamp: ts,
+                        message: 'Left safe zone',
+                    });
+                    shouldNotifyLocation = true;
+                }
+            }
+            if (shouldNotifyLocation) {
+                const patientUser = await User.findByPk(pid, { attributes: ['name'] });
+                notifyCaregiversLocationAlert(pid, patientUser?.name, ts, lat, lng).catch((err) =>
+                    console.error('Caregiver location alert email error:', err)
+                );
+            }
+            // If patient was outside and is now inside, record return and notify caregivers
             if (!previousInside && currentInside && previousLog) {
                 await LocationAlert.create({
                     patientId: pid,
@@ -143,6 +170,10 @@ const locationController = {
                     timestamp: ts,
                     message: 'Returned to safe zone',
                 });
+                const patientUser = await User.findByPk(pid, { attributes: ['name'] });
+                notifyCaregiversReturnedToZone(pid, patientUser?.name, ts, lat, lng).catch((err) =>
+                    console.error('Caregiver returned to zone email error:', err)
+                );
             }
 
             return res.status(201).json({
@@ -225,6 +256,7 @@ const locationController = {
             }
             const log = await LocationLog.create(logData);
 
+            let shouldNotifyLocation = false;
             if (previousInside && !currentInside) {
                 await LocationAlert.create({
                     patientId: pid,
@@ -233,6 +265,30 @@ const locationController = {
                     timestamp: ts,
                     message: 'Left safe zone',
                 });
+                shouldNotifyLocation = true;
+            }
+            if (!currentInside && zones.length > 0 && !shouldNotifyLocation) {
+                const recentLeft = await LocationAlert.findOne({
+                    where: { patientId: pid, message: 'Left safe zone' },
+                    order: [['timestamp', 'DESC']],
+                });
+                const twoHoursAgo = new Date(ts.getTime() - 2 * 60 * 60 * 1000);
+                if (!recentLeft || recentLeft.timestamp < twoHoursAgo) {
+                    await LocationAlert.create({
+                        patientId: pid,
+                        latitude: lat,
+                        longitude: lng,
+                        timestamp: ts,
+                        message: 'Left safe zone',
+                    });
+                    shouldNotifyLocation = true;
+                }
+            }
+            if (shouldNotifyLocation) {
+                const patientUser = await User.findByPk(pid, { attributes: ['name'] });
+                notifyCaregiversLocationAlert(pid, patientUser?.name, ts, lat, lng).catch((err) =>
+                    console.error('Caregiver location alert email error:', err)
+                );
             }
             if (!previousInside && currentInside && previousLog) {
                 await LocationAlert.create({
@@ -242,6 +298,10 @@ const locationController = {
                     timestamp: ts,
                     message: 'Returned to safe zone',
                 });
+                const patientUser = await User.findByPk(pid, { attributes: ['name'] });
+                notifyCaregiversReturnedToZone(pid, patientUser?.name, ts, lat, lng).catch((err) =>
+                    console.error('Caregiver returned to zone email error:', err)
+                );
             }
 
             return res.status(201).json({
@@ -285,13 +345,6 @@ const locationController = {
             }
 
             const hasConsent = await getLocationConsent(patientId);
-            if (!hasConsent) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'No location data available for this patient.',
-                });
-            }
-
             const log = await LocationLog.findOne({
                 where: { patientId },
                 order: [['timestamp', 'DESC']],
@@ -311,6 +364,7 @@ const locationController = {
                     latitude: log.latitude,
                     longitude: log.longitude,
                     timestamp: log.timestamp,
+                    locationConsent: hasConsent,
                 },
             });
         } catch (err) {
@@ -395,6 +449,54 @@ const locationController = {
      * GET /api/location/status
      * For dashboard: returns both recent breach alerts and patients currently outside any safe zone.
      */
+    /**
+     * GET /api/location/history?patientId=&days=
+     * Caregiver: returns location history for a patient. Works even when locationConsent is off (historical data).
+     * days defaults to 7.
+     */
+    history: async (req, res) => {
+        try {
+            const patientId = req.query.patientId != null ? parseInt(req.query.patientId, 10) : NaN;
+            const days = Math.min(30, Math.max(1, parseInt(req.query.days, 10) || 7));
+
+            if (Number.isNaN(patientId)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Missing or invalid patientId query parameter',
+                });
+            }
+
+            const check = await ensurePatientAssigned(req, patientId);
+            if (!check.allowed) {
+                return res.status(403).json({ success: false, message: check.message });
+            }
+
+            const since = new Date();
+            since.setDate(since.getDate() - days);
+
+            const logs = await LocationLog.findAll({
+                where: { patientId, timestamp: { [Op.gte]: since } },
+                order: [['timestamp', 'ASC']],
+                limit: 500,
+            });
+
+            return res.json({
+                success: true,
+                data: logs.map((l) => ({
+                    latitude: l.latitude,
+                    longitude: l.longitude,
+                    timestamp: l.timestamp,
+                })),
+            });
+        } catch (err) {
+            console.error('Location history error:', err);
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to retrieve location history',
+            });
+        }
+    },
+
     status: async (req, res) => {
         try {
             const caregiver = await User.findByPk(req.user.userId);

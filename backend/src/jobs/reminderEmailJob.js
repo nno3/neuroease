@@ -6,6 +6,7 @@
 const { Op } = require('sequelize');
 const { Reminder, Patient, User, PushSubscription } = require('../models');
 const { sendReminderEmail } = require('../utils/emailService');
+const { notifyCaregiversMissedReminder } = require('../utils/caregiverNotifications');
 const { sendPush, configureVapid } = require('../utils/pushService');
 
 const RUN_INTERVAL_MS = 60 * 1000; // run every 1 minute so we catch due reminders sooner
@@ -266,6 +267,13 @@ async function runReminderEmailJob() {
                     sentCount++;
                 }
             }
+            // Notify caregivers who opted in to missed reminder emails
+            notifyCaregiversMissedReminder(
+                reminder.patientId,
+                reminder.User?.name,
+                reminder.title,
+                effectiveTime
+            ).catch((err) => console.error('Caregiver missed reminder email error:', err));
         }
         if (sentCount > 0 && process.env.NODE_ENV !== 'production') {
             console.log(`Reminder job: sent ${sentCount} notification(s)`);

@@ -147,15 +147,29 @@ function forEachOccurrenceInRange(reminder, rangeStart, rangeEnd, fn) {
 
 /**
  * Status inference WITHOUT activity logs:
- * - completed: only for one-time reminders marked isCompleted
- * - overdue: occurrence time passed
+ * - completed: one-time reminders with isCompleted, or recurring with completedAt on same calendar day as occurrence
+ * - overdue: occurrence time passed and not completed
  * - pending: future
  *
  * If ActivityLog exists, it overrides this.
  */
 function computeFallbackStatus(reminder, occursAt, now) {
     const recurrence = reminder.recurrence || 'once';
-    if (recurrence === 'once' && reminder.isCompleted) return 'completed';
+
+    if (recurrence === 'once') {
+        if (reminder.isCompleted) return 'completed';
+    } else if (reminder.completedAt) {
+        const completed = new Date(reminder.completedAt);
+        const occ = new Date(occursAt);
+        if (
+            completed.getDate() === occ.getDate() &&
+            completed.getMonth() === occ.getMonth() &&
+            completed.getFullYear() === occ.getFullYear()
+        ) {
+            return 'completed';
+        }
+    }
+
     if (occursAt.getTime() < now.getTime()) return 'overdue';
     return 'pending';
 }
@@ -270,7 +284,7 @@ const activityController = {
 
             const reminders = await Reminder.findAll({
                 where,
-                attributes: ['id', 'patientId', 'title', 'reminderType', 'scheduledTime', 'endTime', 'recurrence', 'isCompleted'],
+                attributes: ['id', 'patientId', 'title', 'reminderType', 'scheduledTime', 'endTime', 'recurrence', 'isCompleted', 'completedAt'],
                 order: [['scheduledTime', 'ASC']],
             });
             // series map
@@ -441,7 +455,7 @@ const activityController = {
 
             const reminders = await Reminder.findAll({
                 where,
-                attributes: ["id", "patientId", "title", "reminderType", "scheduledTime", "endTime", "recurrence", "isCompleted"],
+                attributes: ["id", "patientId", "title", "reminderType", "scheduledTime", "endTime", "recurrence", "isCompleted", "completedAt"],
                 order: [["scheduledTime", "ASC"]],
             });
 
@@ -479,8 +493,30 @@ const activityController = {
                                 ? "Reminder overdue"
                                 : "Reminder scheduled";
 
+                    // Use completedAt as timestamp when available (shows when it was actually done)
+                    let itemTimestamp = occursAt.toISOString();
+                    if (status === "completed" && reminder.completedAt) {
+                        const completed = new Date(reminder.completedAt);
+                        const occ = new Date(occursAt);
+                        if (
+                            completed.getDate() === occ.getDate() &&
+                            completed.getMonth() === occ.getMonth() &&
+                            completed.getFullYear() === occ.getFullYear()
+                        ) {
+                            itemTimestamp = reminder.completedAt instanceof Date
+                                ? reminder.completedAt.toISOString()
+                                : new Date(reminder.completedAt).toISOString();
+                        }
+                    } else if (status === "completed" && reminder.recurrence === "once") {
+                        if (reminder.completedAt) {
+                            itemTimestamp = reminder.completedAt instanceof Date
+                                ? reminder.completedAt.toISOString()
+                                : new Date(reminder.completedAt).toISOString();
+                        }
+                    }
+
                     items.push({
-                        timestamp: occursAt.toISOString(),
+                        timestamp: itemTimestamp,
                         patientId: reminder.patientId,
                         patientName: patientNameById.get(reminder.patientId) || `Patient ${reminder.patientId}`,
                         actionType,

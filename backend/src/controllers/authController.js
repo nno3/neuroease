@@ -166,9 +166,22 @@ const authController = {
                 });
             }
 
+            const userData = user.toJSON ? user.toJSON() : user;
+            if (user.userType === 'caregiver' && userData.emailNotificationPreferences) {
+                try {
+                    userData.emailNotificationPreferences = typeof userData.emailNotificationPreferences === 'string'
+                        ? JSON.parse(userData.emailNotificationPreferences)
+                        : userData.emailNotificationPreferences;
+                } catch {
+                    userData.emailNotificationPreferences = { locationAlerts: false, missedReminders: false, gameCompletion: false };
+                }
+            } else if (user.userType === 'caregiver') {
+                userData.emailNotificationPreferences = { locationAlerts: false, missedReminders: false, gameCompletion: false };
+            }
+
             res.json({
                 success: true,
-                data: { user }
+                data: { user: userData }
             });
         } catch (error) {
             res.status(500).json({
@@ -195,7 +208,7 @@ const authController = {
     updateProfile: async (req, res) => {
         try {
             const userId = req.user.userId;
-            const { name, email, currentPassword, newPassword, avatar } = req.body;
+            const { name, email, currentPassword, newPassword, avatar, emailNotificationPreferences } = req.body;
 
             const user = await User.findByPk(userId);
             if (!user) {
@@ -245,6 +258,20 @@ const authController = {
                 }
             }
 
+            if (emailNotificationPreferences !== undefined && req.user.userType === 'caregiver') {
+                const p = emailNotificationPreferences;
+                if (p && typeof p === 'object') {
+                    const prefs = {
+                        locationAlerts: !!p.locationAlerts,
+                        missedReminders: !!p.missedReminders,
+                        gameCompletion: !!p.gameCompletion,
+                    };
+                    updates.emailNotificationPreferences = JSON.stringify(prefs);
+                } else if (p === null || p === '') {
+                    updates.emailNotificationPreferences = null;
+                }
+            }
+
             if (Object.keys(updates).length === 0) {
                 return res.status(400).json({ success: false, message: 'No valid updates provided' });
             }
@@ -259,6 +286,17 @@ const authController = {
                 userType: updatedUser.userType,
                 avatar: updatedUser.avatar || null
             };
+            if (updatedUser.userType === 'caregiver') {
+                try {
+                    safeUser.emailNotificationPreferences = updatedUser.emailNotificationPreferences
+                        ? (typeof updatedUser.emailNotificationPreferences === 'string'
+                            ? JSON.parse(updatedUser.emailNotificationPreferences)
+                            : updatedUser.emailNotificationPreferences)
+                        : { locationAlerts: false, missedReminders: false, gameCompletion: false };
+                } catch {
+                    safeUser.emailNotificationPreferences = { locationAlerts: false, missedReminders: false, gameCompletion: false };
+                }
+            }
 
             res.json({
                 success: true,
