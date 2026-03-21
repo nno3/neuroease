@@ -176,6 +176,13 @@ const patientRegistrationSchema = yup.object({
         stageSeverity: yup.string().max(100, 'Stage too long').nullable(),
         primaryConsultant: yup.string().max(255, 'Primary consultant too long').nullable(),
         currentMedications: yup.string().max(1000, 'Current medications too long').nullable(),
+        medications: yup.array().of(
+            yup.object().shape({
+                name: yup.string().required('Medication name is required').max(200, 'Medication name too long'),
+                dosage: yup.string().max(100, 'Dosage too long').nullable(),
+                frequency: yup.string().max(100, 'Frequency too long').nullable(),
+            })
+        ).nullable(),
         chronicConditions: yup.mixed().test('chronic-conditions', 'Invalid chronic conditions', function (value) {
             if (value == null) return true;
             if (typeof value === 'string') return value.length <= 2000;

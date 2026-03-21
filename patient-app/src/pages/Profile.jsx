@@ -15,10 +15,9 @@ import {
   getVoiceAssistRate,
   setVoiceAssistRate,
   getAvailableVoices,
-  speakTest,
 } from "../utils/voiceAssist";
 import { getGameSoundsEnabled, setGameSoundsEnabled } from "../utils/gameSounds";
-import { Volume2, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { SIMULATED_LOCATIONS } from "../services/locationService";
 import "./Profile.css";
 
@@ -56,7 +55,6 @@ export default function Profile() {
   const [requestingPermission, setRequestingPermission] = useState(false);
   const [pushSubscriptionCount, setPushSubscriptionCount] = useState(null); // null = unknown, number = count from API
   const [voiceAssistOnOpen, setVoiceAssistOnOpen] = useState(false);
-  const [testVoiceStatus, setTestVoiceStatus] = useState(null);
   const [voices, setVoices] = useState([]);
   const [selectedVoice, setSelectedVoice] = useState("");
   const [speechRate, setSpeechRate] = useState(1);
@@ -425,21 +423,6 @@ export default function Profile() {
           </div>
         )}
 
-        {/* Test Voice Reminder button */}
-        <button
-          type="button"
-          className="pa-btn pa-btn--primary pa-profile-test-btn"
-          onClick={() => {
-            setTestVoiceStatus(null);
-            const ok = speakTest(() => setTestVoiceStatus(null));
-            setTestVoiceStatus(ok ? "Playing…" : "Voice not supported in this browser.");
-          }}
-          aria-label="Test voice reminder"
-        >
-          <Volume2 className="pa-profile-test-btn-icon" aria-hidden />
-          Test Voice Reminder
-        </button>
-        {testVoiceStatus && <p className="pa-muted pa-profile-test-status">{testVoiceStatus}</p>}
       </div>
 
       {/* Games card */}

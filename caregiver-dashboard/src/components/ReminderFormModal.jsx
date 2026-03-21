@@ -51,6 +51,24 @@ const DateTimeInputWithButton = forwardRef(
 );
 DateTimeInputWithButton.displayName = "DateTimeInputWithButton";
 
+function parseMedicationsFromPatient(patient) {
+    if (!patient) return [];
+    const profile = patient?.Patient ?? patient?.profile ?? null;
+    const mh = profile?.medicalHistory;
+    if (!mh) return [];
+    try {
+        const parsed = typeof mh === "string" ? JSON.parse(mh || "{}") : mh;
+        if (Array.isArray(parsed?.medications) && parsed.medications.length > 0) {
+            return parsed.medications.filter((m) => (m?.name ?? "").trim());
+        }
+        const legacy = (parsed?.currentMedications ?? "").trim();
+        if (legacy) {
+            return legacy.split("\n").map((line) => ({ name: line.trim(), dosage: "", frequency: "" })).filter((m) => m.name);
+        }
+    } catch {}
+    return [];
+}
+
 export default function ReminderFormModal({ open, mode, patientId, patients = [], reminder, prefillDate = null, onClose, onSubmit }) {
     const isEdit = mode === "edit";
 
@@ -71,6 +89,7 @@ export default function ReminderFormModal({ open, mode, patientId, patients = []
             title: reminder?.title ?? "",
             message: reminder?.message ?? "",
             reminderType: reminder?.reminderType ?? "general",
+            selectedMedicationId: "",
             recurrence: reminder?.recurrence ?? "once",
             scheduledAt: safeScheduledAt,
             endAt: shouldClearEndTime ? null : safeEndAt, // Clear end time for "once" recurrence
@@ -82,8 +101,11 @@ export default function ReminderFormModal({ open, mode, patientId, patients = []
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
     const [fieldErrors, setFieldErrors] = useState({});
-    // if we're in "All patients" mode, user must pick in modal
     const [pickedPatientId, setPickedPatientId] = useState(initial.pickedPatientId);
+
+    const effectivePatientId = patientId ?? pickedPatientId;
+    const selectedPatient = patients.find((p) => String(p.id) === String(effectivePatientId));
+    const medications = useMemo(() => parseMedicationsFromPatient(selectedPatient), [selectedPatient]);
 
     useEffect(() => {
         if (open) {
@@ -212,12 +234,53 @@ export default function ReminderFormModal({ open, mode, patientId, patients = []
                             </div>
                         )}
 
+                        {form.reminderType === "medication" && medications.length > 0 && (
+                            <div className="rfm-field">
+                                <label className="rfm-label">Select medication</label>
+                                <select
+                                    className="rfm-select"
+                                    value={form.selectedMedicationId}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setField("selectedMedicationId", val);
+                                        if (val && val !== "custom") {
+                                            const idx = parseInt(val, 10);
+                                            const med = medications[idx];
+                                            if (med) {
+                                                const parts = [med.name];
+                                                if (med.dosage) parts.push(med.dosage);
+                                                if (med.frequency) parts.push(med.frequency);
+                                                setField("title", parts.join(" – "));
+                                                setField("message", `Take ${med.name}${med.dosage ? ` (${med.dosage})` : ""}${med.frequency ? ` ${med.frequency}` : ""}`);
+                                            }
+                                        }
+                                    }}
+                                >
+                                    <option value="">Choose a medication…</option>
+                                    {medications.map((med, idx) => {
+                                        const label = [med.name, med.dosage, med.frequency].filter(Boolean).join(" – ");
+                                        return (
+                                            <option key={idx} value={String(idx)}>
+                                                {label || med.name}
+                                            </option>
+                                        );
+                                    })}
+                                    <option value="custom">Other (type below)</option>
+                                </select>
+                            </div>
+                        )}
+
                         <div className="rfm-field">
                             <label className="rfm-label">Title *</label>
                             <input
                                 className={`rfm-input ${fieldErrors.title ? "is-error" : ""}`}
                                 value={form.title}
-                                onChange={(e) => setField("title", e.target.value)}
+                                onChange={(e) => {
+                                    setField("title", e.target.value);
+                                    if (form.reminderType === "medication" && medications.length > 0) {
+                                        setField("selectedMedicationId", "custom");
+                                    }
+                                }}
                             />
                             {fieldErrors.title && <div className="rfm-help">{fieldErrors.title}</div>}
                         </div>

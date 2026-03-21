@@ -1347,7 +1347,7 @@ export default function Activity() {
                             <div className="act-chart act-chart--breakdown">
                             <div className="act-chart-head">
                                 <div className="act-chart-title">Breakdown by reminder type</div>
-                                <div className="act-chart-sub">Medication / Appointment / Task</div>
+                                <div className="act-chart-sub">Number of reminders and share of total ({totals.total ?? 0} total)</div>
                             </div>
 
                             {summaryLoading ? (
@@ -1366,9 +1366,9 @@ export default function Activity() {
                                                 <div className="act-typebar-main">
                                                     <div className="act-typebar-top">
                                                         <span className="act-typebar-title">{typeLabel(t)}</span>
-                                                        <span className="act-typebar-meta">
-                              {val} • {pct}%
-                            </span>
+                                                        <span className="act-typebar-meta" title={`${val} reminders, ${pct}% of total`}>
+                                                            {val} reminders · {pct}% of total
+                                                        </span>
                                                     </div>
                                                     <div className="act-typebar-track">
                                                         <div className={`act-typebar-fill is-${t}`}

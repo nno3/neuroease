@@ -25,7 +25,7 @@ const GAMES = [
 export default function Games() {
   return (
     <div className="pa-games">
-      <h2 className="pa-games-title">Brain Games</h2>
+      <h2 className="pa-games-title">Games</h2>
       <p className="pa-games-intro">
         Play simple games to keep your mind active.
       </p>

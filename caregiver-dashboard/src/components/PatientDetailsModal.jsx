@@ -272,7 +272,10 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarch
                                 const diagnosisDate = mh?.diagnosisDate ?? profile?.diagnosisDate ?? null;
                                 const stage = (profile?.stageSeverity ?? mh?.stageSeverity ?? "").trim();
                                 const consultant = (profile?.primaryConsultant ?? mh?.primaryConsultant ?? "").trim();
-                                const meds = (profile?.currentMedications ?? mh?.currentMedications ?? "").trim();
+                                const medsArr = Array.isArray(mh?.medications) ? mh.medications : null;
+                                const meds = medsArr?.length
+                                    ? medsArr.map((m) => [m.name, m.dosage, m.frequency].filter(Boolean).join(" – ")).join("\n")
+                                    : (profile?.currentMedications ?? mh?.currentMedications ?? "").trim();
                                 const allergies = (profile?.allergies ?? mh?.allergies ?? "").trim();
                                 return (
                                     <div className="pm-details-grid">

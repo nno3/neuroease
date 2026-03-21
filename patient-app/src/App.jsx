@@ -1,6 +1,6 @@
 /**
  * Patient PWA – root router. Public: /login (email magic link), /activate (invite link).
- * Protected: Layout shell with Home and Reminders; redirect to /login if not authenticated.
+ * Protected: Layout shell with Games, Reminders, Profile; redirect to /login if not authenticated.
  */
 import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
@@ -9,7 +9,6 @@ import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Activate from "./pages/Activate";
-import Home from "./pages/Home";
 import Games from "./pages/Games";
 import MemoryGame from "./pages/MemoryGame";
 import MathGame from "./pages/MathGame";
@@ -31,7 +30,7 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Home />} />
+          <Route index element={<Navigate to="/reminders" replace />} />
           <Route path="games" element={<Games />} />
           <Route path="games/memory" element={<MemoryGame />} />
           <Route path="games/math" element={<MathGame />} />

@@ -2,7 +2,8 @@
  * Game controller – patients submit game session results.
  * POST /api/games – patient-only; creates GameSession for the logged-in patient.
  */
-const { GameSession } = require('../models');
+const { GameSession, User } = require('../models');
+const { notifyCaregiversGameCompletion } = require('../utils/caregiverNotifications');
 
 const gameController = {
     /**
@@ -16,7 +17,7 @@ const gameController = {
                 return res.status(403).json({ success: false, message: 'Only patients can submit game sessions' });
             }
 
-            const { gameType, score, duration, accuracy } = req.body;
+            const { gameType, score, duration, accuracy, maxScore, difficulty } = req.body;
             const allowedTypes = ['memory', 'math', 'sequencing'];
 
             if (!gameType || !allowedTypes.includes(String(gameType))) {
@@ -42,6 +43,11 @@ const gameController = {
                 return res.status(400).json({ success: false, message: 'accuracy must be between 0 and 1 if provided' });
             }
 
+            const maxScoreVal = maxScore != null ? parseInt(String(maxScore), 10) : null;
+            const difficultyVal = difficulty && ['easy', 'normal', 'hard'].includes(String(difficulty).toLowerCase())
+                ? String(difficulty).toLowerCase()
+                : null;
+
             const session = await GameSession.create({
                 patientId: req.user.userId,
                 gameType: String(gameType),
@@ -49,6 +55,17 @@ const gameController = {
                 duration: durationNum,
                 accuracy: accuracyVal,
             });
+
+            const patientUser = await User.findByPk(req.user.userId, { attributes: ['name'] });
+            notifyCaregiversGameCompletion(
+                req.user.userId,
+                patientUser?.name,
+                String(gameType),
+                scoreNum,
+                durationNum,
+                maxScoreVal,
+                difficultyVal
+            ).catch((err) => console.error('Caregiver game completion email error:', err));
 
             return res.status(201).json({
                 success: true,

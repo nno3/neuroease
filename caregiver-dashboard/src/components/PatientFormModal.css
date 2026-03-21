@@ -289,6 +289,70 @@
     color: #2563eb;
 }
 
+/* Medications list */
+.pfm-medications-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.pfm-medication-row {
+    display: grid;
+    grid-template-columns: 1fr minmax(100px, 1fr) minmax(100px, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+}
+
+.pfm-medication-name {
+    min-width: 0;
+}
+
+.pfm-medication-dosage,
+.pfm-medication-frequency {
+    min-width: 0;
+}
+
+.pfm-btn-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #64748b;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.pfm-btn-icon:hover {
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
+.pfm-btn-add {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border: 2px dashed #cbd5e1;
+    border-radius: 10px;
+    background: #f8fafc;
+    font-size: 14px;
+    font-weight: 700;
+    color: #475569;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s, color 0.2s;
+}
+
+.pfm-btn-add:hover {
+    border-color: #2563eb;
+    background: #eff6ff;
+    color: #2563eb;
+}
+
 /* Care tab: radio and checkbox groups */
 .pfm-radio-group,
 .pfm-checkbox-group {

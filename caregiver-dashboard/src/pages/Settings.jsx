@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { getProfile, updateProfile, deleteAccount } from "../services/authService";
-import { LogOut, User, Save, Trash2, KeyRound, LogOut as SessionIcon, AlertTriangle, Camera } from "lucide-react";
+import { LogOut, User, Save, Trash2, KeyRound, LogOut as SessionIcon, AlertTriangle, Camera, Mail, MapPin, Bell, Gamepad2 } from "lucide-react";
 import "./Settings.css";
 
 const MAX_AVATAR_BYTES = 1024 * 1024; // 1MB
@@ -54,9 +54,15 @@ function getInitials(name) {
     return (name[0] || "?").toUpperCase();
 }
 
+const NOTIFICATION_OPTIONS = [
+    { key: "locationAlerts", label: "Patient leaves safe zone", desc: "Get an email when a patient goes outside their safe zone.", icon: MapPin },
+    { key: "missedReminders", label: "Patient misses reminder", desc: "Get an email when a patient has an overdue reminder.", icon: Bell },
+    { key: "gameCompletion", label: "Patient completes a game", desc: "Get an email when a patient finishes a game.", icon: Gamepad2 },
+];
+
 const Settings = () => {
     const { user: contextUser, logout, updateUser } = useAuth();
-    const [profile, setProfile] = useState({ name: "", email: "", avatar: null });
+    const [profile, setProfile] = useState({ name: "", email: "", avatar: null, emailNotificationPreferences: {} });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState({ type: "", text: "" });
@@ -68,10 +74,23 @@ const Settings = () => {
         getProfile()
             .then((res) => {
                 const u = res?.data?.user ?? res?.user ?? contextUser;
-                if (u) setProfile({ name: u.name ?? "", email: u.email ?? "", avatar: u.avatar ?? null });
+                if (u) {
+                    const prefs = u.emailNotificationPreferences ?? { locationAlerts: false, missedReminders: false, gameCompletion: false };
+                    setProfile({
+                        name: u.name ?? "",
+                        email: u.email ?? "",
+                        avatar: u.avatar ?? null,
+                        emailNotificationPreferences: prefs,
+                    });
+                }
             })
             .catch(() => {
-                if (contextUser) setProfile({ name: contextUser.name ?? "", email: contextUser.email ?? "", avatar: contextUser.avatar ?? null });
+                if (contextUser) setProfile({
+                    name: contextUser.name ?? "",
+                    email: contextUser.email ?? "",
+                    avatar: contextUser.avatar ?? null,
+                    emailNotificationPreferences: { locationAlerts: false, missedReminders: false, gameCompletion: false },
+                });
             })
             .finally(() => setLoading(false));
     }, [contextUser]);
@@ -89,7 +108,12 @@ const Settings = () => {
             const res = await updateProfile({ name: profile.name.trim(), email: profile.email.trim().toLowerCase() });
             const updated = res?.data?.user ?? res?.user;
             if (updated) {
-                setProfile({ name: updated.name ?? "", email: updated.email ?? "", avatar: updated.avatar ?? profile.avatar });
+                setProfile({
+                    name: updated.name ?? "",
+                    email: updated.email ?? "",
+                    avatar: updated.avatar ?? profile.avatar,
+                    emailNotificationPreferences: updated.emailNotificationPreferences ?? profile.emailNotificationPreferences,
+                });
                 updateUser(updated);
                 setMessage({ type: "success", text: "Profile updated successfully." });
             }
@@ -160,6 +184,29 @@ const Settings = () => {
             }
         } catch (err) {
             setMessage({ type: "error", text: err?.data?.message ?? err?.message ?? "Failed to update photo." });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleNotificationPrefChange = async (key, checked) => {
+        const prevPrefs = { ...profile.emailNotificationPreferences };
+        const newPrefs = { ...prevPrefs, [key]: checked };
+        setProfile((p) => ({ ...p, emailNotificationPreferences: newPrefs }));
+        setMessage({ type: "", text: "" });
+        setSaving(true);
+        try {
+            const res = await updateProfile({ emailNotificationPreferences: newPrefs });
+            const updated = res?.data?.user ?? res?.user;
+            if (updated?.emailNotificationPreferences) {
+                setProfile((p) => ({ ...p, emailNotificationPreferences: updated.emailNotificationPreferences }));
+            }
+            updateUser(updated ?? { ...contextUser, emailNotificationPreferences: newPrefs });
+            setMessage({ type: "success", text: "Notification preferences updated." });
+            setTimeout(() => setMessage({ type: "", text: "" }), 2000);
+        } catch (err) {
+            setMessage({ type: "error", text: err?.data?.message ?? err?.message ?? "Failed to update preferences." });
+            setProfile((p) => ({ ...p, emailNotificationPreferences: prevPrefs }));
         } finally {
             setSaving(false);
         }
@@ -286,6 +333,39 @@ const Settings = () => {
                             </button>
                         </div>
                     </form>
+                </section>
+
+                <section className="stg-section" aria-labelledby="stg-notifications-heading">
+                    <h3 id="stg-notifications-heading" className="stg-section-title">
+                        <Mail size={18} aria-hidden /> Email notifications
+                    </h3>
+                    <p className="stg-section-text">
+                        Choose which updates you want to receive by email. You can select more than one.
+                    </p>
+                    <div className="stg-checkbox-group">
+                        {NOTIFICATION_OPTIONS.map((opt) => {
+                            const Icon = opt.icon;
+                            const checked = !!profile.emailNotificationPreferences?.[opt.key];
+                            return (
+                                <label key={opt.key} className="stg-checkbox-row">
+                                    <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        onChange={(e) => handleNotificationPrefChange(opt.key, e.target.checked)}
+                                        disabled={saving}
+                                        className="stg-checkbox"
+                                    />
+                                    <span className="stg-checkbox-icon">
+                                        <Icon size={20} aria-hidden />
+                                    </span>
+                                    <div className="stg-checkbox-content">
+                                        <span className="stg-checkbox-label">{opt.label}</span>
+                                        <span className="stg-checkbox-desc">{opt.desc}</span>
+                                    </div>
+                                </label>
+                            );
+                        })}
+                    </div>
                 </section>
 
                 <section className="stg-section" aria-labelledby="stg-password-heading">

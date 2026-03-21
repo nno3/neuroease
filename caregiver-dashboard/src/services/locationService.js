@@ -4,6 +4,10 @@ export function getLatestLocation(patientId) {
     return api.get(`/location/latest?patientId=${encodeURIComponent(patientId)}`);
 }
 
+export function getLocationHistory(patientId, days = 7) {
+    return api.get(`/location/history?patientId=${encodeURIComponent(patientId)}&days=${encodeURIComponent(days)}`);
+}
+
 export function getSafeZones(patientId) {
     return api.get(`/safe-zones?patientId=${encodeURIComponent(patientId)}`);
 }

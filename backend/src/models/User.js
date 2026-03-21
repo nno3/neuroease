@@ -111,6 +111,12 @@ const User = sequelize.define('User', {
         type: DataTypes.TEXT,
         allowNull: true
     },
+    // Caregiver email notification preferences (JSON: { locationAlerts, missedReminders, gameCompletion })
+    emailNotificationPreferences: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        field: 'email_notification_preferences'
+    },
     // Patient invite (one-time activation)
     inviteToken: {
         type: DataTypes.STRING,

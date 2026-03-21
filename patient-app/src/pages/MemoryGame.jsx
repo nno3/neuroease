@@ -102,6 +102,7 @@ export default function MemoryGame() {
           score: finalMoves,
           duration: Math.round(finalSeconds),
           accuracy: Math.min(1, accuracy),
+          maxScore: totalPairs,
         }),
       });
     } catch (_) {

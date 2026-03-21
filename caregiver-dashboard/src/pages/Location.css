@@ -123,6 +123,125 @@
     box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.15);
 }
 
+.loc-control-checkbox {
+    margin-top: 4px;
+}
+
+.loc-checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #334155;
+    cursor: pointer;
+}
+
+.loc-checkbox-label input {
+    width: 18px;
+    height: 18px;
+    accent-color: #4a90e2;
+}
+
+.loc-help-muted {
+    margin: 4px 0 0 0;
+    font-size: 12px;
+    color: #64748b;
+}
+
+/* Location sharing off – warning cards */
+.loc-last-seen-section {
+    margin-bottom: 18px;
+    padding: 14px;
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-radius: 10px;
+}
+
+.loc-last-seen-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 8px 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: #92400e;
+}
+
+.loc-last-seen-icon {
+    color: #d97706;
+    flex-shrink: 0;
+}
+
+.loc-last-seen-intro {
+    margin: 0 0 12px 0;
+    font-size: 13px;
+    color: #78350f;
+    line-height: 1.4;
+}
+
+.loc-last-seen-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.loc-last-seen-card {
+    padding: 12px 14px;
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-radius: 8px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 16px;
+    align-items: baseline;
+}
+
+.loc-last-seen-patient {
+    grid-column: 1;
+    font-weight: 700;
+    font-size: 14px;
+    color: #78350f;
+}
+
+.loc-last-seen-label {
+    grid-column: 2;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #b45309;
+}
+
+.loc-last-seen-datetime {
+    grid-column: 1 / -1;
+    font-size: 14px;
+    font-weight: 600;
+    color: #92400e;
+}
+
+.loc-last-seen-location {
+    grid-column: 1 / -1;
+    font-size: 13px;
+    color: #78350f;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.loc-last-seen-map-link {
+    color: #b45309;
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.loc-last-seen-map-link:hover {
+    color: #92400e;
+}
+
 .loc-error {
     margin-bottom: 12px;
     padding: 12px 14px;

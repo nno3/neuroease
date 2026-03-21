@@ -215,4 +215,221 @@ async function sendReminderEmail(email, name, reminderTitle, reminderMessage, sc
     return { sent: true };
 }
 
-module.exports = { sendVerificationEmail, sendPatientInviteEmail, sendPatientMagicLinkEmail, sendReminderEmail };
+/**
+ * Send email to caregiver when patient leaves safe zone.
+ * Uses urgent subject and styling to highlight the alert.
+ * Includes links to dashboard and Google Maps for directions.
+ */
+async function sendCaregiverLocationAlertEmail(caregiverEmail, caregiverName, patientName, timestamp, patientId, latitude, longitude) {
+    const timeStr = timestamp instanceof Date
+        ? timestamp.toLocaleString()
+        : new Date(timestamp).toLocaleString();
+    const safeName = (patientName || 'Your patient').replace(/</g, '&lt;');
+    const dashboardUrl = `${FRONTEND_URL}/location${patientId != null ? `?patientId=${encodeURIComponent(patientId)}` : ''}`;
+    const mapsUrl = (latitude != null && longitude != null && Number.isFinite(latitude) && Number.isFinite(longitude))
+        ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(latitude)},${encodeURIComponent(longitude)}`
+        : null;
+    const linksHtml = mapsUrl
+        ? `<p><a href="${dashboardUrl}" style="color: #4A90E2; font-weight: 600;">View on NeuroEase map</a> &nbsp;|&nbsp; <a href="${mapsUrl}" style="color: #4A90E2; font-weight: 600;">Get directions (Google Maps)</a></p>`
+        : `<p><a href="${dashboardUrl}" style="color: #4A90E2; font-weight: 600;">View on NeuroEase map</a></p>`;
+    const linksText = mapsUrl
+        ? `View on map: ${dashboardUrl}\nGet directions: ${mapsUrl}\n\n`
+        : `View on map: ${dashboardUrl}\n\n`;
+    const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: sans-serif; line-height: 1.5; color: #334155;">
+  <p>Hi ${caregiverName || 'there'},</p>
+  <div style="background: #fef2f2; border: 2px solid #dc2626; border-radius: 8px; padding: 16px; margin: 16px 0;">
+    <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 700; color: #b91c1c;">⚠ URGENT</p>
+    <p style="margin: 0; font-size: 15px;"><strong>${safeName}</strong> has left their safe zone.</p>
+    <p style="margin: 8px 0 0 0; font-size: 14px; color: #64748b;">Time: ${timeStr}</p>
+  </div>
+  ${linksHtml}
+  <p>— NeuroEase</p>
+</body>
+</html>`;
+    const transporter = getTransporter();
+    if (transporter) {
+        try {
+            await transporter.sendMail({
+                from: MAIL_FROM,
+                to: caregiverEmail,
+                subject: `URGENT: ${patientName || 'Patient'} left safe zone`,
+                html,
+                text: `URGENT\n\nHi ${caregiverName || 'there'},\n\n${patientName || 'Your patient'} has left their safe zone at ${timeStr}.\n\n${linksText}— NeuroEase`,
+            });
+            return { sent: true };
+        } catch (err) {
+            console.error('Send caregiver location alert email error:', err);
+            return { sent: false, error: err.message };
+        }
+    }
+    console.warn('SMTP not configured. Caregiver location alert (not sent):', { to: caregiverEmail });
+    return { sent: true };
+}
+
+/**
+ * Send email to caregiver when patient returns to safe zone.
+ * Calm, reassuring tone (not alarming) to confirm their safety.
+ * Includes links to dashboard and Google Maps.
+ */
+async function sendCaregiverReturnedToZoneEmail(caregiverEmail, caregiverName, patientName, timestamp, patientId, latitude, longitude) {
+    const timeStr = timestamp instanceof Date
+        ? timestamp.toLocaleString()
+        : new Date(timestamp).toLocaleString();
+    const safeName = (patientName || 'Your patient').replace(/</g, '&lt;');
+    const dashboardUrl = `${FRONTEND_URL}/location${patientId != null ? `?patientId=${encodeURIComponent(patientId)}` : ''}`;
+    const mapsUrl = (latitude != null && longitude != null && Number.isFinite(latitude) && Number.isFinite(longitude))
+        ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(latitude)},${encodeURIComponent(longitude)}`
+        : null;
+    const linksHtml = mapsUrl
+        ? `<p><a href="${dashboardUrl}" style="color: #4A90E2; font-weight: 600;">View on NeuroEase map</a> &nbsp;|&nbsp; <a href="${mapsUrl}" style="color: #4A90E2; font-weight: 600;">Get directions (Google Maps)</a></p>`
+        : `<p><a href="${dashboardUrl}" style="color: #4A90E2; font-weight: 600;">View on NeuroEase map</a></p>`;
+    const linksText = mapsUrl
+        ? `View on map: ${dashboardUrl}\nGet directions: ${mapsUrl}\n\n`
+        : `View on map: ${dashboardUrl}\n\n`;
+    const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: sans-serif; line-height: 1.5; color: #334155;">
+  <p>Hi ${caregiverName || 'there'},</p>
+  <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 16px; margin: 16px 0;">
+    <p style="margin: 0; font-size: 15px; color: #166534;"><strong>${safeName}</strong> has returned to their safe zone.</p>
+    <p style="margin: 8px 0 0 0; font-size: 14px; color: #64748b;">Time: ${timeStr}</p>
+  </div>
+  ${linksHtml}
+  <p>— NeuroEase</p>
+</body>
+</html>`;
+    const transporter = getTransporter();
+    if (transporter) {
+        try {
+            await transporter.sendMail({
+                from: MAIL_FROM,
+                to: caregiverEmail,
+                subject: `${patientName || 'Patient'} returned to safe zone`,
+                html,
+                text: `Hi ${caregiverName || 'there'},\n\n${patientName || 'Your patient'} has returned to their safe zone at ${timeStr}.\n\n${linksText}— NeuroEase`,
+            });
+            return { sent: true };
+        } catch (err) {
+            console.error('Send caregiver returned to zone email error:', err);
+            return { sent: false, error: err.message };
+        }
+    }
+    console.warn('SMTP not configured. Caregiver returned to zone (not sent):', { to: caregiverEmail });
+    return { sent: true };
+}
+
+/**
+ * Send email to caregiver when patient misses a reminder (overdue).
+ */
+async function sendCaregiverMissedReminderEmail(caregiverEmail, caregiverName, patientName, reminderTitle, scheduledTime) {
+    const timeStr = scheduledTime instanceof Date
+        ? scheduledTime.toLocaleString()
+        : new Date(scheduledTime).toLocaleString();
+    const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: sans-serif; line-height: 1.5; color: #334155;">
+  <p>Hi ${caregiverName || 'there'},</p>
+  <p><strong>${(patientName || 'Your patient').replace(/</g, '&lt;')}</strong> has missed a reminder.</p>
+  <p><strong>${(reminderTitle || 'Reminder').replace(/</g, '&lt;')}</strong></p>
+  <p>Was due: ${timeStr}</p>
+  <p>Log in to the NeuroEase dashboard to view reminder status and activity.</p>
+  <p>— NeuroEase</p>
+</body>
+</html>`;
+    const transporter = getTransporter();
+    if (transporter) {
+        try {
+            await transporter.sendMail({
+                from: MAIL_FROM,
+                to: caregiverEmail,
+                subject: `NeuroEase: ${patientName || 'Patient'} missed reminder`,
+                html,
+                text: `Hi ${caregiverName || 'there'},\n\n${patientName || 'Your patient'} missed the reminder "${reminderTitle || 'Reminder'}" (due ${timeStr}).\n\nLog in to the NeuroEase dashboard.\n\n— NeuroEase`,
+            });
+            return { sent: true };
+        } catch (err) {
+            console.error('Send caregiver missed reminder email error:', err);
+            return { sent: false, error: err.message };
+        }
+    }
+    console.warn('SMTP not configured. Caregiver missed reminder (not sent):', { to: caregiverEmail });
+    return { sent: true };
+}
+
+/**
+ * Format score for caregiver email based on game type and optional maxScore/difficulty.
+ */
+function formatGameScoreForEmail(gameType, score, maxScore, difficulty) {
+    const s = score ?? 0;
+    const hasMax = maxScore != null && Number.isFinite(maxScore) && maxScore > 0;
+    if (gameType === 'memory' && hasMax) {
+        return `${maxScore} pairs in ${s} moves`;
+    }
+    if (gameType === 'math' && hasMax) {
+        const diffStr = difficulty ? ` (${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)} difficulty)` : '';
+        return `${s}/${maxScore} correct${diffStr}`;
+    }
+    if (hasMax) {
+        return `${s}/${maxScore}`;
+    }
+    return String(s);
+}
+
+/**
+ * Send email to caregiver when patient completes a game.
+ * maxScore and difficulty are optional for clearer score display (e.g. math: 7/10 Easy, memory: 8 pairs in 12 moves).
+ */
+async function sendCaregiverGameCompletionEmail(caregiverEmail, caregiverName, patientName, gameType, score, duration, maxScore, difficulty) {
+    const gameLabel = { memory: 'Memory Match', math: 'Math Practice', sequencing: 'Sequencing' }[gameType] || gameType;
+    const durationStr = duration != null ? `${Math.floor(duration / 60)}m ${duration % 60}s` : '—';
+    const scoreStr = formatGameScoreForEmail(gameType, score, maxScore, difficulty);
+    const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: sans-serif; line-height: 1.5; color: #334155;">
+  <p>Hi ${caregiverName || 'there'},</p>
+  <p><strong>${(patientName || 'Your patient').replace(/</g, '&lt;')}</strong> completed a game.</p>
+  <p><strong>${gameLabel}</strong> – ${scoreStr}, Duration: ${durationStr}</p>
+  <p>Log in to the NeuroEase dashboard to view activity and performance.</p>
+  <p>— NeuroEase</p>
+</body>
+</html>`;
+    const transporter = getTransporter();
+    if (transporter) {
+        try {
+            await transporter.sendMail({
+                from: MAIL_FROM,
+                to: caregiverEmail,
+                subject: `NeuroEase: ${patientName || 'Patient'} completed ${gameLabel}`,
+                html,
+                text: `Hi ${caregiverName || 'there'},\n\n${patientName || 'Your patient'} completed ${gameLabel} (${scoreStr}, Duration: ${durationStr}).\n\nLog in to the NeuroEase dashboard.\n\n— NeuroEase`,
+            });
+            return { sent: true };
+        } catch (err) {
+            console.error('Send caregiver game completion email error:', err);
+            return { sent: false, error: err.message };
+        }
+    }
+    console.warn('SMTP not configured. Caregiver game completion (not sent):', { to: caregiverEmail });
+    return { sent: true };
+}
+
+module.exports = {
+    sendVerificationEmail,
+    sendPatientInviteEmail,
+    sendPatientMagicLinkEmail,
+    sendReminderEmail,
+    sendCaregiverLocationAlertEmail,
+    sendCaregiverReturnedToZoneEmail,
+    sendCaregiverMissedReminderEmail,
+    sendCaregiverGameCompletionEmail,
+};

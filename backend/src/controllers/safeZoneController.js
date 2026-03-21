@@ -33,10 +33,10 @@ const safeZoneController = {
                 });
             }
             const rad = radius != null ? parseInt(radius, 10) : 100;
-            if (Number.isNaN(rad) || rad < 1) {
+            if (Number.isNaN(rad) || rad < 10) {
                 return res.status(400).json({
                     success: false,
-                    message: 'radius must be a positive number (meters)',
+                    message: 'radius must be at least 10 m (GPS accuracy limit for reliable geofencing)',
                 });
             }
             const zone = await SafeZone.create({
@@ -115,8 +115,8 @@ const safeZoneController = {
             }
             if (radius != null) {
                 const rad = parseInt(radius, 10);
-                if (Number.isNaN(rad) || rad < 1) {
-                    return res.status(400).json({ success: false, message: 'radius must be a positive number (meters)' });
+                if (Number.isNaN(rad) || rad < 10) {
+                    return res.status(400).json({ success: false, message: 'radius must be at least 10 m (GPS accuracy limit for reliable geofencing)' });
                 }
                 zone.radius = rad;
             }

@@ -149,6 +149,8 @@ export default function MathGame() {
           score: finalCorrect,
           duration: Math.round(finalSeconds),
           accuracy: accuracy,
+          maxScore: finalAttempts,
+          difficulty,
         }),
       });
     } catch (_) {

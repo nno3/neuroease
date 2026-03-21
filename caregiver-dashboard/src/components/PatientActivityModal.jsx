@@ -338,7 +338,12 @@ export default function PatientActivityModal({ patient, onClose, onViewDetails }
             if (locRes.status === "fulfilled" && locRes.value?.data) {
                 const d = locRes.value.data;
                 if (d.latitude != null && d.longitude != null) {
-                    setLocation({ lat: d.latitude, lng: d.longitude, timestamp: d.timestamp });
+                    setLocation({
+                        lat: d.latitude,
+                        lng: d.longitude,
+                        timestamp: d.timestamp,
+                        locationConsent: d.locationConsent !== false,
+                    });
                 } else {
                     setLocation(null);
                 }
@@ -579,7 +584,30 @@ export default function PatientActivityModal({ patient, onClose, onViewDetails }
                                         </Link>
                                     )}
                                 </div>
-                                {location ? (
+                                {location?.locationConsent === false ? (
+                                    <div className="pa-location-off-card">
+                                        <p className="pa-location-off-title">
+                                            <AlertTriangle size={18} aria-hidden /> Location sharing off
+                                        </p>
+                                        <p className="pa-location-off-desc">
+                                            This patient has turned off location sharing. You cannot see their live location.
+                                        </p>
+                                        <p className="pa-location-off-last-seen">
+                                            <strong>Last seen:</strong> {location.timestamp ? new Date(location.timestamp).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "—"}
+                                        </p>
+                                        <p className="pa-location-off-coords">
+                                            {location.lat?.toFixed(5)}°, {location.lng?.toFixed(5)}°
+                                            <a
+                                                href={`https://www.google.com/maps?q=${location.lat},${location.lng}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="pa-location-off-map-link"
+                                            >
+                                                View on map
+                                            </a>
+                                        </p>
+                                    </div>
+                                ) : location ? (
                                     <>
                                         {locationStatus != null && (
                                             <p className={`pa-location-status pa-location-status-${locationStatus}`}>

@@ -128,7 +128,7 @@ function formatISODate(d) {
     return `${yyyy}-${mm}-${dd}`;
 }
 
-// Parse medical history; normalize chronicConditions to array of { diagnosis, diagnosedDate, dateNotApplicable }
+// Parse medical history; normalize chronicConditions and medications array
 function parseMedicalHistory(medicalConditions) {
     if (!medicalConditions) return {};
 
@@ -152,9 +152,22 @@ function parseMedicalHistory(medicalConditions) {
         } else {
             parsed.chronicConditions = [];
         }
+        // Migrate legacy currentMedications string to medications array
+        if (!Array.isArray(parsed.medications)) {
+            const legacy = (parsed.currentMedications ?? "").trim();
+            if (legacy) {
+                parsed.medications = legacy.split("\n").map((line) => {
+                    const t = line.trim();
+                    return t ? { name: t, dosage: "", frequency: "" } : null;
+                }).filter(Boolean);
+            } else {
+                parsed.medications = [];
+            }
+        }
+        if (!Array.isArray(parsed.medications)) parsed.medications = [];
         return parsed;
     } catch {
-        return { chronicConditions: [] };
+        return { chronicConditions: [], medications: [] };
     }
 }
 
@@ -266,7 +279,14 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
             })(),
             stageSeverity: profile?.stageSeverity ?? medicalHistory?.stageSeverity ?? "",
             primaryConsultant: profile?.primaryConsultant ?? medicalHistory?.primaryConsultant ?? "",
-            currentMedications: profile?.currentMedications ?? medicalHistory?.currentMedications ?? "",
+            medications: (() => {
+                const mh = parseMedicalHistory(profile?.medicalHistory);
+                return (mh?.medications ?? []).map((m) => ({
+                    name: (m?.name ?? "").trim(),
+                    dosage: (m?.dosage ?? "").trim(),
+                    frequency: (m?.frequency ?? "").trim(),
+                }));
+            })(),
             chronicConditions: Array.isArray(medicalHistory?.chronicConditions)
                 ? medicalHistory.chronicConditions.map((c) => ({
                     diagnosis: c?.diagnosis ?? "",
@@ -352,6 +372,27 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
             chronicConditions: p.chronicConditions.filter((_, i) => i !== index),
         }));
         setFieldErrors((e) => ({ ...e, chronicConditions: undefined, medicalHistory: undefined }));
+    };
+
+    const addMedication = () => {
+        setForm((p) => ({
+            ...p,
+            medications: [...p.medications, { name: "", dosage: "", frequency: "" }],
+        }));
+    };
+
+    const updateMedication = (index, updates) => {
+        setForm((p) => ({
+            ...p,
+            medications: p.medications.map((m, i) => (i === index ? { ...m, ...updates } : m)),
+        }));
+    };
+
+    const removeMedication = (index) => {
+        setForm((p) => ({
+            ...p,
+            medications: p.medications.filter((_, i) => i !== index),
+        }));
     };
 
 
@@ -466,7 +507,13 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                 diagnosisDate: form.diagnosisDate && form.diagnosisDate.trim() ? form.diagnosisDate.trim() : null,
                 stageSeverity: form.stageSeverity.trim() || null,
                 primaryConsultant: form.primaryConsultant.trim() || null,
-                currentMedications: form.currentMedications.trim(),
+                medications: form.medications
+                    .filter((m) => (m?.name ?? "").trim())
+                    .map((m) => ({
+                        name: (m.name ?? "").trim(),
+                        dosage: (m.dosage ?? "").trim() || null,
+                        frequency: (m.frequency ?? "").trim() || null,
+                    })),
                 chronicConditions: chronicConditionsPayload,
                 surgicalHistory: form.surgicalHistory.trim(),
                 hospitalizations: form.hospitalizations.trim() || null,
@@ -742,14 +789,48 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                             </div>
                         <div className="pfm-field pfm-span2">
                             <label className="pfm-label">Current medications</label>
-                            <textarea
-                                className={`pfm-textarea ${fieldErrors.currentMedications ? "is-error" : ""}`}
-                                rows={3}
-                                value={form.currentMedications}
-                                onChange={(e) => setField("currentMedications", e.target.value)}
-                                    placeholder="e.g. Donepezil 5mg daily, Vitamin D"
-                                />
+                            <p className="pfm-help pfm-help-muted">Add each medication separately with optional dosage and frequency.</p>
+                            <div className="pfm-medications-list">
+                                {form.medications.map((med, index) => (
+                                    <div key={index} className="pfm-medication-row">
+                                        <input
+                                            className={`pfm-input pfm-medication-name ${fieldErrors.medications ? "is-error" : ""}`}
+                                            value={med.name}
+                                            onChange={(e) => updateMedication(index, { name: e.target.value })}
+                                            placeholder="Medication name (e.g. Donepezil)"
+                                        />
+                                        <input
+                                            className="pfm-input pfm-medication-dosage"
+                                            value={med.dosage}
+                                            onChange={(e) => updateMedication(index, { dosage: e.target.value })}
+                                            placeholder="Dosage (e.g. 5mg)"
+                                        />
+                                        <input
+                                            className="pfm-input pfm-medication-frequency"
+                                            value={med.frequency}
+                                            onChange={(e) => updateMedication(index, { frequency: e.target.value })}
+                                            placeholder="How often (e.g. daily)"
+                                        />
+                                        <button
+                                            type="button"
+                                            className="pfm-btn-icon"
+                                            onClick={() => removeMedication(index)}
+                                            aria-label="Remove medication"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                ))}
+                                <button
+                                    type="button"
+                                    className="pfm-btn-add"
+                                    onClick={addMedication}
+                                >
+                                    <Plus size={16} />
+                                    Add medication
+                                </button>
                             </div>
+                        </div>
                             <div className="pfm-field pfm-span2">
                                 <label className="pfm-label">Allergies & adverse reactions</label>
                                 <textarea

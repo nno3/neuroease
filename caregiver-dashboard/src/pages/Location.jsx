@@ -20,10 +20,13 @@ const DEFAULT_CENTER = [52.52, 13.405];
 const DEFAULT_ZOOM = 10;
 
 const CUSTOM_RADIUS = "custom";
-const MIN_RADIUS = 50;
+// Minimum 10 m: GPS can achieve ±5 m outdoors; 10 m is the lower bound for reliable geofencing
+// (Radar, "How accurate is geofencing?" https://radar.com/blog/how-accurate-is-geofencing)
+const MIN_RADIUS = 10;
 const MAX_RADIUS = 5000;
 
 const RADIUS_OPTIONS = [
+    { value: 10, label: "Very small (10 m)" },
     { value: 100, label: "Small (about 100 m)" },
     { value: 200, label: "Medium (about 200 m)" },
     { value: 500, label: "Large (about 500 m)" },
@@ -192,10 +195,8 @@ export default function Location() {
         );
     }, [patientList]);
 
-    const idsToFetch = useMemo(
-        () => targetIds.filter((id) => idsWithLocationConsent.has(id)),
-        [targetIds, idsWithLocationConsent]
-    );
+    // Fetch for all selected patients – backend returns last known location even when consent is off (historical data)
+    const idsToFetch = useMemo(() => targetIds, [targetIds]);
 
     const singlePatientId = patientId !== "all" ? parseInt(patientId, 10) : null;
     const canManageZones = singlePatientId != null && !Number.isNaN(singlePatientId) && idsWithLocationConsent.has(singlePatientId);
@@ -356,6 +357,7 @@ export default function Location() {
                         latitude: r.data.latitude,
                         longitude: r.data.longitude,
                         timestamp: r.data.timestamp,
+                        locationConsent: r.data.locationConsent !== false,
                     }));
                 return locs;
             }),
@@ -418,9 +420,18 @@ export default function Location() {
         return Date.now() - t < oneDay;
     };
 
+    const liveLocations = useMemo(
+        () => locations.filter((loc) => loc.locationConsent !== false),
+        [locations]
+    );
+    const lastSeenLocations = useMemo(
+        () => locations.filter((loc) => loc.locationConsent === false),
+        [locations]
+    );
+
     const noPatientsWithConsent = idsToFetch.length === 0 && targetIds.length > 0;
-    const isEmpty = !loading && locations.length === 0 && zones.length === 0 && idsToFetch.length > 0;
-    const hasData = locations.length > 0 || zones.length > 0;
+    const isEmpty = !loading && liveLocations.length === 0 && zones.length === 0 && idsToFetch.length > 0;
+    const hasData = liveLocations.length > 0 || zones.length > 0 || lastSeenLocations.length > 0;
     const showMap = !loading && idsToFetch.length > 0;
 
     const recentAlertsList = useMemo(() => {
@@ -440,7 +451,7 @@ export default function Location() {
     }, [idsToFetch, alertsByPatient, patientList]);
 
     const currentlyOutsideList = useMemo(() => {
-        return locations
+        return liveLocations
             .filter((loc) => {
                 const patientZones = zones.filter((z) => z.patientId === loc.patientId);
                 const hasNoZones = patientZones.length === 0;
@@ -455,9 +466,13 @@ export default function Location() {
                 timestamp: loc.timestamp,
                 isCurrentlyOutside: true,
             }));
-    }, [locations, zones]);
+    }, [liveLocations, zones]);
 
     const hasAnyAlertsOrOutside = recentAlertsList.length > 0 || currentlyOutsideList.length > 0;
+
+    /** Format coordinates for "last seen at" display */
+    const formatCoords = (lat, lng) =>
+        `${Number(lat).toFixed(5)}°, ${Number(lng).toFixed(5)}°`;
 
     /** Combined list: currently outside (always shown) + history alerts filtered by period, sorted by time desc. */
     const combinedAlertsList = useMemo(() => {
@@ -585,6 +600,47 @@ export default function Location() {
 
                         {error && <div className="loc-error">{error}</div>}
 
+                        {lastSeenLocations.length > 0 && (
+                            <div className="loc-last-seen-section">
+                                <h3 className="loc-last-seen-title">
+                                    <AlertTriangle size={18} className="loc-last-seen-icon" aria-hidden />
+                                    Location sharing off
+                                </h3>
+                                <p className="loc-last-seen-intro">
+                                    These patients have turned off location sharing. You cannot see their live location. Last known position:
+                                </p>
+                                <ul className="loc-last-seen-list">
+                                    {lastSeenLocations.map((loc) => {
+                                        const atTime = loc.timestamp
+                                            ? new Date(loc.timestamp).toLocaleString(undefined, {
+                                                dateStyle: "medium",
+                                                timeStyle: "short",
+                                            })
+                                            : "—";
+                                        const coords = formatCoords(loc.latitude, loc.longitude);
+                                        return (
+                                            <li key={loc.patientId} className="loc-last-seen-card">
+                                                <span className="loc-last-seen-patient">{loc.patientName}</span>
+                                                <span className="loc-last-seen-label">Last seen</span>
+                                                <span className="loc-last-seen-datetime">{atTime}</span>
+                                                <span className="loc-last-seen-location">
+                                                    {coords}
+                                                    <a
+                                                        href={`https://www.google.com/maps?q=${loc.latitude},${loc.longitude}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="loc-last-seen-map-link"
+                                                    >
+                                                        View on map
+                                                    </a>
+                                                </span>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            </div>
+                        )}
+
                         {noPatientsWithConsent ? (
                             <p className="loc-alerts-empty">Select a patient with location sharing enabled to see
                                 location alerts.</p>
@@ -679,7 +735,7 @@ export default function Location() {
                                 onMapClick={handleMapClickForZone}
                                 enabled={addZoneMode && canManageZones}
                             />
-                            <MapFitBounds locations={locations} zones={zones} />
+                            <MapFitBounds locations={liveLocations} zones={zones} />
                             {draftZoneCenter && (
                                 <Circle
                                     center={draftZoneCenter}
@@ -724,7 +780,7 @@ export default function Location() {
                                     </Popup>
                                 </Circle>
                             ))}
-                            {locations.map((loc) => {
+                            {liveLocations.map((loc) => {
                                 const patientZones = zones.filter((z) => z.patientId === loc.patientId);
                                 const hasNoZones = patientZones.length === 0;
                                 const isInsideAnyZone =
@@ -946,7 +1002,7 @@ export default function Location() {
                                         <>
                                             <span className="loc-zone-name">{z.name}</span>
                                             <span className="loc-zone-size">
-                                                {[100, 200, 500].includes(z.radius) ? RADIUS_OPTIONS.find((o) => o.value === z.radius)?.label : `${z.radius} m`}
+                                                {[10, 100, 200, 500].includes(z.radius) ? RADIUS_OPTIONS.find((o) => o.value === z.radius)?.label : `${z.radius} m`}
                                             </span>
                                             <div className="loc-zone-actions">
                                                 <button
@@ -956,7 +1012,7 @@ export default function Location() {
                                                         setEditingZoneId(z.id);
                                                         setEditZoneForm({
                                                             name: z.name,
-                                                            radius: [100, 200, 500].includes(z.radius) ? z.radius : CUSTOM_RADIUS,
+                                                            radius: [10, 100, 200, 500].includes(z.radius) ? z.radius : CUSTOM_RADIUS,
                                                             customRadius: z.radius,
                                                         });
                                                     }}
