@@ -86,12 +86,12 @@ DB_PASSWORD=neuroease_password
 FRONTEND_URL=http://localhost:5173
 PATIENT_APP_URL=http://localhost:5175
 SMTP – required to send real emails. If unset, the link is only printed in the backend console (for local dev).
-MAIL_FROM=neuroease.noreply@gmail.com
+MAIL_FROM=your-email@gmail.com
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_SECURE=false
-SMTP_USER=neuroease.noreply@gmail.com
-SMTP_PASS=lojsdfsmdvbmzmff
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-gmail-app-password
 
 # Optional: encrypt sensitive patient data at rest (see docs/DataEncryption.md)
 # ENCRYPTION_KEY=<64-char hex from: openssl rand -hex 32>
