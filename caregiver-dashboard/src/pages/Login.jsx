@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { API_BASE } from '../services/apiClient';
-import { isUsabilityTesting } from '../config';
 
 const Login = () => {
     const { login, loginWithToken } = useAuth();
@@ -99,7 +98,7 @@ const Login = () => {
                 width: '100%',
                 maxWidth: '400px'
             }}>
-                {isUsabilityTesting && (
+                {import.meta.env.VITE_USABILITY_TESTING === "1" && (
                     <div style={{ marginBottom: '24px' }} role="status">
                         <div style={{
                             padding: '12px 16px',
@@ -120,7 +119,7 @@ const Login = () => {
                             fontSize: '13px',
                             lineHeight: 1.5
                         }}>
-                            <strong>Usability testing:</strong> You can skip login and use a test caregiver account (Testing button below). Use your real email when creating a patient. Patient list is limited. On Location, use simulated locations only. Participation is voluntary.
+                            <strong>Usability testing:</strong> You can skip login and use a test caregiver account (Testing button below). Use your real email when creating a patient. On Location, use simulated locations only. Participation is voluntary.
                         </div>
                     </div>
                 )}

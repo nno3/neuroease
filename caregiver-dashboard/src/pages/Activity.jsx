@@ -6,7 +6,6 @@ import "./Activity.css";
 import { Calendar, RefreshCw, ClipboardList, Pill, CalendarDays, CheckCircle2, AlertTriangle, Clock3, Gamepad2, TrendingUp } from "lucide-react";
 import { getPatients } from "../services/patients";
 import { format3 } from "../utils/patientHelpers";
-import { limitPatientsForTesting } from "../config";
 
 function safeDate(v) {
     const d = new Date(v);
@@ -401,7 +400,7 @@ export default function Activity() {
             try {
                 const pRes = await getPatients();
                 const list = pRes?.data?.patients ?? pRes?.data?.data?.patients ?? pRes?.data?.data ?? [];
-                setPatients(limitPatientsForTesting(Array.isArray(list) ? list : []));
+                setPatients(Array.isArray(list) ? list : []);
             } catch {
                 setPatients([]);
             }

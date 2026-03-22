@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { getProfile, updateProfile, deleteAccount } from "../services/authService";
-import { isUsabilityTesting, testCaregiverEmail } from "../config";
 import { LogOut, User, Save, Trash2, KeyRound, LogOut as SessionIcon, AlertTriangle, Camera, Mail, MapPin, Bell, Gamepad2, Lock } from "lucide-react";
 import "./Settings.css";
 
@@ -249,6 +248,8 @@ const Settings = () => {
     if (loading) return <div className="stg-page"><p className="stg-loading">Loading settings…</p></div>;
 
     const currentEmail = (profile.email ?? contextUser?.email ?? "").trim().toLowerCase();
+    const isUsabilityTesting = import.meta.env.VITE_USABILITY_TESTING === "1";
+    const testCaregiverEmail = (import.meta.env.VITE_TEST_CAREGIVER_EMAIL || "test.caregiver@neuroease.test").trim().toLowerCase();
     const isTestAccountLocked = isUsabilityTesting && testCaregiverEmail && currentEmail === testCaregiverEmail;
 
     return (
