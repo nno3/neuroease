@@ -20,12 +20,23 @@
     background-color: #f1f5f9;
 }
 
-/* Usability testing disclaimers – distinct colours for visibility */
+/* Usability testing disclaimers – auto-dismiss after a few seconds */
+.disclaimer-banners-container {
+    flex-shrink: 0;
+    animation: disclaimer-fade-out 0.4s ease-out forwards;
+    animation-delay: 3.6s;
+    animation-fill-mode: both;
+}
+
+@keyframes disclaimer-fade-out {
+    from { opacity: 1; max-height: 200px; }
+    to { opacity: 0; max-height: 0; overflow: hidden; padding: 0; margin: 0; }
+}
+
 .disclaimer-banner {
     padding: 12px 24px;
     font-size: 14px;
     line-height: 1.5;
-    flex-shrink: 0;
 }
 
 .disclaimer-banner--content {

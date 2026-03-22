@@ -3,6 +3,7 @@ import ActivitySummaryVisual from "../components/Dashboard/ActivitySummaryVisual
 import { getDashboardStats } from "../services/dashboardService";
 import { getLocationStatusForCaregiver } from "../services/locationService";
 import { getPatients, getPatientById, archivePatient, sendInvite } from "../services/patients";
+import { limitPatientsForTesting } from "../config";
 import { useNavigate, Link } from "react-router-dom";
 import { AlertTriangle } from "lucide-react";
 import PatientFormModal from "../components/PatientFormModal";
@@ -27,7 +28,7 @@ const Dashboard = () => {
 
     const refreshPatients = () => {
         getPatients().then((res) => {
-            const list = res?.data?.patients ?? [];
+            const list = limitPatientsForTesting(res?.data?.patients ?? []);
             setPatients(list);
             if (stats) setStats((s) => ({ ...s, activePatients: list.length }));
         });
@@ -53,7 +54,7 @@ const Dashboard = () => {
             const alertList = Array.isArray(data.alerts) ? data.alerts : [];
             const outsideList = Array.isArray(data.currentlyOutside) ? data.currentlyOutside : [];
 
-            setPatients(activeList);
+            setPatients(limitPatientsForTesting(activeList));
             setLocationAlerts(alertList);
             setCurrentlyOutside(outsideList);
 

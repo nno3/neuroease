@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "encrypt-existing": "node scripts/encrypt-existing-data.js"
+    "encrypt-existing": "node scripts/encrypt-existing-data.js",
+    "seed:test-caregiver": "node scripts/seed-test-caregiver.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.0",

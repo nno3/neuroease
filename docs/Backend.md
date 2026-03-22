@@ -625,8 +625,6 @@ cd neuroease-backend
 # Install dependencies
 npm install
 
-# Configure environment
-cp .env.example .env
 # Edit .env with your database credentials
 
 # Initialize database

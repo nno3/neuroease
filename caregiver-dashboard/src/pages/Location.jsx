@@ -14,6 +14,7 @@ import {
     deleteSafeZone,
 } from "../services/locationService";
 import { format3 } from "../utils/patientHelpers";
+import { limitPatientsForTesting } from "../config";
 import "./Location.css";
 
 const DEFAULT_CENTER = [52.52, 13.405];
@@ -179,7 +180,7 @@ export default function Location() {
             patients?.data?.data ??
             patients?.data ??
             [];
-        return Array.isArray(list) ? list : [];
+        return limitPatientsForTesting(Array.isArray(list) ? list : []);
     }, [patients]);
 
     const targetIds = useMemo(() => {

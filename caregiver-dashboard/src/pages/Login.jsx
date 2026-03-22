@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { API_BASE } from '../services/apiClient';
+import { isUsabilityTesting } from '../config';
 
 const Login = () => {
     const { login, loginWithToken } = useAuth();
@@ -98,6 +99,31 @@ const Login = () => {
                 width: '100%',
                 maxWidth: '400px'
             }}>
+                {isUsabilityTesting && (
+                    <div style={{ marginBottom: '24px' }} role="status">
+                        <div style={{
+                            padding: '12px 16px',
+                            background: '#f3e8ff',
+                            color: '#5b21b6',
+                            borderRadius: '8px',
+                            marginBottom: '8px',
+                            fontSize: '13px',
+                            lineHeight: 1.5
+                        }}>
+                            <strong>Content notice:</strong> This study relates to memory difficulties/dementia and includes examples involving reminders, medication, and safety features. Some people may find this topic sensitive.
+                        </div>
+                        <div style={{
+                            padding: '12px 16px',
+                            background: '#dbeafe',
+                            color: '#1e40af',
+                            borderRadius: '8px',
+                            fontSize: '13px',
+                            lineHeight: 1.5
+                        }}>
+                            <strong>Usability testing:</strong> You can skip login and use a test caregiver account (Testing button below). Use your real email when creating a patient. Patient list is limited. On Location, use simulated locations only. Participation is voluntary.
+                        </div>
+                    </div>
+                )}
                 <div style={{ textAlign: 'center', marginBottom: '32px' }}>
                     <h1 style={{ marginBottom: '8px', color: '#1e293b' }}>NeuroEase</h1>
                     <p style={{ color: '#64748b', fontSize: '14px' }}>

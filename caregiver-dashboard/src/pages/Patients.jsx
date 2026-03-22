@@ -13,6 +13,7 @@ import {
     getInitials,
     getMedicalConditionsDisplay,
 } from "../utils/patientHelpers";
+import { limitPatientsForTesting } from "../config";
 
 export default function Patients() {
     const [activePatients, setActivePatients] = useState([]);
@@ -109,8 +110,8 @@ export default function Patients() {
         setErrorList("");
         try {
             const [activeRes, archivedRes] = await Promise.all([getPatients(), getArchivedPatients()]);
-            setActivePatients(activeRes?.data?.patients ?? []);
-            setArchivedPatients(archivedRes?.data?.patients ?? []);
+            setActivePatients(limitPatientsForTesting(activeRes?.data?.patients ?? []));
+            setArchivedPatients(limitPatientsForTesting(archivedRes?.data?.patients ?? []));
         } catch (e) {
             setErrorList(e?.message || "Unable to load patients.");
             setActivePatients([]);

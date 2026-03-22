@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getPatients } from "../services/patients";
+import { limitPatientsForTesting } from "../config";
 import {createReminder, deleteReminder, getRemindersForPatient, updateReminder } from "../services/reminders";
 import ReminderFormModal from "../components/ReminderFormModal";
 import { Link } from "react-router-dom";
@@ -238,7 +239,7 @@ export default function Reminders() {
         (async () => {
             try {
                 const pRes = await getPatients();
-                const list = pRes?.data?.patients ?? [];
+                const list = limitPatientsForTesting(pRes?.data?.patients ?? []);
                 setPatients(list);
 
                 setPatientId("all");

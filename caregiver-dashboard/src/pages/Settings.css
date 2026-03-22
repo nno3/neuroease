@@ -297,6 +297,23 @@
     color: #6c757d;
 }
 
+.stg-disclaimer {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 18px;
+    margin-bottom: 24px;
+    border-radius: 10px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.stg-disclaimer--locked {
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    color: #92400e;
+}
+
 /* Avatar block */
 .stg-avatar-block {
     display: flex;

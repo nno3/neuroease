@@ -4,6 +4,40 @@ This document describes the changes made to support **usability testing** of Neu
 
 ---
 
+## Dedicated Test Caregiver Account
+
+For usability testing, use a **dedicated test account** with a distinct username instead of a real caregiver account.
+
+### 1. Create the test caregiver
+
+From the `backend/` directory:
+
+```bash
+npm run seed:test-caregiver
+```
+
+This creates a user with:
+- **Email:** `test.caregiver@neuroease.test`
+- **Name:** Usability Test Caregiver
+- **Password:** `TestPass123!` (only needed if logging in normally)
+
+### 2. Configure the backend
+
+Add to `backend/.env`:
+
+```
+USABILITY_TESTING=1
+TEST_CAREGIVER_EMAIL=test.caregiver@neuroease.test
+```
+
+Alternatively, you can use `TEST_CAREGIVER_ID=<user_id>` (the script prints the ID when run).
+
+### 3. Skip login
+
+On the caregiver dashboard login page, when `VITE_USABILITY_TESTING=1` is set in the caregiver-dashboard `.env`, a **"Skip to testing"** option appears. Clicking it logs you in as the test caregiver without entering credentials.
+
+---
+
 ## What Changes in Test Mode
 
 ### Patient app

@@ -637,7 +637,7 @@ const authController = {
     /**
      * GET /api/auth/test-session
      * Usability testing only: returns JWT for a test user. Requires USABILITY_TESTING=1.
-     * ?role=patient -> TEST_PATIENT_ID; ?role=caregiver -> TEST_CAREGIVER_ID.
+     * ?role=patient -> TEST_PATIENT_ID; ?role=caregiver -> TEST_CAREGIVER_ID or TEST_CAREGIVER_EMAIL.
      */
     testSession: async (req, res) => {
         try {
@@ -645,12 +645,38 @@ const authController = {
                 return res.status(404).json({ success: false, message: 'Not available' });
             }
             const role = (req.query.role || 'patient').toLowerCase();
-            const envKey = role === 'caregiver' ? 'TEST_CAREGIVER_ID' : 'TEST_PATIENT_ID';
-            const testId = parseInt(process.env[envKey], 10);
-            if (!Number.isFinite(testId)) {
-                return res.status(500).json({ success: false, message: `${envKey} not configured` });
+            let user = null;
+
+            if (role === 'caregiver') {
+                const testEmail = (process.env.TEST_CAREGIVER_EMAIL || '').trim().toLowerCase();
+                if (testEmail) {
+                    user = await User.findOne({ where: { emailHash: hashEmail(testEmail), userType: 'caregiver' } });
+                    if (!user) {
+                        return res.status(404).json({
+                            success: false,
+                            message: `Test caregiver not found. Run: node scripts/seed-test-caregiver.js`,
+                        });
+                    }
+                }
+                if (!user) {
+                    const testId = parseInt(process.env.TEST_CAREGIVER_ID, 10);
+                    if (Number.isFinite(testId)) {
+                        user = await User.findByPk(testId);
+                    }
+                }
+                if (!user) {
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Set TEST_CAREGIVER_EMAIL or TEST_CAREGIVER_ID in backend .env. Run: node scripts/seed-test-caregiver.js',
+                    });
+                }
+            } else {
+                const testId = parseInt(process.env.TEST_PATIENT_ID, 10);
+                if (!Number.isFinite(testId)) {
+                    return res.status(500).json({ success: false, message: 'TEST_PATIENT_ID not configured' });
+                }
+                user = await User.findByPk(testId);
             }
-            const user = await User.findByPk(testId);
             const expectedType = role === 'caregiver' ? 'caregiver' : 'patient';
             if (!user || user.userType !== expectedType) {
                 return res.status(404).json({ success: false, message: `Test ${role} not found` });
