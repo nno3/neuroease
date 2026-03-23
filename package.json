@@ -1,7 +1,7 @@
 {
   "name": "neuroease",
   "private": true,
-  "description": "Monorepo root — deploy the API by setting Railway root to backend/ OR use scripts below",
+  "description": "Monorepo root — production API on Render (see docs/Deployment.md); optional Railway/nixpacks scripts below",
   "scripts": {
     "build": "cd backend && npm ci",
     "start": "cd backend && npm start"

@@ -19,6 +19,24 @@ const { startReminderEmailJob } = require('./src/jobs/reminderEmailJob');
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+/** Warn when Render has SMTP but no Resend — otherwise invite email waits ~45s and times out */
+function logEmailDeliveryHint() {
+    const onRender = process.env.RENDER === 'true' || process.env.RENDER === '1';
+    const hasResend = !!process.env.RESEND_API_KEY;
+    const hasSmtp = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+    if (hasResend) {
+        console.log('[EMAIL] Resend enabled (RESEND_API_KEY) — HTTPS delivery.');
+        return;
+    }
+    if (onRender && hasSmtp) {
+        console.warn(
+            '[EMAIL] RESEND_API_KEY is not set but SMTP_* is. Render free tier usually blocks outbound SMTP; invite email will fail or hang. Add RESEND_API_KEY from resend.com — see docs/Deployment.md.'
+        );
+    } else if (hasSmtp) {
+        console.log('[EMAIL] Using SMTP only (no RESEND_API_KEY).');
+    }
+}
+
 // Log every API request (method, URL, status) for debugging and auditing
 app.use(morgan('combined'));
 
@@ -163,6 +181,7 @@ const startServer = async () => {
             console.log(`Health check: http://localhost:${PORT}/api/health`);
             console.log(`Database: ${process.env.DB_NAME}@${process.env.DB_HOST}`);
             console.log('API request logging: ENABLED');
+            logEmailDeliveryHint();
             startReminderEmailJob();
         });
     } catch (error) {

@@ -355,7 +355,7 @@ const patientController = {
       await patientUser.update({ inviteToken, inviteTokenExpires });
       const emailResult = await sendPatientInviteEmail(patientUser.email, patientUser.name, inviteToken);
       if (!emailResult.sent && emailResult.error) {
-        console.error('Resend invite email failed:', emailResult.error);
+        console.error('Invite email failed:', emailResult.error);
         return res.status(500).json({
           success: false,
           message: process.env.NODE_ENV === 'development'
