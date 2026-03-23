@@ -18,7 +18,17 @@ const PORT = process.env.PORT || 5001;
 app.use(morgan('combined'));
 
 // Allow frontend(s) on different origins to call this API; parse JSON and form bodies
-app.use(cors());
+// When credentials are used, we must specify exact origins (no wildcard)
+const allowedOrigins = [
+    process.env.FRONTEND_URL,
+    process.env.PATIENT_APP_URL,
+    'http://localhost:5173',
+    'http://localhost:5175',
+].filter(Boolean);
+app.use(cors({
+    origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+    credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
