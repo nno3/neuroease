@@ -416,9 +416,13 @@ export default function Patients() {
                 mode={formMode}
                 patient={formPatient}
                 onClose={() => setFormOpen(false)}
-                onSaved={({ message, inviteLink }) => {
+                onSaved={({ message, inviteLink, patient }) => {
                     showToast("success", inviteLink ? `${message} Activate link: ${inviteLink}` : message);
-                    refreshAll();
+                    if (patient) {
+                        setActivePatients((prev) => prev.map((p) => (p.id === patient.id ? patient : p)));
+                    } else {
+                        refreshAll();
+                    }
                     setFormOpen(false);
                 }}
                 onArchivePatient={archivePatient}

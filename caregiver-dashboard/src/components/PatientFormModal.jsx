@@ -534,6 +534,7 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
             };
 
             let inviteLink = null;
+            let updatedPatient = null;
             if (!isEdit) {
                 const createRes = await createPatient({
                     name: form.name.trim(),
@@ -548,7 +549,7 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                 });
                 inviteLink = createRes?.data?.inviteLink ?? null;
             } else {
-                await updatePatient(patient.id, {
+                const updateRes = await updatePatient(patient.id, {
                     name: form.name.trim(),
                     email: form.email.trim(),
                     dateOfBirth: form.dateOfBirth || null,
@@ -558,10 +559,11 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                     medicalHistory,
                     ...carePayload,
                 });
+                updatedPatient = updateRes?.data?.patient ?? null;
             }
 
             const apiMsg = isEdit ? "Patient updated successfully." : "Patient created successfully.";
-            onSaved?.({ message: apiMsg, inviteLink });
+            onSaved?.({ message: apiMsg, inviteLink, patient: updatedPatient });
             onClose?.();
         } catch (err) {
             setError(err?.message || (isEdit ? "Unable to update patient." : "Unable to create patient."));

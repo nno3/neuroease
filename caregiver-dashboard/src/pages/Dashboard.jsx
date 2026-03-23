@@ -334,11 +334,15 @@ const Dashboard = () => {
                 mode={formMode}
                 patient={formPatient}
                 onClose={() => setFormOpen(false)}
-                onSaved={({ inviteLink }) => {
+                onSaved={({ inviteLink, patient }) => {
                     if (inviteLink) {
                         alert(`Patient created. Copy this activate link to open in the patient app:\n\n${inviteLink}`);
                     }
-                    refreshPatients();
+                    if (patient) {
+                        setPatients((prev) => prev.map((p) => (p.id === patient.id ? patient : p)));
+                    } else {
+                        refreshPatients();
+                    }
                     setFormOpen(false);
                 }}
                 onArchivePatient={archivePatient}
