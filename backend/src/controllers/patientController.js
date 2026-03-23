@@ -219,10 +219,18 @@ const patientController = {
       const caregiver = await User.findByPk(req.user.userId);
       await caregiver.addPatient(patientUser);
 
-      const emailResult = await sendPatientInviteEmail(patientUser.email, patientUser.name, inviteToken);
-      if (!emailResult.sent && emailResult.error) {
-        console.error('Patient invite email failed:', emailResult.error);
-      }
+      // Build invite link (always include so caregiver can copy if email fails)
+      const PATIENT_APP_URL = process.env.PATIENT_APP_URL || 'http://localhost:5175';
+      const inviteLink = `${PATIENT_APP_URL}/activate?token=${encodeURIComponent(inviteToken)}`;
+
+      // Send email in background – don't block the response (SMTP can be slow or hang)
+      sendPatientInviteEmail(patientUser.email, patientUser.name, inviteToken)
+        .then((emailResult) => {
+          if (!emailResult.sent && emailResult.error) {
+            console.error('Patient invite email failed:', emailResult.error);
+          }
+        })
+        .catch((err) => console.error('Patient invite email error:', err));
 
       const responsePayload = {
         success: true,
@@ -234,12 +242,10 @@ const patientController = {
             name: patientUser.name,
             userType: patientUser.userType,
             profile: patientProfile
-          }
+          },
+          inviteLink
         }
       };
-      if (emailResult.inviteLink) {
-        responsePayload.data.inviteLink = emailResult.inviteLink;
-      }
       return res.status(201).json(responsePayload);
     } catch (error) {
       console.error('CREATE PATIENT ERROR DETAILS:', error);
