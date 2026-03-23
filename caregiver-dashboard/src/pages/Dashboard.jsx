@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import ActivitySummaryVisual from "../components/Dashboard/ActivitySummaryVisual";
+import ActivitySummaryVisual from "../components/dashboard/ActivitySummaryVisual";
 import { getDashboardStats } from "../services/dashboardService";
 import { getLocationStatusForCaregiver } from "../services/locationService";
 import { getPatients, getPatientById, archivePatient, sendInvite } from "../services/patients";
