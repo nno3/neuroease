@@ -495,6 +495,11 @@
     flex-shrink: 0;
 }
 
+.pfm-footer .pfm-btn {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
 .pfm-btn {
     padding: 10px 16px;
     border-radius: 10px;
