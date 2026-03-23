@@ -6,22 +6,33 @@
  *      MAIL_FROM, FRONTEND_URL, PATIENT_APP_URL
  */
 const dns = require('dns');
+const net = require('net');
 const nodemailer = require('nodemailer');
 const { Resend } = require('resend');
 
 /**
- * Nodemailer uses its own DNS path; setDefaultResultOrder does not apply.
- * Render has no outbound IPv6 — Gmail's smtp.gmail.com resolves to IPv6 first → ENETUNREACH.
- * Force IPv4-only lookups for SMTP connections.
+ * Nodemailer 8+ resolves IPv4+IPv6 and randomly picks one — Render has no IPv6 outbound.
+ * Fix: connect to an IPv4 literal; tls.servername stays the real hostname (Gmail cert/SNI).
  */
-function smtpLookup(hostname, options, callback) {
-    if (typeof options === 'function') {
-        callback = options;
-        options = {};
+let smtpResolvedIpv4 = null;
+let smtpResolvedForHost = null;
+let cachedTransporter = null;
+let cachedTransporterKey = null;
+
+/** Resolve hostname to one IPv4 — avoids nodemailer's random IPv6 choice on cloud hosts */
+async function resolveSmtpIPv4(hostname) {
+    try {
+        const addrs = await dns.promises.resolve4(hostname);
+        if (addrs && addrs.length) return addrs[0];
+    } catch (_) {
+        /* fall through */
     }
-    dns.lookup(hostname, { family: 4 }, (err, address, family) => {
-        callback(err, address, family);
-    });
+    try {
+        const r = await dns.promises.lookup(hostname, { family: 4 });
+        return typeof r === 'string' ? r : r.address;
+    } catch (_) {
+        return null;
+    }
 }
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -37,25 +48,50 @@ function getResendClient() {
     return new Resend(process.env.RESEND_API_KEY);
 }
 
-function getTransporter() {
+async function getTransporter() {
     const host = process.env.SMTP_HOST;
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
+    const port = String(process.env.SMTP_PORT || '587');
     if (!host || !user || !pass) return null;
-    return nodemailer.createTransport({
-        host,
-        port: parseInt(process.env.SMTP_PORT || '587', 10),
+
+    const cacheKey = `${host}:${user}:${port}:${process.env.SMTP_SECURE || ''}`;
+    if (cachedTransporter && cachedTransporterKey === cacheKey) {
+        return cachedTransporter;
+    }
+
+    let connectHost = host;
+    const tlsServername = host;
+
+    if (!net.isIP(host)) {
+        if (smtpResolvedForHost !== host) {
+            smtpResolvedIpv4 = await resolveSmtpIPv4(host);
+            smtpResolvedForHost = host;
+            if (smtpResolvedIpv4) {
+                console.log(`SMTP connect via IPv4 ${smtpResolvedIpv4} → ${host} (TLS servername unchanged)`);
+            } else {
+                console.warn('SMTP could not resolve IPv4 for', host, '— delivery may fail on hosts without IPv6 (e.g. Render)');
+            }
+        }
+        if (smtpResolvedIpv4) {
+            connectHost = smtpResolvedIpv4;
+        }
+    }
+
+    cachedTransporter = nodemailer.createTransport({
+        host: connectHost,
+        port: parseInt(port, 10),
         secure: process.env.SMTP_SECURE === 'true',
         auth: { user, pass },
-        lookup: smtpLookup,
         connectionTimeout: 45000,
         greetingTimeout: 30000,
         socketTimeout: 60000,
         tls: {
-            // TLS SNI must still use hostname (not raw IP) for Gmail cert validation
-            servername: host,
+            servername: tlsServername,
         },
     });
+    cachedTransporterKey = cacheKey;
+    return cachedTransporter;
 }
 
 /**
@@ -86,7 +122,7 @@ async function sendVerificationEmail(email, name, token) {
 </body>
 </html>`;
 
-    const transporter = getTransporter();
+    const transporter = await getTransporter();
     if (transporter) {
         try {
             await transporter.sendMail({
@@ -153,7 +189,7 @@ async function sendPatientInviteEmail(email, name, token) {
         }
     }
 
-    const transporter = getTransporter();
+    const transporter = await getTransporter();
     if (transporter) {
         try {
             await transporter.sendMail({
@@ -200,7 +236,7 @@ async function sendPatientMagicLinkEmail(email, name, token, shortCode) {
 </body>
 </html>`;
     const textCode = shortCode ? `\n\nOr enter this code in the app (from your home screen): ${shortCode}` : '';
-    const transporter = getTransporter();
+    const transporter = await getTransporter();
     if (transporter) {
         try {
             await transporter.sendMail({
@@ -251,7 +287,7 @@ async function sendReminderEmail(email, name, reminderTitle, reminderMessage, sc
   <p>— NeuroEase</p>
 </body>
 </html>`;
-    const transporter = getTransporter();
+    const transporter = await getTransporter();
     if (transporter) {
         try {
             await transporter.sendMail({
@@ -306,7 +342,7 @@ async function sendCaregiverLocationAlertEmail(caregiverEmail, caregiverName, pa
   <p>— NeuroEase</p>
 </body>
 </html>`;
-    const transporter = getTransporter();
+    const transporter = await getTransporter();
     if (transporter) {
         try {
             await transporter.sendMail({
@@ -360,7 +396,7 @@ async function sendCaregiverReturnedToZoneEmail(caregiverEmail, caregiverName, p
   <p>— NeuroEase</p>
 </body>
 </html>`;
-    const transporter = getTransporter();
+    const transporter = await getTransporter();
     if (transporter) {
         try {
             await transporter.sendMail({
@@ -400,7 +436,7 @@ async function sendCaregiverMissedReminderEmail(caregiverEmail, caregiverName, p
   <p>— NeuroEase</p>
 </body>
 </html>`;
-    const transporter = getTransporter();
+    const transporter = await getTransporter();
     if (transporter) {
         try {
             await transporter.sendMail({
@@ -459,7 +495,7 @@ async function sendCaregiverGameCompletionEmail(caregiverEmail, caregiverName, p
   <p>— NeuroEase</p>
 </body>
 </html>`;
-    const transporter = getTransporter();
+    const transporter = await getTransporter();
     if (transporter) {
         try {
             await transporter.sendMail({
