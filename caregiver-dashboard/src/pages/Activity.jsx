@@ -6,6 +6,7 @@ import "./Activity.css";
 import { Calendar, RefreshCw, ClipboardList, Pill, CalendarDays, CheckCircle2, AlertTriangle, Clock3, Gamepad2, TrendingUp } from "lucide-react";
 import { getPatients } from "../services/patients";
 import { format3 } from "../utils/patientHelpers";
+import { API_BASE } from "../services/apiClient";
 
 function safeDate(v) {
     const d = new Date(v);
@@ -360,8 +361,8 @@ export default function Activity() {
 
             try {
                 const [logRes, gamesRes] = await Promise.all([
-                    fetch(`/api/activity/log?${new URLSearchParams({ patientId: String(patientId), type: String(type), from: fromStr, to: toStr, page: "1", limit: String(logLimit) })}`, opts),
-                    fetch(`/api/activity/recent-games?${new URLSearchParams({ patientId: String(patientId), from: fromStr, to: toStr, limit: "100" })}`, opts),
+                    fetch(`${API_BASE}/activity/log?${new URLSearchParams({ patientId: String(patientId), type: String(type), from: fromStr, to: toStr, page: "1", limit: String(logLimit) })}`, opts),
+                    fetch(`${API_BASE}/activity/recent-games?${new URLSearchParams({ patientId: String(patientId), from: fromStr, to: toStr, limit: "100" })}`, opts),
                 ]);
 
                 if (!logRes.ok) {
@@ -437,7 +438,7 @@ export default function Activity() {
                     localStorage.getItem("authToken") ||
                     localStorage.getItem("accessToken");
 
-                const res = await fetch(`/api/activity/summary?${params.toString()}`, {
+                const res = await fetch(`${API_BASE}/activity/summary?${params.toString()}`, {
                     method: "GET",
                     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
                     credentials: "include",
@@ -490,7 +491,7 @@ export default function Activity() {
             });
             try {
                 const token = localStorage.getItem("token") || localStorage.getItem("authToken") || localStorage.getItem("accessToken");
-                const res = await fetch(`/api/activity/games-summary?${params.toString()}`, {
+                const res = await fetch(`${API_BASE}/activity/games-summary?${params.toString()}`, {
                     method: "GET",
                     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
                     credentials: "include",
@@ -890,7 +891,7 @@ export default function Activity() {
             const params = new URLSearchParams({ patientId: String(patientId), from: barFrom, to: barTo });
             try {
                 const token = localStorage.getItem("token") || localStorage.getItem("authToken") || localStorage.getItem("accessToken");
-                const res = await fetch(`/api/activity/recent-games?limit=20&${params.toString()}`, {
+                const res = await fetch(`${API_BASE}/activity/recent-games?limit=20&${params.toString()}`, {
                     method: "GET",
                     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
                     credentials: "include",
