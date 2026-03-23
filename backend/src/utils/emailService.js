@@ -48,6 +48,11 @@ function getResendClient() {
     return new Resend(process.env.RESEND_API_KEY);
 }
 
+/** Set by Render — used to log SMTP limitations on free tier */
+function isRunningOnRender() {
+    return process.env.RENDER === 'true' || process.env.RENDER === '1';
+}
+
 async function getTransporter() {
     const host = process.env.SMTP_HOST;
     const user = process.env.SMTP_USER;
@@ -168,42 +173,54 @@ async function sendPatientInviteEmail(email, name, token) {
 </html>`;
     const text = `Hi ${name || 'there'},\n\nOpen this link to activate your account: ${activateUrl}\n\nThis link expires in 7 days.\n\n— NeuroEase`;
 
+    const mailPayload = {
+        from: MAIL_FROM,
+        to: email,
+        subject: 'Activate your NeuroEase account',
+        html,
+        text,
+    };
+
     const resend = getResendClient();
+    const transporter = await getTransporter();
+
+    // Render free tier blocks outbound SMTP (ports 25/465/587) — ETIMEDOUT. Resend uses HTTPS (443).
+    // Try Resend first when set so we do not wait ~45s on a blocked SMTP socket.
     if (resend) {
         try {
-            const { error } = await resend.emails.send({
-                from: MAIL_FROM,
-                to: email,
-                subject: 'Activate your NeuroEase account',
-                html,
-                text,
-            });
-            if (error) {
-                console.error('Resend invite email error:', error);
-                return { sent: false, error: error.message };
+            const { error } = await resend.emails.send(mailPayload);
+            if (!error) {
+                return { sent: true };
             }
+            console.warn('Resend invite failed, trying SMTP:', error.message);
+        } catch (err) {
+            console.warn('Resend invite threw, trying SMTP:', err.message);
+        }
+    }
+
+    if (transporter) {
+        try {
+            await transporter.sendMail(mailPayload);
             return { sent: true };
         } catch (err) {
-            console.error('Send patient invite email error:', err);
+            console.error('Send patient invite email error (SMTP):', err);
+            if (
+                isRunningOnRender()
+                && (err.code === 'ETIMEDOUT' || String(err.message || '').includes('timeout'))
+            ) {
+                console.error(
+                    'RENDER: Free-tier web services block outbound SMTP. Set RESEND_API_KEY (HTTPS, works on free tier) or upgrade Render. docs/Deployment.md'
+                );
+            }
             return { sent: false, error: err.message };
         }
     }
 
-    const transporter = await getTransporter();
-    if (transporter) {
-        try {
-            await transporter.sendMail({
-                from: MAIL_FROM,
-                to: email,
-                subject: 'Activate your NeuroEase account',
-                html,
-                text,
-            });
-            return { sent: true };
-        } catch (err) {
-            console.error('Send patient invite email error:', err);
-            return { sent: false, error: err.message };
-        }
+    if (resend) {
+        return {
+            sent: false,
+            error: 'Resend failed and SMTP is not configured',
+        };
     }
 
     console.warn('Neither Resend nor SMTP configured. Patient invite (no email sent):');

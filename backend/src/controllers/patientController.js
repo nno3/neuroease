@@ -360,7 +360,7 @@ const patientController = {
           success: false,
           message: process.env.NODE_ENV === 'development'
             ? `Failed to send invite email: ${emailResult.error}`
-            : 'Failed to send invite email. Please try again later.',
+            : 'Failed to send invite email. On Render free tier, Gmail SMTP is blocked — add RESEND_API_KEY or upgrade Render. See docs/Deployment.md',
         });
       }
       res.json({

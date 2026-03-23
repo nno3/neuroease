@@ -1,0 +1,12 @@
+{
+  "name": "neuroease",
+  "private": true,
+  "description": "Monorepo root — deploy the API by setting Railway root to backend/ OR use scripts below",
+  "scripts": {
+    "build": "cd backend && npm ci",
+    "start": "cd backend && npm start"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
