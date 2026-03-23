@@ -357,7 +357,7 @@ export default function Activity() {
                     localStorage.getItem("authToken") ||
                     localStorage.getItem("accessToken");
             const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
-            const opts = { method: "GET", headers, credentials: "include", signal: ac.signal };
+            const opts = { method: "GET", headers, signal: ac.signal };
 
             try {
                 const [logRes, gamesRes] = await Promise.all([
@@ -441,7 +441,6 @@ export default function Activity() {
                 const res = await fetch(`${API_BASE}/activity/summary?${params.toString()}`, {
                     method: "GET",
                     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-                    credentials: "include",
                     signal: ac.signal,
                 });
 
@@ -494,7 +493,6 @@ export default function Activity() {
                 const res = await fetch(`${API_BASE}/activity/games-summary?${params.toString()}`, {
                     method: "GET",
                     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-                    credentials: "include",
                     signal: ac.signal,
                 });
                 if (!res.ok) {
@@ -894,7 +892,6 @@ export default function Activity() {
                 const res = await fetch(`${API_BASE}/activity/recent-games?limit=20&${params.toString()}`, {
                     method: "GET",
                     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-                    credentials: "include",
                     signal: ac.signal,
                 });
                 if (!res.ok) { setGameBarSessions([]); return; }
