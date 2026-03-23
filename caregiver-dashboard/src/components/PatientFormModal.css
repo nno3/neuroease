@@ -5,19 +5,21 @@
     display:flex;
     align-items:center;
     justify-content:center;
-    padding:20px;
+    padding:12px;
     z-index:1000;
+    overflow-y: auto;
 }
 .pfm-modal {
     background: white;
     border-radius: 14px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    max-width: 820px;
+    max-width: min(820px, calc(100vw - 24px));
     width: 100%;
     max-height: 90vh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    flex-shrink: 0;
 }
 
 .pfm-header {
@@ -587,6 +589,27 @@
     .pfm-chronic-row .pfm-remove-condition {
         grid-column: 1 / -1;
         justify-self: start;
+    }
+
+    .pfm-medication-row {
+        grid-template-columns: 1fr 1fr auto;
+    }
+
+    .pfm-medication-row .pfm-medication-name {
+        grid-column: 1 / -1;
+    }
+
+    .pfm-medication-row .pfm-medication-dosage {
+        grid-column: 1;
+    }
+
+    .pfm-medication-row .pfm-medication-frequency {
+        grid-column: 2;
+    }
+
+    .pfm-medication-row .pfm-btn-icon {
+        grid-column: 3;
+        align-self: center;
     }
 }
 

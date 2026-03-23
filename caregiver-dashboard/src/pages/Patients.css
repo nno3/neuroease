@@ -568,6 +568,9 @@
     .pm-detail-field.pm-detail-span2 {
         grid-column: span 1;
     }
+    .pm-search {
+        min-width: 0;
+    }
 }
 
 .pm-details-extra-contacts {

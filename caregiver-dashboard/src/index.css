@@ -21,3 +21,16 @@ html, body, #root {
     min-width: 44px;
   }
 }
+
+/* Prevent iOS zoom on input focus (requires font-size >= 16px) */
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select,
+  .pfm-input,
+  .pfm-textarea,
+  .pm-search,
+  .pfm-select {
+    font-size: 16px !important;
+  }
+}

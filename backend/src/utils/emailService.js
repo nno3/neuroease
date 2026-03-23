@@ -108,7 +108,7 @@ async function sendPatientInviteEmail(email, name, token) {
             return { sent: true };
         } catch (err) {
             console.error('Send patient invite email error:', err);
-            return { sent: false, error: err.message };
+            return { sent: false, error: err.message, inviteLink: activateUrl };
         }
     }
     console.warn('SMTP not configured. Patient invite link (no email sent):');

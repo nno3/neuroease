@@ -350,6 +350,14 @@ const patientController = {
       const emailResult = await sendPatientInviteEmail(patientUser.email, patientUser.name, inviteToken);
       if (!emailResult.sent && emailResult.error) {
         console.error('Resend invite email failed:', emailResult.error);
+        // Fallback: return link so caregiver can copy/share manually (e.g. when SMTP fails)
+        if (emailResult.inviteLink) {
+          return res.json({
+            success: true,
+            message: 'Email could not be sent, but here is the activation link. Copy and share it with the patient:',
+            data: { inviteLink: emailResult.inviteLink },
+          });
+        }
         return res.status(500).json({
           success: false,
           message: process.env.NODE_ENV === 'development'
@@ -360,6 +368,7 @@ const patientController = {
       res.json({
         success: true,
         message: 'Invite email sent. The patient can use the link to activate their account.',
+        ...(emailResult.inviteLink && { data: { inviteLink: emailResult.inviteLink } }),
       });
     } catch (error) {
       console.error('Send invite error:', error);

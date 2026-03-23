@@ -19,6 +19,7 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarch
     const [actionError, setActionError] = useState("");
     const [inviteLoading, setInviteLoading] = useState(false);
     const [inviteError, setInviteError] = useState("");
+    const [inviteLink, setInviteLink] = useState("");
 
     if (!patient) return null;
 
@@ -47,14 +48,25 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarch
     const handleResendInvite = async () => {
         if (!patient?.id || !onResendInvite) return;
         setInviteError("");
+        setInviteLink("");
         setInviteLoading(true);
         try {
-            await onResendInvite(patient.id);
+            const data = await onResendInvite(patient.id);
+            if (data?.data?.inviteLink) {
+                setInviteLink(data.data.inviteLink);
+            }
         } catch (err) {
             setInviteError(err?.message || "Failed to send invite.");
         } finally {
             setInviteLoading(false);
         }
+    };
+
+    const copyInviteLink = () => {
+        if (!inviteLink) return;
+        navigator.clipboard.writeText(inviteLink).then(() => {
+            /* copied */
+        });
     };
 
     const parseMh = (p) => {
@@ -189,6 +201,25 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarch
                                 <div className="pm-details-grid">
                                     <div className="pm-detail-field pm-detail-span2">
                                         <div className="pm-inline-error">{inviteError}</div>
+                                    </div>
+                                </div>
+                            )}
+                            {inviteLink && (
+                                <div className="pm-details-grid">
+                                    <div className="pm-detail-field pm-detail-span2">
+                                        <div className="pm-detail-label">Activation link (email could not be sent — copy and share manually)</div>
+                                        <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
+                                            <input
+                                                type="text"
+                                                readOnly
+                                                value={inviteLink}
+                                                className="pm-textarea"
+                                                style={{ flex: 1, fontFamily: "monospace", fontSize: "12px" }}
+                                            />
+                                            <button type="button" className="pm-btn pm-btn-outline" onClick={copyInviteLink}>
+                                                Copy
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             )}
