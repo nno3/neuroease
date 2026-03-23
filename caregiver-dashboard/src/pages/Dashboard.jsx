@@ -315,8 +315,7 @@ const Dashboard = () => {
                         openActivityModal(detailsPatient);
                     }}
                     onResendInvite={async (id) => {
-                        const res = await sendInvite(id);
-                        return res;
+                        await sendInvite(id);
                     }}
                 />
             )}

@@ -1,14 +1,41 @@
 /**
- * Sends verification email via SMTP. Users receive actual emails when SMTP is
- * configured in .env. See docs/BackendSetUp.md (Email verification section).
+ * Sends email via Resend (preferred on Render) or SMTP.
+ * Resend works reliably from cloud; Gmail SMTP often fails (IPv6, blocks).
  *
- * Env: SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS, MAIL_FROM, FRONTEND_URL
+ * Env: RESEND_API_KEY (use Resend) OR SMTP_HOST, SMTP_USER, SMTP_PASS
+ *      MAIL_FROM, FRONTEND_URL, PATIENT_APP_URL
  */
+const dns = require('dns');
 const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
+
+/**
+ * Nodemailer uses its own DNS path; setDefaultResultOrder does not apply.
+ * Render has no outbound IPv6 — Gmail's smtp.gmail.com resolves to IPv6 first → ENETUNREACH.
+ * Force IPv4-only lookups for SMTP connections.
+ */
+function smtpLookup(hostname, options, callback) {
+    if (typeof options === 'function') {
+        callback = options;
+        options = {};
+    }
+    dns.lookup(hostname, { family: 4 }, (err, address, family) => {
+        callback(err, address, family);
+    });
+}
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const PATIENT_APP_URL = process.env.PATIENT_APP_URL || 'http://localhost:5175';
-const MAIL_FROM = process.env.MAIL_FROM || 'noreply@neuroease.com';
+const MAIL_FROM = process.env.MAIL_FROM || 'NeuroEase <onboarding@resend.dev>';
+
+function useResend() {
+    return !!process.env.RESEND_API_KEY;
+}
+
+function getResendClient() {
+    if (!useResend()) return null;
+    return new Resend(process.env.RESEND_API_KEY);
+}
 
 function getTransporter() {
     const host = process.env.SMTP_HOST;
@@ -20,8 +47,14 @@ function getTransporter() {
         port: parseInt(process.env.SMTP_PORT || '587', 10),
         secure: process.env.SMTP_SECURE === 'true',
         auth: { user, pass },
-        connectionTimeout: 20000,
-        greetingTimeout: 15000,
+        lookup: smtpLookup,
+        connectionTimeout: 45000,
+        greetingTimeout: 30000,
+        socketTimeout: 60000,
+        tls: {
+            // TLS SNI must still use hostname (not raw IP) for Gmail cert validation
+            servername: host,
+        },
     });
 }
 
@@ -97,6 +130,29 @@ async function sendPatientInviteEmail(email, name, token) {
   <p>— NeuroEase</p>
 </body>
 </html>`;
+    const text = `Hi ${name || 'there'},\n\nOpen this link to activate your account: ${activateUrl}\n\nThis link expires in 7 days.\n\n— NeuroEase`;
+
+    const resend = getResendClient();
+    if (resend) {
+        try {
+            const { error } = await resend.emails.send({
+                from: MAIL_FROM,
+                to: email,
+                subject: 'Activate your NeuroEase account',
+                html,
+                text,
+            });
+            if (error) {
+                console.error('Resend invite email error:', error);
+                return { sent: false, error: error.message };
+            }
+            return { sent: true };
+        } catch (err) {
+            console.error('Send patient invite email error:', err);
+            return { sent: false, error: err.message };
+        }
+    }
+
     const transporter = getTransporter();
     if (transporter) {
         try {
@@ -105,20 +161,18 @@ async function sendPatientInviteEmail(email, name, token) {
                 to: email,
                 subject: 'Activate your NeuroEase account',
                 html,
-                text: `Hi ${name || 'there'},\n\nOpen this link to activate your account: ${activateUrl}\n\nThis link expires in 7 days.\n\n— NeuroEase`,
+                text,
             });
             return { sent: true };
         } catch (err) {
             console.error('Send patient invite email error:', err);
-            return { sent: false, error: err.message, inviteLink: activateUrl };
+            return { sent: false, error: err.message };
         }
     }
-    console.warn('SMTP not configured. Patient invite link (no email sent):');
-    console.log('--- Patient invite link ---');
-    console.log('To:', email);
-    console.log('Activate link:', activateUrl);
-    console.log('---');
-    return { sent: true, inviteLink: activateUrl };
+
+    console.warn('Neither Resend nor SMTP configured. Patient invite (no email sent):');
+    console.log('To:', email, '| Activate link:', activateUrl);
+    return { sent: true };
 }
 
 /**

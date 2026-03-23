@@ -391,11 +391,8 @@ export default function Patients() {
                         setActivityModalPatient(selectedPatient);
                     }}
                     onResendInvite={async (id) => {
-                        const res = await sendInvite(id);
-                        if (res?.success && !res?.data?.inviteLink) {
-                            showToast("success", res.message || "Invite email sent. The patient can use the link to activate their account.");
-                        }
-                        return res;
+                        await sendInvite(id);
+                        showToast("success", "Invite email sent. The patient can use the link to activate their account.");
                     }}
                 />
             )}
