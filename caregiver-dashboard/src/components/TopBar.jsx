@@ -1,4 +1,5 @@
 import './TopBar.css';
+import { Menu } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -9,7 +10,7 @@ function getInitials(name) {
     return (name[0] || '?').toUpperCase();
 }
 
-const TopBar = ({ title = 'Dashboard Overview', onPrimaryAction }) => {
+const TopBar = ({ title = 'Dashboard Overview', onPrimaryAction, onMenuClick }) => {
     const { user } = useAuth();
     const navigate = useNavigate();
 
@@ -18,7 +19,12 @@ const TopBar = ({ title = 'Dashboard Overview', onPrimaryAction }) => {
     return (
         <header className="topbar">
             <div className="topbar-left">
-                <h1></h1>
+                {onMenuClick && (
+                    <button type="button" className="topbar-menu-btn" onClick={onMenuClick} aria-label="Open menu">
+                        <Menu size={24} />
+                    </button>
+                )}
+                <h1 className="topbar-title">{title}</h1>
             </div>
 
             <div className="topbar-right">

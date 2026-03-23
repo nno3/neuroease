@@ -16,8 +16,14 @@
     flex: 1;
     min-height: 0;
     overflow: auto;
-    padding: 24px;
+    padding: 16px;
     background-color: #f1f5f9;
+}
+
+@media (min-width: 768px) {
+    .layout-content {
+        padding: 24px;
+    }
 }
 
 /* Usability testing disclaimers – auto-dismiss after a few seconds */

@@ -1,6 +1,12 @@
 .act-page {
-    padding: 24px;
+    padding: 16px;
     overflow-x: hidden;
+}
+
+@media (min-width: 768px) {
+    .act-page {
+        padding: 24px;
+    }
 }
 
 .act-topbar {

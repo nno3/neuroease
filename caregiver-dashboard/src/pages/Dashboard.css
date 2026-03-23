@@ -503,3 +503,24 @@
     margin-top: auto;
 }
 
+/* Mobile responsive */
+@media (max-width: 767px) {
+    .dp-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .dp-cards-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .dp-summary-visual__inner {
+        grid-template-columns: 1fr;
+    }
+
+    .dp-alert-banner {
+        flex-direction: column;
+        padding: 14px;
+    }
+}
+

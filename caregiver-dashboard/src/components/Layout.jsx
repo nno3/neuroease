@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
 import "./Layout.css";
@@ -7,8 +7,20 @@ import "./Layout.css";
 const isUsabilityTesting = import.meta.env.VITE_USABILITY_TESTING === "1";
 const DISCLAIMER_DURATION_MS = 4000;
 
+const routeTitles = {
+    "/": "Dashboard Overview",
+    "/patients": "Patients",
+    "/reminders": "Reminders",
+    "/activity": "Activity",
+    "/location": "Location",
+    "/settings": "Settings",
+};
+
 const Layout = () => {
+    const { pathname } = useLocation();
     const [showDisclaimers, setShowDisclaimers] = useState(true);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const title = routeTitles[pathname] || "NeuroEase";
 
     useEffect(() => {
         if (!isUsabilityTesting) return;
@@ -22,11 +34,12 @@ const Layout = () => {
 
     return (
         <div className="layout">
-            <Sidebar />
+            <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             <div className="layout-main">
                 <TopBar
-                    title="Dashboard Overview"
+                    title={title}
                     onPrimaryAction={handleAddPatient}
+                    onMenuClick={() => setSidebarOpen((o) => !o)}
                 />
                 {isUsabilityTesting && showDisclaimers && (
                     <div className="disclaimer-banners-container" role="status" aria-live="polite">

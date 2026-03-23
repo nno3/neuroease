@@ -1,5 +1,5 @@
 .pm-page {
-    padding: 28px;
+    padding: 16px;
     min-height: 100vh;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     color: #1a1a1a;
@@ -864,5 +864,26 @@
     background: #ffebee;
     border-color: #ef9a9a;
     color: #c62828;
+}
+
+@media (min-width: 768px) {
+    .pm-page {
+        padding: 28px;
+    }
+}
+
+@media (max-width: 767px) {
+    .pm-title {
+        font-size: 1.5rem;
+    }
+
+    .pm-search {
+        min-width: 0;
+    }
+
+    .pm-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
 }
 
