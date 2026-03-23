@@ -392,11 +392,10 @@ export default function Patients() {
                     }}
                     onResendInvite={async (id) => {
                         const res = await sendInvite(id);
-                        const data = res?.data;
-                        if (data?.success && !data?.data?.inviteLink) {
-                            showToast("success", data.message || "Invite email sent. The patient can use the link to activate their account.");
+                        if (res?.success && !res?.data?.inviteLink) {
+                            showToast("success", res.message || "Invite email sent. The patient can use the link to activate their account.");
                         }
-                        return data;
+                        return res;
                     }}
                 />
             )}

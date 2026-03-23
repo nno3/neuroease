@@ -316,7 +316,7 @@ const Dashboard = () => {
                     }}
                     onResendInvite={async (id) => {
                         const res = await sendInvite(id);
-                        return res?.data;
+                        return res;
                     }}
                 />
             )}

@@ -20,6 +20,7 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarch
     const [inviteLoading, setInviteLoading] = useState(false);
     const [inviteError, setInviteError] = useState("");
     const [inviteLink, setInviteLink] = useState("");
+    const [copied, setCopied] = useState(false);
 
     if (!patient) return null;
 
@@ -65,7 +66,8 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarch
     const copyInviteLink = () => {
         if (!inviteLink) return;
         navigator.clipboard.writeText(inviteLink).then(() => {
-            /* copied */
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
         });
     };
 
@@ -217,7 +219,7 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarch
                                                 style={{ flex: 1, fontFamily: "monospace", fontSize: "12px" }}
                                             />
                                             <button type="button" className="pm-btn pm-btn-outline" onClick={copyInviteLink}>
-                                                Copy
+                                                {copied ? "Copied!" : "Copy"}
                                             </button>
                                         </div>
                                     </div>

@@ -3,10 +3,15 @@
  * Mounts API routes, connects to PostgreSQL via Sequelize, and handles 404/500.
  * Environment: .env (PORT, DB_*, JWT_SECRET, SMTP_*, PATIENT_APP_URL, FRONTEND_URL).
  */
+require('dotenv').config();
+
+// Force IPv4 for SMTP – Render free tier has no IPv6 outbound; Gmail resolves to both
+const dns = require('dns');
+dns.setDefaultResultOrder('ipv4first');
+
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
-require('dotenv').config();
 
 const { sequelize, User } = require('./src/models');
 const { startReminderEmailJob } = require('./src/jobs/reminderEmailJob');
