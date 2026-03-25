@@ -15,6 +15,22 @@ function startOfDay(d) {
     return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
+/**
+ * For daily reminders: current occurrence instant.
+ * Before the calendar day of scheduledTime, only the first fire (scheduledTime) exists.
+ * On/after that day, today's occurrence is today at the same clock time as scheduledTime.
+ */
+function getCurrentDailyOccurrence(reminder, now) {
+    const base = new Date(reminder.scheduledTime);
+    if (Number.isNaN(base.getTime())) return null;
+    const seriesStart = startOfDay(base);
+    const nowDay = startOfDay(now);
+    if (nowDay.getTime() < seriesStart.getTime()) {
+        return new Date(base);
+    }
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), base.getHours(), base.getMinutes(), base.getSeconds(), 0);
+}
+
 const OVERDUE_MINUTES = 15;
 
 /**
@@ -35,11 +51,11 @@ function isDueAndUnsent(reminder, now) {
         return base.getTime() <= now.getTime() && !sentAt;
     }
 
-    // DAILY: today at same time as scheduledTime has passed, and we haven't sent today
+    // DAILY: current occurrence time has passed; before series start day, only first scheduledTime counts
     if (recurrence === 'daily') {
-        const todayAtTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), base.getHours(), base.getMinutes(), base.getSeconds(), 0);
-        if (todayAtTime.getTime() > now.getTime()) return false;
-        if (reminder.endTime && todayAtTime.getTime() > new Date(reminder.endTime).getTime()) return false;
+        const occurrenceTime = getCurrentDailyOccurrence(reminder, now);
+        if (!occurrenceTime || occurrenceTime.getTime() > now.getTime()) return false;
+        if (reminder.endTime && occurrenceTime.getTime() > new Date(reminder.endTime).getTime()) return false;
         if (sentAt && startOfDay(sentAt).getTime() >= startOfDay(now).getTime()) return false;
         return true;
     }
@@ -91,7 +107,8 @@ function getEffectiveScheduledTime(reminder) {
     if (recurrence === 'once') return base;
     const now = new Date();
     if (recurrence === 'daily') {
-        return new Date(now.getFullYear(), now.getMonth(), now.getDate(), base.getHours(), base.getMinutes(), base.getSeconds(), 0);
+        const occ = getCurrentDailyOccurrence(reminder, now);
+        return occ || base;
     }
     if (recurrence === 'weekly') {
         const targetDow = base.getDay();

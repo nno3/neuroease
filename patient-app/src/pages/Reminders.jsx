@@ -108,10 +108,15 @@ function isCompletedForOccurrence(reminder, effectiveScheduledTime) {
   );
 }
 
+/** Start of local calendar day (midnight). */
+function startOfLocalDay(d) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+}
+
 /**
  * Get the effective occurrence time for a reminder so recurring (daily/weekly) show correctly.
  * - once: use scheduledTime if on or after today.
- * - daily: today at the same time as scheduledTime.
+ * - daily: from the series start day, each day at the same clock time; before the start day, the next occurrence is the first scheduledTime (e.g. tomorrow).
  * - weekly: next occurrence on the same weekday as scheduledTime, on or after today, same time.
  * Returns ISO string or null if no occurrence in range.
  */
@@ -120,7 +125,7 @@ function getEffectiveOccurrence(reminder) {
   if (Number.isNaN(scheduled.getTime())) return null;
   const recurrence = reminder.recurrence || "once";
   const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  const todayStart = startOfLocalDay(now);
 
   if (recurrence === "once") {
     return scheduled.getTime() >= todayStart.getTime() ? reminder.scheduledTime : null;
@@ -128,10 +133,16 @@ function getEffectiveOccurrence(reminder) {
 
   const hours = scheduled.getHours();
   const minutes = scheduled.getMinutes();
+  const seconds = scheduled.getSeconds();
   const scheduledWeekday = scheduled.getDay(); // 0–6
 
   if (recurrence === "daily") {
-    const todayAtTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
+    const seriesStartDay = startOfLocalDay(scheduled);
+    if (todayStart.getTime() < seriesStartDay.getTime()) {
+      // Series has not started yet — only the first occurrence exists (e.g. tomorrow at this time)
+      return scheduled.toISOString();
+    }
+    const todayAtTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, seconds, 0);
     return todayAtTime.toISOString();
   }
 
