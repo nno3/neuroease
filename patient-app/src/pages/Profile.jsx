@@ -1,7 +1,7 @@
 /**
- * Profile / settings – reminder notification preference (Email | In-app push | None).
- * Patient sets preferred method; persisted via PUT /api/patients/:id. In-app push requires
- * permission and sends subscription to POST /api/push/subscribe.
+ * Profile / settings – reminder channel (Email | In-app push | None), voice & speech, games, location.
+ * Notification channel persisted via PUT /api/patients/:id. Voice/speed apply to Read aloud and TTS;
+ * "Speak reminders automatically" only gates push/open-app speech (see VoiceAssistListener).
  */
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
@@ -15,6 +15,7 @@ import {
   getVoiceAssistRate,
   setVoiceAssistRate,
   getAvailableVoices,
+  speakTest,
 } from "../utils/voiceAssist";
 import { getGameSoundsEnabled, setGameSoundsEnabled } from "../utils/gameSounds";
 import { MapPin } from "lucide-react";
@@ -58,6 +59,7 @@ export default function Profile() {
   const [voices, setVoices] = useState([]);
   const [selectedVoice, setSelectedVoice] = useState("");
   const [speechRate, setSpeechRate] = useState(1);
+  const [speechTesting, setSpeechTesting] = useState(false);
   const [gameSoundsEnabled, setGameSoundsEnabledState] = useState(true);
   const [locationRechecking, setLocationRechecking] = useState(false);
   const [locationSending, setLocationSending] = useState(false);
@@ -353,11 +355,89 @@ export default function Profile() {
           </div>
         )}
 
-        {/* Voice Reminders - toggle row */}
+      </div>
+
+      {/* Voice & speech — separate from notification channel; applies to Read aloud + speech synthesis */}
+      <div className="pa-profile-card" role="region" aria-labelledby="pa-voice-speech-heading">
+        <h3 id="pa-voice-speech-heading" className="pa-profile-card-title">
+          Voice &amp; speech
+        </h3>
+        <hr className="pa-profile-card-divider" aria-hidden />
+        <p className="pa-profile-row-desc pa-profile-voice-intro">
+          <strong>Voice</strong> and <strong>speed</strong> control how NeuroEase speaks: the <strong>Read aloud</strong> button on the Reminders tab, and automatic speech (below). They do <strong>not</strong> change game sounds (see Games) or the short system &quot;ding&quot; when a push arrives on iPhone—only the device speech volume applies to spoken text.
+        </p>
+
+        <div className="pa-profile-voice-options">
+          <div className="pa-profile-voice-row">
+            <div className="pa-profile-voice-field">
+              <label htmlFor="pa-voice-select" className="pa-profile-voice-label">Voice</label>
+              <select
+                id="pa-voice-select"
+                value={(() => {
+                  const match = voices.find(
+                    (v) => `${v.name}|${v.lang}` === selectedVoice || v.name === selectedVoice || v.uri === selectedVoice
+                  );
+                  return match ? `${match.name}|${match.lang}` : selectedVoice || "";
+                })()}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setVoiceAssistVoice(v);
+                  setSelectedVoice(v);
+                }}
+                className="pa-profile-select"
+              >
+                <option value="">System default</option>
+                {voices.map((v) => {
+                  const val = `${v.name}|${v.lang}`;
+                  return <option key={val} value={val}>{v.name} ({v.lang})</option>;
+                })}
+              </select>
+            </div>
+            <div className="pa-profile-voice-field">
+              <label htmlFor="pa-rate-select" className="pa-profile-voice-label">Speed</label>
+              <select
+                id="pa-rate-select"
+                value={[0.8, 1, 1.2].includes(speechRate) ? speechRate : 1}
+                onChange={(e) => {
+                  const r = parseFloat(e.target.value);
+                  setVoiceAssistRate(r);
+                  setSpeechRate(r);
+                }}
+                className="pa-profile-select"
+              >
+                <option value={0.8}>Slower</option>
+                <option value={1}>Normal</option>
+                <option value={1.2}>Faster</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="pa-profile-voice-test-row">
+          <button
+            type="button"
+            className="pa-btn pa-btn--secondary pa-profile-test-speech-btn"
+            onClick={() => {
+              setSpeechTesting(true);
+              const ok = speakTest(() => setSpeechTesting(false));
+              if (!ok) setSpeechTesting(false);
+            }}
+            disabled={speechTesting || !("speechSynthesis" in window)}
+            aria-label="Play a short test phrase"
+          >
+            {speechTesting ? "Playing…" : "Test speech"}
+          </button>
+          <p className="pa-profile-row-desc" id="pa-test-speech-desc">
+            Use this if you are not sure the device can speak. Turn volume up; on iPhone, use the side buttons while the app is open (speech uses the media volume in many cases).
+          </p>
+        </div>
+
         <div className="pa-profile-toggle-row">
           <div className="pa-profile-toggle-text">
-            <span className="pa-profile-row-label">Voice Reminders</span>
-            <span className="pa-profile-row-desc" id="pa-voice-assist-desc">Hear reminders spoken aloud</span>
+            <span className="pa-profile-row-label">Speak reminders automatically</span>
+            <span className="pa-profile-row-desc" id="pa-voice-assist-desc">
+              When a push reminder arrives, or when you open the app after tapping a notification, read the reminder aloud using the voice above. This is separate from the Read aloud button on Reminders—you can use that even when this is off.
+            </span>
           </div>
           <label className="pa-profile-toggle">
             <input
@@ -373,56 +453,6 @@ export default function Profile() {
             <span className="pa-profile-toggle-slider" />
           </label>
         </div>
-
-        {/* Voice options when enabled */}
-        {voiceAssistOnOpen && (
-          <div className="pa-profile-voice-options">
-            <div className="pa-profile-voice-row">
-              <div className="pa-profile-voice-field">
-                <label htmlFor="pa-voice-select" className="pa-profile-voice-label">Voice</label>
-                <select
-                  id="pa-voice-select"
-                  value={(() => {
-                    const match = voices.find(
-                      (v) => `${v.name}|${v.lang}` === selectedVoice || v.name === selectedVoice || v.uri === selectedVoice
-                    );
-                    return match ? `${match.name}|${match.lang}` : selectedVoice || "";
-                  })()}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setVoiceAssistVoice(v);
-                    setSelectedVoice(v);
-                  }}
-                  className="pa-profile-select"
-                >
-                  <option value="">System default</option>
-                  {voices.map((v) => {
-                    const val = `${v.name}|${v.lang}`;
-                    return <option key={val} value={val}>{v.name} ({v.lang})</option>;
-                  })}
-                </select>
-              </div>
-              <div className="pa-profile-voice-field">
-                <label htmlFor="pa-rate-select" className="pa-profile-voice-label">Speed</label>
-                <select
-                  id="pa-rate-select"
-                  value={[0.8, 1, 1.2].includes(speechRate) ? speechRate : 1}
-                  onChange={(e) => {
-                    const r = parseFloat(e.target.value);
-                    setVoiceAssistRate(r);
-                    setSpeechRate(r);
-                  }}
-                  className="pa-profile-select"
-                >
-                  <option value={0.8}>Slower</option>
-                  <option value={1}>Normal</option>
-                  <option value={1.2}>Faster</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        )}
-
       </div>
 
       {/* Games card */}
@@ -432,6 +462,9 @@ export default function Profile() {
         </h3>
         <hr className="pa-profile-card-divider" aria-hidden />
 
+        <p className="pa-profile-row-desc" style={{ marginBottom: "1rem" }}>
+          These sounds apply only to <strong>Memory</strong> and <strong>Math</strong> games. They do not affect spoken reminders, the Read aloud button, or the system notification tone.
+        </p>
         <div className="pa-profile-toggle-row">
           <div className="pa-profile-toggle-text">
             <span className="pa-profile-row-label">Sound Effects</span>

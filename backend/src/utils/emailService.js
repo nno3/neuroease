@@ -253,23 +253,55 @@ async function sendPatientMagicLinkEmail(email, name, token, shortCode) {
 </body>
 </html>`;
     const textCode = shortCode ? `\n\nOr enter this code in the app (from your home screen): ${shortCode}` : '';
+    const textBody = `Hi ${name || 'there'},\n\nLog in here: ${loginUrl}${textCode}\n\nLink and code expire in 15 minutes.\n\n— NeuroEase`;
+
+    const mailPayload = {
+        from: MAIL_FROM,
+        to: email,
+        subject: 'Log in to NeuroEase',
+        html,
+        text: textBody,
+    };
+
+    const resend = getResendClient();
     const transporter = await getTransporter();
+
+    // Same as invite: Resend first (HTTPS) — Render blocks SMTP.
+    if (resend) {
+        try {
+            const { error } = await resend.emails.send(mailPayload);
+            if (!error) {
+                return { sent: true };
+            }
+            console.warn('Resend magic link failed, trying SMTP:', error.message);
+        } catch (err) {
+            console.warn('Resend magic link threw, trying SMTP:', err.message);
+        }
+    }
+
     if (transporter) {
         try {
-            await transporter.sendMail({
-                from: MAIL_FROM,
-                to: email,
-                subject: 'Log in to NeuroEase',
-                html,
-                text: `Hi ${name || 'there'},\n\nLog in here: ${loginUrl}${textCode}\n\nLink and code expire in 15 minutes.\n\n— NeuroEase`,
-            });
+            await transporter.sendMail(mailPayload);
             return { sent: true };
         } catch (err) {
-            console.error('Send magic link email error:', err);
+            console.error('Send magic link email error (SMTP):', err);
+            if (
+                isRunningOnRender()
+                && (err.code === 'ETIMEDOUT' || String(err.message || '').includes('timeout'))
+            ) {
+                console.error(
+                    'RENDER: Free-tier web services block outbound SMTP. Set RESEND_API_KEY (HTTPS, works on free tier) or upgrade Render. docs/Deployment.md'
+                );
+            }
             return { sent: false, error: err.message };
         }
     }
-    console.warn('SMTP not configured. Magic link (no email sent):');
+
+    if (resend) {
+        return { sent: false, error: 'Resend failed and SMTP is not configured' };
+    }
+
+    console.warn('Neither Resend nor SMTP configured. Magic link (no email sent):');
     console.log('--- Magic link (login) ---');
     console.log('To:', email);
     console.log('Login link:', loginUrl);

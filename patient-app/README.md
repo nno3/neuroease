@@ -31,6 +31,12 @@ The app is a Progressive Web App: it has a web app manifest (`public/manifest.we
 
 Icons are generated from `public/favicon.svg` with `npm run generate-icons` (requires `sharp`). To verify installability: run `npm run build && npm run preview`, open the preview URL on a device (or use Chrome DevTools device mode), and use the browser’s install prompt. The installed app opens in standalone and shows the patient app (login or home).
 
+### Voice, Read aloud, and browsers
+
+- **Chrome (desktop or Android), installed PWA:** **Read aloud** on the Reminders tab, **Profile → Test speech**, and **Speak reminders automatically** (when enabled) use the Web Speech API as intended; users can hear spoken text reliably when volume is up and the app is in use.
+- **Other browsers / platforms differ:** **Safari on iPhone/iPad** (including Add to Home Screen) still supports `speechSynthesis` for **Read aloud** and automatic speech, but **push notification sounds** are always the **short system tone**—not a custom NeuroEase sound—per Apple’s rules for web apps. Volume and mute behaviour also differ from Chrome.
+- **Summary for documentation / assessment:** Spoken reminders and Read aloud **do work** in the installed Chrome experience; **cross-browser support is not identical**, so treat **Chrome-installed PWA** as the reference for full voice behaviour and note limitations for Safari/iOS where relevant.
+
 ## Structure
 
 - `src/App.jsx` – Route definitions

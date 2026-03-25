@@ -159,6 +159,8 @@ export default function Location() {
     const [refreshKey, setRefreshKey] = useState(0);
 
     const [addZoneMode, setAddZoneMode] = useState(false);
+    /** When patient filter is "all", which patient the new zone is for (set in modal). */
+    const [addZoneForPatientId, setAddZoneForPatientId] = useState("");
     const [draftZoneCenter, setDraftZoneCenter] = useState(null);
     const [safeZoneForm, setSafeZoneForm] = useState({ name: "Home", radius: 200, customRadius: 200 });
     const [zoneSaving, setZoneSaving] = useState(false);
@@ -187,19 +189,20 @@ export default function Location() {
         return [parseInt(patientId, 10)].filter((n) => !Number.isNaN(n));
     }, [patientId, patientList]);
 
-    const idsWithLocationConsent = useMemo(() => {
-        return new Set(
-            patientList
-                .filter((p) => Boolean((p.Patient ?? p.profile)?.locationConsent))
-                .map((p) => p.id)
-        );
-    }, [patientList]);
-
     // Fetch for all selected patients – backend returns last known location even when consent is off (historical data)
     const idsToFetch = useMemo(() => targetIds, [targetIds]);
 
     const singlePatientId = patientId !== "all" ? parseInt(patientId, 10) : null;
-    const canManageZones = singlePatientId != null && !Number.isNaN(singlePatientId) && idsWithLocationConsent.has(singlePatientId);
+    /** Patient id for the safe zone being added (API allows zones before location sharing is on). */
+    const effectiveZonePatientId = useMemo(() => {
+        if (patientId !== "all") {
+            return singlePatientId != null && !Number.isNaN(singlePatientId) ? singlePatientId : null;
+        }
+        const n = parseInt(addZoneForPatientId, 10);
+        return Number.isNaN(n) ? null : n;
+    }, [patientId, singlePatientId, addZoneForPatientId]);
+    /** Viewing a single patient: show per-patient zone list and edits. */
+    const hasSinglePatientSelected = singlePatientId != null && !Number.isNaN(singlePatientId);
 
     const zonesForSelectedPatient = useMemo(() => {
         if (singlePatientId == null) return [];
@@ -213,6 +216,7 @@ export default function Location() {
 
     const resetAddZone = useCallback(() => {
         setAddZoneMode(false);
+        setAddZoneForPatientId("");
         setDraftZoneCenter(null);
         setSafeZoneForm({ name: "Home", radius: 200, customRadius: 200 });
         setSearchQuery("");
@@ -220,7 +224,7 @@ export default function Location() {
     }, []);
 
     const handleSaveNewZone = useCallback(() => {
-        if (!draftZoneCenter || !canManageZones) return;
+        if (!draftZoneCenter || effectiveZonePatientId == null) return;
         const [centerLat, centerLng] = draftZoneCenter;
         const name = (safeZoneForm.name || "Home").trim();
         const radius =
@@ -229,14 +233,14 @@ export default function Location() {
                 : (safeZoneForm.radius || 200);
         setZoneSaving(true);
         setError("");
-        createSafeZone(singlePatientId, { name, centerLat, centerLng, radius })
+        createSafeZone(effectiveZonePatientId, { name, centerLat, centerLng, radius })
             .then(() => {
                 setRefreshKey((k) => k + 1);
                 resetAddZone();
             })
             .catch((err) => setError(err?.response?.data?.message || err?.message || "Failed to add safe zone"))
             .finally(() => setZoneSaving(false));
-    }, [draftZoneCenter, canManageZones, safeZoneForm, singlePatientId, resetAddZone]);
+    }, [draftZoneCenter, effectiveZonePatientId, safeZoneForm, resetAddZone]);
 
     const handleSearchPlace = useCallback(() => {
         const q = searchQuery.trim();
@@ -316,10 +320,10 @@ export default function Location() {
     }, [urlPatientId]);
 
     useEffect(() => {
-        if (addZoneMode && canManageZones && addZonePanelRef.current) {
+        if (addZoneMode && effectiveZonePatientId != null && addZonePanelRef.current) {
             addZonePanelRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
         }
-    }, [addZoneMode, canManageZones]);
+    }, [addZoneMode, effectiveZonePatientId]);
 
     useEffect(() => {
         if (targetIds.length === 0) {
@@ -521,11 +525,16 @@ export default function Location() {
                         <RefreshCw size={16} />
                         {loading ? "Loading…" : "Refresh"}
                     </button>
-                    {canManageZones && (
+                    {patientList.length > 0 && (
                         <button
                             type="button"
                             className="loc-btn loc-btn-primary"
-                            onClick={() => setAddZoneMode(true)}
+                            onClick={() => {
+                                setAddZoneForPatientId(
+                                    patientId !== "all" ? String(patientId) : String(patientList[0]?.id ?? "")
+                                );
+                                setAddZoneMode(true);
+                            }}
                         >
                             <Plus size={16} />
                             Add safe zone
@@ -594,7 +603,7 @@ export default function Location() {
 
                         {noPatientsWithConsent && (
                             <div className="loc-hint loc-hint-warning">
-                                Select a patient who has <strong>location sharing</strong> enabled to view or add safe zones. Patients enable this in their app; you can see their status in patient details.
+                                Select a patient who has <strong>location sharing</strong> enabled to see live location and alerts. You can still <strong>add safe zones</strong> for any patient before they turn sharing on; they will apply once location updates are received.
                             </div>
                         )}
 
@@ -733,7 +742,7 @@ export default function Location() {
                             />
                             <MapClickHandler
                                 onMapClick={handleMapClickForZone}
-                                enabled={addZoneMode && canManageZones}
+                                enabled={addZoneMode && effectiveZonePatientId != null}
                             />
                             <MapFitBounds locations={liveLocations} zones={zones} />
                             {draftZoneCenter && (
@@ -831,14 +840,14 @@ export default function Location() {
                         </MapContainer>
                     )}
 
-                    {showMap && isEmpty && canManageZones && (
+                    {showMap && isEmpty && patientList.length > 0 && (
                         <div className="loc-map-hint">
                             No location or safe zones yet. Click &quot;Add safe zone&quot; above, then click on the map where the centre should be (e.g. home), or search for a place.
                         </div>
                     )}
                 </div>
 
-                {addZoneMode && canManageZones && (
+                {addZoneMode && effectiveZonePatientId != null && (
                     <div ref={addZonePanelRef} className="loc-add-zone loc-modal-style loc-add-zone-visible">
                         <div className="loc-modal-header">
                             <div>
@@ -852,6 +861,32 @@ export default function Location() {
                             </button>
                         </div>
                         <div className="loc-modal-body">
+                        {patientId === "all" && (
+                            <div className="loc-field" style={{ marginBottom: 16 }}>
+                                <label className="loc-label" htmlFor="loc-add-zone-patient">
+                                    Patient
+                                </label>
+                                <select
+                                    id="loc-add-zone-patient"
+                                    className="loc-select"
+                                    value={addZoneForPatientId}
+                                    onChange={(e) => {
+                                        setAddZoneForPatientId(e.target.value);
+                                        setDraftZoneCenter(null);
+                                        setSearchResult(null);
+                                    }}
+                                >
+                                    {patientList.map((p) => (
+                                        <option key={p.id} value={String(p.id)}>
+                                            {p.name ?? "Patient"} (ID {format3(p.id)})
+                                        </option>
+                                    ))}
+                                </select>
+                                <p className="loc-add-zone-hint" style={{ marginTop: 8 }}>
+                                    Choose who this zone is for. You can add zones before they enable location sharing in the app.
+                                </p>
+                            </div>
+                        )}
                         {!draftZoneCenter ? (
                             <>
                                 <p className="loc-add-zone-step">Step 1: Set the centre of the safe zone</p>
@@ -946,7 +981,7 @@ export default function Location() {
                     </div>
                 )}
 
-                {canManageZones && zonesForSelectedPatient.length > 0 && (
+                {hasSinglePatientSelected && zonesForSelectedPatient.length > 0 && (
                     <div className="loc-zones-list">
                         <h3 className="loc-zones-list-title">Safe zones for this patient</h3>
                         <ul className="loc-zones-ul">

@@ -266,6 +266,22 @@
   margin-top: 0.75rem;
 }
 
+.pa-profile-voice-intro {
+  margin-bottom: 1rem;
+  line-height: 1.45;
+}
+
+.pa-profile-voice-test-row {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pa-profile-test-speech-btn {
+  align-self: flex-start;
+}
+
 /* Voice options (Voice + Speed selects) */
 .pa-profile-voice-options {
   margin-top: 0.75rem;
