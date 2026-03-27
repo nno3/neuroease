@@ -4,6 +4,11 @@
  */
 const yup = require('yup');
 
+/** Upper, lower, digit, any non-alphanumeric; 8–128 chars. Allows # and other common symbols. */
+const PASSWORD_STRENGTH_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,128}$/;
+const PASSWORD_STRENGTH_MESSAGE =
+    'Password must be at least 8 characters and include at least one uppercase letter, one lowercase letter, one number, and one special character (e.g. ! @ # $ %)';
+
 /** Shared email validator: trim, lowercase, format check */
 const customEmailValidator = yup
     .string()
@@ -19,10 +24,7 @@ const registerSchema = yup.object({
     email: customEmailValidator,
     password: yup.string()
         .min(8, 'Password must be at least 8 characters long')
-        .matches(
-            /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-            'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)'
-        )
+        .matches(PASSWORD_STRENGTH_REGEX, PASSWORD_STRENGTH_MESSAGE)
         .required('Password is required'),
     name: yup.string()
         .min(2, 'Name must be at least 2 characters')
@@ -113,14 +115,15 @@ const validate = (schema) => {
                     return 'Please enter a valid email address';
                 }
                 if (msg.includes('password must match')) {
-                    return 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)';
+                    return PASSWORD_STRENGTH_MESSAGE;
                 }
                 return msg;
             });
 
+            const primaryMessage = cleanedErrors[0] || 'Validation failed';
             return res.status(400).json({
                 success: false,
-                message: 'Validation failed',
+                message: primaryMessage,
                 errors: cleanedErrors
             });
         }
@@ -129,14 +132,6 @@ const validate = (schema) => {
 
 const patientRegistrationSchema = yup.object({
     email: customEmailValidator,
-    password: yup.string()
-        .min(8, 'Password must be at least 8 characters long')
-        .matches(
-            /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-            'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)'
-        )
-        .nullable()
-        .default(undefined),
     name: yup.string()
         .min(2, 'Name must be at least 2 characters')
         .max(50, 'Name cannot exceed 50 characters')

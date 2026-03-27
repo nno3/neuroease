@@ -3,7 +3,7 @@
  * Medical history is stored as a structured object: diagnosis, chronicConditions (array of
  * { diagnosis, dateDiagnosed }), pastConditions, etc. Emergency contacts are "Name - Phone"
  * per line. Create sends to POST /api/patients; update to PUT /api/patients/:id. Validation
- * matches backend (email, password strength, required fields). Archive is a separate flow at bottom.
+ * matches backend. No password on create — patients are passwordless (invite / magic link).
  */
 import { useEffect, useMemo, useState, forwardRef, useRef } from "react";
 import "./PatientFormModal.css";
@@ -51,16 +51,6 @@ function isValidName(name) {
     if (trimmedName.length < 2) return false;
     if (/\d/.test(trimmedName)) return false;
     return /^[A-Za-zÀ-ÿ\s\-'.]+$/.test(trimmedName);
-}
-
-function passwordError(password) {
-    const p = String(password || "");
-    if (p.length < 8) return "Password must be at least 8 characters.";
-    if (!/[A-Z]/.test(p)) return "Password must include at least 1 uppercase letter.";
-    if (!/[a-z]/.test(p)) return "Password must include at least 1 lowercase letter.";
-    if (!/[0-9]/.test(p)) return "Password must include at least 1 number.";
-    if (!/[^A-Za-z0-9]/.test(p)) return "Password must include at least 1 special character.";
-    return "";
 }
 
 function emergencyContactError(value) {
@@ -251,7 +241,6 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
         return {
             name: patient?.name || "",
             email: patient?.email || "",
-            password: "",
             dateOfBirth: dobISO,
             address: profile?.address ?? "",
             gender: profile?.gender ?? "",
@@ -408,12 +397,6 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
         if (!isEdit) {
             if (!form.email.trim()) errs.email = "Email is required.";
             else if (!isValidEmail(form.email)) errs.email = "Enter a valid email address.";
-
-            if (!form.password) errs.password = "Password is required.";
-            else {
-                const msg = passwordError(form.password);
-                if (msg) errs.password = msg;
-            }
         }
 
         if (!(form.emergencyContactName || "").trim()) errs.emergencyContactName = "Emergency contact name is required (at least 2 characters).";
@@ -539,7 +522,6 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                 const createRes = await createPatient({
                     name: form.name.trim(),
                     email: form.email.trim(),
-                    password: form.password,
                     dateOfBirth: form.dateOfBirth || null,
                     address: form.address.trim(),
                     gender: form.gender.trim() || null,
@@ -566,7 +548,14 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
             onSaved?.({ message: apiMsg, inviteLink, patient: updatedPatient });
             onClose?.();
         } catch (err) {
-            setError(err?.message || (isEdit ? "Unable to update patient." : "Unable to create patient."));
+            const serverList = Array.isArray(err?.errors) ? err.errors.filter(Boolean) : [];
+            const serverMsg =
+                serverList.length > 0
+                    ? serverList.join(" ")
+                    : err?.data?.message || err?.message;
+            setError(
+                serverMsg || (isEdit ? "Unable to update patient." : "Unable to create patient.")
+            );
         } finally {
             setSaving(false);
         }
@@ -640,20 +629,6 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                             )}
                             {fieldErrors.email && <div className="pfm-help">{fieldErrors.email}</div>}
                         </div>
-
-                        {!isEdit && (
-                            <div className="pfm-field">
-                                <label className="pfm-label">Password *</label>
-                                <input
-                                    className={`pfm-input ${fieldErrors.password ? "is-error" : ""}`}
-                                    type="password"
-                                    value={form.password}
-                                    onChange={(e) => setField("password", e.target.value)}
-                                    placeholder="Min 8 chars, 1 uppercase, 1 number, 1 symbol"
-                                />
-                                {fieldErrors.password && <div className="pfm-help">{fieldErrors.password}</div>}
-                            </div>
-                        )}
 
                         <div className="pfm-field">
                                 <label className="pfm-label">Date of Birth *</label>
