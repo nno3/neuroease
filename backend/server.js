@@ -30,7 +30,7 @@ function logEmailDeliveryHint() {
     }
     if (onRender && hasSmtp) {
         console.warn(
-            '[EMAIL] RESEND_API_KEY is not set but SMTP_* is. Render free tier usually blocks outbound SMTP; invite email will fail or hang. Add RESEND_API_KEY from resend.com — see docs/Deployment.md.'
+            '[EMAIL] RESEND_API_KEY is not set but SMTP_* is.'
         );
     } else if (hasSmtp) {
         console.log('[EMAIL] Using SMTP only (no RESEND_API_KEY).');

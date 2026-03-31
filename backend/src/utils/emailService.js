@@ -209,7 +209,7 @@ async function sendPatientInviteEmail(email, name, token) {
                 && (err.code === 'ETIMEDOUT' || String(err.message || '').includes('timeout'))
             ) {
                 console.error(
-                    'RENDER: Free-tier web services block outbound SMTP. Set RESEND_API_KEY (HTTPS, works on free tier) or upgrade Render. docs/Deployment.md'
+                    'RENDER: Free-tier web services block outbound SMTP.'
                 );
             }
             return { sent: false, error: err.message };
@@ -290,7 +290,7 @@ async function sendPatientMagicLinkEmail(email, name, token, shortCode) {
                 && (err.code === 'ETIMEDOUT' || String(err.message || '').includes('timeout'))
             ) {
                 console.error(
-                    'RENDER: Free-tier web services block outbound SMTP. Set RESEND_API_KEY (HTTPS, works on free tier) or upgrade Render. docs/Deployment.md'
+                    'RENDER: Free-tier web services block outbound SMTP.'
                 );
             }
             return { sent: false, error: err.message };

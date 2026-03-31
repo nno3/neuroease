@@ -123,7 +123,9 @@ There are two ways to trigger it:
 
 Both use the Web Speech API (`SpeechSynthesis`) with voice and speed options chosen in Profile.
 
-#### Options considered for “which reminder to speak” (on push)
+**Browser support (spoken text vs notification sound).** Behaviour is **not identical across browsers and platforms.** In **Google Chrome**, when the app is **installed** (PWA: “Install app” / Add to Home Screen from Chrome), **Read aloud**, **Test speech** in Profile, and automatic speech when enabled work as expected: the device speaks reminder text using the chosen voice and speed. This is the recommended reference environment for demonstrating spoken reminders. **Safari on iPhone/iPad** still supports `SpeechSynthesis` for Read aloud and Profile speech, but **Web Push notification sounds** are limited to Apple’s **default short system tone** for web apps—custom notification sounds are not available for PWAs on iOS, which is separate from whether **spoken** text works once the user opens the app or uses Read aloud. Other browsers may differ in volume routing, permissions, or speech voice availability. For assessment documentation: **spoken reminders are supported and work well in an installed Chrome PWA**; note **cross-browser differences** for push tones and iOS specifically.
+
+### Options considered for “which reminder to speak” (on push)
 
 When a push arrives and the user opens the app, we need to know which reminder to speak. Three options were considered:
 
@@ -131,14 +133,14 @@ When a push arrives and the user opens the app, we need to know which reminder t
 - **Option B:** Backend exposes `GET /api/reminders/recently-notified?since=ISO8601` returning reminders push-sent in the last 5–10 minutes. The page fetches on visibility and speaks any not yet spoken.
 - **Option C:** Heuristic: fetch due/overdue reminders when visible; speak the first (or all) not yet marked as "spoken" this session.
 
-#### Why we chose Option A
+### Why we chose Option A
 
 - **No extra API:** No backend endpoint or database query needed; the push payload carries everything required.
 - **Accurate:** We speak the exact reminder that triggered the push, not an inferred or recently-fetched list.
 - **Works offline:** IndexedDB is local; the page can read pending data even if the network is slow or unavailable.
 - **Immediate for open app:** When the app is already open and a push arrives, the service worker can `postMessage` to the client with the reminder data; the page speaks immediately without waiting for a fetch.
 
-#### Implementation
+### Implementation
 
 - **Backend:** The reminder job (`reminderEmailJob.js`) includes `reminderId`, `title`, and `body` in the push payload sent via the push service.
 - **Service worker (`sw.js`):** On `push`, parses the payload. If `reminderId` is present, stores `{ reminderId, title, body, pushedAt }` in IndexedDB (`neuroease-voice-assist` DB, `pending` store). If the app has an open client, sends `postMessage({ type: "voice-assist-push", reminderId, title, body })` so the page can speak right away. On `notificationclick`, opens the app (or focuses existing window).
@@ -147,15 +149,15 @@ When a push arrives and the user opens the app, we need to know which reminder t
 - **Deduplication:** `sessionStorage` tracks which reminder IDs have been spoken this session; we do not re-speak when the user switches tabs and comes back.
 - **Debouncing:** A minimum 2-second interval between speaks avoids rapid repeated announcements.
 
-#### Read aloud button on Reminders page
+### Read aloud button on Reminders page
 
 A second, manual trigger was added so patients can hear all current reminders read aloud when they open the app (e.g. without receiving a push). The button shows "Read aloud" with a volume icon; when clicked, it speaks overdue, due today, and upcoming reminders in order. While speaking, the button changes to "Stop" so the user can cancel. Uses the same voice and speed settings from Profile.
 
-#### Voice and speed options
+### Voice and speed options
 
 Users can choose from available English system voices (e.g. Samantha, Daniel) and set speed (Slower, Normal, Faster). These apply to both push-triggered speech and the Read aloud button. We filter to English voices and deduplicate entries that appear multiple times in the browser’s voice list.
 
-#### Limitations
+### Limitations
 
 - **User gesture:** Some browsers (e.g. iOS Safari) may require a user interaction before `speechSynthesis.speak()` can start. Tapping the push notification to open the app counts as a user gesture.
 - **Foreground only:** TTS runs only when the page is in the foreground. We cannot speak when the app is closed or in the background.

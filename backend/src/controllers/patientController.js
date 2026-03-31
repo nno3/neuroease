@@ -360,7 +360,7 @@ const patientController = {
           success: false,
           message: process.env.NODE_ENV === 'development'
             ? `Failed to send invite email: ${emailResult.error}`
-            : 'Failed to send invite email. Gmail SMTP often cannot connect from cloud hosts (blocked ports / timeouts). Add RESEND_API_KEY (free at resend.com) — sends over HTTPS. See docs/Deployment.md',
+            : 'Failed to send invite email. Gmail SMTP often cannot connect from cloud hosts (blocked ports / timeouts).',
         });
       }
       res.json({

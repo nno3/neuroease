@@ -27,7 +27,7 @@ Please choose the structure of the contents of this repository that suits the ne
 
 ### Getting Started
 1. **Backend Setup**: See [`docs/BackendSetUp.md`](./docs/BackendSetUp.md)
-2. **Caregiver Dashboard**: See [`docs/caregiverDashboard.md`](./docs/caregiverDashboard.md)
+2. **Caregiver Dashboard**: See [`docs/caregiverDashboard.md`](./docs/CaregiverDashboard.md)
 3. **Patient App**: See [`docs/PatientApp.md`](./docs/PatientApp.md)
 
 ---
@@ -189,15 +189,6 @@ cd ../patient-app
 npm install
 npm run dev
 ```
-
-### Development URLs (different ports)
-| App | URL |
-|-----|-----|
-| **Caregiver Dashboard** | http://localhost:5173 |
-| **Patient App** | http://localhost:5175 |
-| **Backend API** | http://localhost:5001 |
-
-Both frontends run on separate ports. If you only see the dashboard, open **http://localhost:5175** for the patient app.
 
 **Detailed instructions**: See individual documentation files in `docs/`
 
