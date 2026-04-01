@@ -686,3 +686,120 @@ Sprint 5: Activity Monitoring & Reporting Charts (Phase 2)  largely complete, wi
 *Sprint 8 Issue Board*
 
 - Sprint 8 issues created: #34 (Memory Match), #35 (Math Game), #36 (Math Game backend/UX), #37 (Patient Activity Modal, real game sessions), #38 (Activity page feed – game sessions), #39 (Games charts and data summary).
+
+---
+
+## Week 23 [w/c 16/03/2026]
+
+- Completed Sprint 8 remaining issues (#36–#39), closing out the Cognitive Games feature set. Conducted usability testing with participants and began the messaging service feature branch.
+
+*Math Game Backend Integration and UX Polish (Issue #36)*
+
+- Integrated Math Game with the backend game sessions API and polished the user experience:
+  - Session data (score, duration, accuracy, difficulty) now persists to the backend on completion, making results visible to caregivers in the Activity feed.
+  - UX improvements: clearer end-session flow, improved answer feedback timing, and consistent styling with Memory Match.
+  - Supporting commit: `7dd8ab65`
+
+*Real Game Sessions in Patient Activity Modal (Issue #37)*
+
+- Wired real game session data into the Patient Activity Modal on the caregiver dashboard:
+  - Replaced mock data with live API responses; caregivers now see actual game completions per patient.
+  - Supporting commit: `6caa022b`
+
+*Game Sessions in Activity Page Feed (Issue #38)*
+
+- Added game session events to the caregiver Activity page feed alongside reminder completions:
+  - Game completions appear as feed entries with game type, score, and duration.
+  - Supporting commit: `2162ee8c`
+
+*Games Charts and Data Summary (Issue #39)*
+
+- Implemented game analytics charts and a performance summary on the caregiver Activity page:
+  - Added performance chart showing score trends over time per game type.
+  - Callout improvements for clearer at-a-glance summaries.
+  - Supporting commits: `c8a64973`, `2162ee8c`
+
+*Activity Page Graph UI Improvements*
+
+- Improved Activity page graph UI with grouped charts and time-based filtering for better readability. Commit: `e577ac98`
+
+*Patient Profile and Location Refinements*
+
+- Updated patient profile UI and fixed a port conflict issue. Commit: `16b11a0a`
+- Added a "Go to location" button on the dashboard map for quicker navigation. Commit: `10d82547`
+
+*Usability Testing*
+
+- Began distributing the usability study survey to collect participant responses. Data collection ran in parallel with continued development throughout this period.
+- Prepared the `usability-testing` branch with a dedicated testing environment including test accounts, simulated location support, and login bypass for participants unfamiliar with the onboarding flow. Commits: `947da089`, `f85ded2b`, `4d76860d`
+- Fixed bugs identified during live testing sessions:
+  - Bug in patient creation flow during testing. Commit: `3c556682`
+  - Issues with safe zones, patient profile, and reminders identified during testing. Commit: `df66a3d9`
+  - Additional fixes from testing feedback. Commit: `b812ad56`
+- Added project documentation. Commit: `9bb579f7`
+
+*Email and Deployment Infrastructure*
+
+- Signed up for Resend and configured the `noreply@neuroease.info` domain for transactional email, replacing the previous Gmail SMTP setup.
+- Investigated and resolved SMTP delivery issues on Render (IPv4 DNS resolution, non-blocking email sends). Commits: `2f0ddda6`, `37fd020a`, `4d5a5f14`, `d8d2538d`, `fa403631`, `8428d33c`
+- Switched backend hosting back to Render after evaluating Railway. Commit: `0fa555c7`
+
+---
+
+## Week 24 [w/c 23/03/2026]
+
+- Opened `feature/messaging-service` branch. Designed and implemented a full real-time messaging service between caregivers and patients, including meeting scheduling, notifications, and calendar integration. Continued distributing the usability study survey.
+
+*Caregiver Email Notifications and Location Alert Improvements*
+
+- Added caregiver email notification preferences (location alerts, missed reminders, game completion) and improved location alert emails. Commit: `0da7ac5c`
+
+*Messaging Service — Backend*
+
+- Designed and implemented the messaging backend from scratch:
+  - Created `Message` Sequelize model with encrypted `content` field (using existing `encryptedGetter`/`encryptedSetter`), `type` (`message` | `meeting_request`), `meetingTime`, `meetingStatus`, and `isRead` fields.
+  - Implemented `messageController.js` with endpoints: send message, get conversation, get contacts, respond to meeting, cancel meeting, and unread count.
+  - Added authorisation helper (`canMessage`) to enforce that only assigned caregiver–patient pairs can message each other.
+  - Integrated Socket.io into the Express server for real-time delivery; messages are emitted to receiver's socket room (`user:{id}`) immediately on send.
+  - Socket events: `new_message`, `meeting_response`, `messages_read` (read receipts).
+  - Mounted message routes at `/api/messages`.
+
+*Messaging Service — Real-time Notifications*
+
+- Wired push and email notifications into the message send flow:
+  - Caregivers receive push notifications for new messages if subscribed; email notification if "New messages" preference is enabled in Settings.
+  - Patients receive push or email based on their `messageNotifications` opt-in and `reminderNotificationChannel` preference.
+  - On meeting acceptance: reminders created for both caregiver and patient, push notifications sent to both parties, and confirmation emails sent to both via `sendMeetingAcceptedEmails`.
+  - On meeting decline: push notification and email sent to the original requester.
+  - Extended `pushController` to allow caregivers to register push subscriptions (previously patient-only).
+
+*Messaging Service — Caregiver Dashboard UI*
+
+- Built the caregiver Messages page (`Messages.jsx`, `Messages.css`):
+  - Left panel: contact list with unread badge, last message preview, and timestamp.
+  - Right panel: conversation thread with plain message bubbles and meeting request cards (Accept/Decline, status badge).
+  - Text input with character counter (appears at 800+, turns red at 1000), calendar toggle for meeting requests with date/time picker (`timeIntervals={1}`).
+  - Mobile-responsive: contact list and conversation panel swap on small screens with a back button.
+  - Read receipt: "Seen" label appears below the last sent message when the receiver opens the conversation.
+- Added Messages link to the sidebar with a live unread badge that increments via socket and clears on navigation to `/messages`.
+- Added service worker (`sw.js`) and `usePushSubscription` hook for caregiver push notification registration.
+- Added `useSocket` hook for singleton socket connection with JWT authentication and 30-second keepalive ping.
+
+*Messaging Service — Patient App UI*
+
+- Built the patient Messages page (`Messages.jsx`, `Messages.css`):
+  - Auto-opens the conversation with the assigned caregiver on load.
+  - Meeting request cards with Accept/Decline; accepted meetings appear as reminders in the patient's Reminders page.
+  - Character counter and read receipt ("Seen") consistent with caregiver UI.
+  - Added Messages link to the patient bottom navigation.
+  - Added `useSocket` hook for the patient app.
+
+*Notification Preferences*
+
+- Added "New messages" toggle to caregiver Settings email notification preferences; fixed backend to persist and return the `messages` key correctly alongside existing preferences.
+- Redesigned patient Profile Notifications section:
+  - "Notify me about" — independent checkboxes for Reminders and Messages.
+  - "How to notify me" — Email, In-app push, or None; appears only when at least one type is selected.
+  - `messageNotifications` boolean added to `Patient` model and controller.
+
+*Supporting commits:* `96cd72aa` (caregiver dashboard messaging flow), `96f0bee9` (patient app messaging flow)
