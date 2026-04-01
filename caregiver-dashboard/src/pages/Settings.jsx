@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { getProfile, updateProfile, deleteAccount } from "../services/authService";
-import { LogOut, User, Save, Trash2, KeyRound, LogOut as SessionIcon, AlertTriangle, Camera, Mail, MapPin, Bell, Gamepad2, Lock } from "lucide-react";
+import { LogOut, User, Save, Trash2, KeyRound, LogOut as SessionIcon, AlertTriangle, Camera, Mail, MapPin, Bell, Gamepad2, MessageSquare } from "lucide-react";
 import "./Settings.css";
 
 const MAX_AVATAR_BYTES = 1024 * 1024; // 1MB
@@ -58,6 +58,7 @@ const NOTIFICATION_OPTIONS = [
     { key: "locationAlerts", label: "Patient leaves safe zone", desc: "Get an email when a patient goes outside their safe zone.", icon: MapPin },
     { key: "missedReminders", label: "Patient misses reminder", desc: "Get an email when a patient has an overdue reminder.", icon: Bell },
     { key: "gameCompletion", label: "Patient completes a game", desc: "Get an email when a patient finishes a game.", icon: Gamepad2 },
+    { key: "messages", label: "New messages", desc: "Get an email when a patient sends you a message or meeting request.", icon: MessageSquare },
 ];
 
 const Settings = () => {
@@ -75,7 +76,7 @@ const Settings = () => {
             .then((res) => {
                 const u = res?.data?.user ?? res?.user ?? contextUser;
                 if (u) {
-                    const prefs = u.emailNotificationPreferences ?? { locationAlerts: false, missedReminders: false, gameCompletion: false };
+                    const prefs = u.emailNotificationPreferences ?? { locationAlerts: false, missedReminders: false, gameCompletion: false, messages: false };
                     setProfile({
                         name: u.name ?? "",
                         email: u.email ?? "",
@@ -89,7 +90,7 @@ const Settings = () => {
                     name: contextUser.name ?? "",
                     email: contextUser.email ?? "",
                     avatar: contextUser.avatar ?? null,
-                    emailNotificationPreferences: { locationAlerts: false, missedReminders: false, gameCompletion: false },
+                    emailNotificationPreferences: { locationAlerts: false, missedReminders: false, gameCompletion: false, messages: false },
                 });
             })
             .finally(() => setLoading(false));
@@ -247,24 +248,10 @@ const Settings = () => {
 
     if (loading) return <div className="stg-page"><p className="stg-loading">Loading settings…</p></div>;
 
-    const currentEmail = (profile.email ?? contextUser?.email ?? "").trim().toLowerCase();
-    const isUsabilityTesting = import.meta.env.VITE_USABILITY_TESTING === "1";
-    const testCaregiverEmail = (import.meta.env.VITE_TEST_CAREGIVER_EMAIL || "test.caregiver@neuroease.test").trim().toLowerCase();
-    const isTestAccountLocked = isUsabilityTesting && testCaregiverEmail && currentEmail === testCaregiverEmail;
-
     return (
         <div className="stg-page">
             <h1 className="stg-page-title">Settings</h1>
             <p className="stg-page-subtitle">Manage your account, password, and session</p>
-
-            {isTestAccountLocked && (
-                <div className="stg-disclaimer stg-disclaimer--locked" role="status">
-                    <Lock size={18} aria-hidden />
-                    <div>
-                        <strong>Testing account protected.</strong> Profile, password, and account deletion are disabled so the shared test account stays consistent for all testers. You can still change email notification preferences and log out.
-                    </div>
-                </div>
-            )}
 
             <div className="stg-panel">
                 <div className="stg-panel-header">
@@ -302,7 +289,7 @@ const Settings = () => {
                                 type="button"
                                 className="stg-btn stg-btn-secondary stg-btn-sm"
                                 onClick={() => fileInputRef.current?.click()}
-                                disabled={saving || isTestAccountLocked}
+                                disabled={saving}
                             >
                                 <Camera size={16} aria-hidden /> Choose photo
                             </button>
@@ -311,7 +298,7 @@ const Settings = () => {
                                     type="button"
                                     className="stg-btn stg-btn-ghost stg-btn-sm"
                                     onClick={handleRemoveAvatar}
-                                    disabled={saving || isTestAccountLocked}
+                                    disabled={saving}
                                 >
                                     Use default
                                 </button>
@@ -328,8 +315,8 @@ const Settings = () => {
                                 value={profile.name}
                                 onChange={(e) => handleProfileChange("name", e.target.value)}
                                 autoComplete="name"
-                                readOnly={isTestAccountLocked}
-                                disabled={isTestAccountLocked}
+                                
+                                
                             />
                         </div>
                         <div className="stg-field">
@@ -341,12 +328,12 @@ const Settings = () => {
                                 value={profile.email}
                                 onChange={(e) => handleProfileChange("email", e.target.value)}
                                 autoComplete="email"
-                                readOnly={isTestAccountLocked}
-                                disabled={isTestAccountLocked}
+                                
+                                
                             />
                         </div>
                         <div style={{ gridColumn: "1 / -1" }}>
-                            <button type="submit" className="stg-btn stg-btn-primary" disabled={saving || isTestAccountLocked}>
+                            <button type="submit" className="stg-btn stg-btn-primary" disabled={saving}>
                                 <Save size={18} aria-hidden /> {saving ? "Saving…" : "Save changes"}
                             </button>
                         </div>
@@ -400,7 +387,7 @@ const Settings = () => {
                                 value={passwordForm.current}
                                 onChange={(e) => setPasswordForm((p) => ({ ...p, current: e.target.value }))}
                                 autoComplete="current-password"
-                                disabled={isTestAccountLocked}
+                                
                             />
                             {passwordErrors.current && <span className="stg-error">{passwordErrors.current}</span>}
                         </div>
@@ -413,7 +400,7 @@ const Settings = () => {
                                 value={passwordForm.new}
                                 onChange={(e) => setPasswordForm((p) => ({ ...p, new: e.target.value }))}
                                 autoComplete="new-password"
-                                disabled={isTestAccountLocked}
+                                
                             />
                             {passwordErrors.new && <span className="stg-error">{passwordErrors.new}</span>}
                         </div>
@@ -426,11 +413,11 @@ const Settings = () => {
                                 value={passwordForm.confirm}
                                 onChange={(e) => setPasswordForm((p) => ({ ...p, confirm: e.target.value }))}
                                 autoComplete="new-password"
-                                disabled={isTestAccountLocked}
+                                
                             />
                             {passwordErrors.confirm && <span className="stg-error">{passwordErrors.confirm}</span>}
                         </div>
-                        <button type="submit" className="stg-btn stg-btn-secondary" disabled={saving || isTestAccountLocked}>
+                        <button type="submit" className="stg-btn stg-btn-secondary" disabled={saving}>
                             Update password
                         </button>
                     </form>
@@ -458,8 +445,8 @@ const Settings = () => {
                         type="button"
                         className="stg-btn stg-btn-delete"
                         onClick={handleDeleteAccount}
-                        disabled={saving || isTestAccountLocked}
-                        title={isTestAccountLocked ? "Testing account cannot be deleted" : undefined}
+                        disabled={saving}
+                        title={undefined}
                     >
                         <Trash2 size={18} aria-hidden /> Delete my account
                     </button>

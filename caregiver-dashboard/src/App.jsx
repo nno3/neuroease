@@ -14,6 +14,7 @@ import Reminders from './pages/Reminders';
 import Activity from './pages/Activity';
 import Location from './pages/Location';
 import Settings from './pages/Settings';
+import Messages from './pages/Messages';
 import VerifyEmail from './pages/VerifyEmail';
 
 function App() {
@@ -35,6 +36,7 @@ function App() {
                     <Route path="reminders" element={<Reminders />} />
                     <Route path="activity" element={<Activity/>} />
                     <Route path="location" element={<Location />} />
+                    <Route path="messages" element={<Messages />} />
                     <Route path="settings" element={<Settings />} />
                 </Route>
 

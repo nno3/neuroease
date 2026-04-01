@@ -4,14 +4,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { API_BASE } from '../services/apiClient';
 
 const Login = () => {
-    const { login, loginWithToken } = useAuth();
+    const { login } = useAuth();
     const navigate = useNavigate();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [showTestDisclaimer, setShowTestDisclaimer] = useState(false);
     const [resendStatus, setResendStatus] = useState(''); // '' | 'sending' | 'sent' | 'error'
     const [emailNotVerified, setEmailNotVerified] = useState(false);
 
@@ -62,26 +61,6 @@ const Login = () => {
             setError('Failed to send. Please try again.');
         }
     };
-    const handleTestLogin = async () => {
-        setLoading(true);
-        setError('');
-        try {
-            const res = await fetch(`${API_BASE}/auth/test-session?role=caregiver`);
-            const data = await res.json().catch(() => ({}));
-            if (res.ok && data.success && data.data?.user && data.data?.token) {
-                const result = loginWithToken(data.data.user, data.data.token);
-                if (result.success) navigate('/');
-                else setError(result.error || 'Test login failed');
-            } else {
-                setError(data.message || 'Testing login unavailable. Set USABILITY_TESTING=1 and TEST_CAREGIVER_ID in backend .env.');
-            }
-        } catch (err) {
-            setError('Could not reach the server. Is the backend running?');
-        } finally {
-            setLoading(false);
-        }
-    };
-
     return (
         <div style={{
             minHeight: '100vh',
@@ -98,31 +77,6 @@ const Login = () => {
                 width: '100%',
                 maxWidth: '400px'
             }}>
-                {import.meta.env.VITE_USABILITY_TESTING === "1" && (
-                    <div style={{ marginBottom: '24px' }} role="status">
-                        <div style={{
-                            padding: '12px 16px',
-                            background: '#f3e8ff',
-                            color: '#5b21b6',
-                            borderRadius: '8px',
-                            marginBottom: '8px',
-                            fontSize: '13px',
-                            lineHeight: 1.5
-                        }}>
-                            <strong>Content notice:</strong> This study relates to memory difficulties/dementia and includes examples involving reminders, medication, and safety features. Some people may find this topic sensitive.
-                        </div>
-                        <div style={{
-                            padding: '12px 16px',
-                            background: '#dbeafe',
-                            color: '#1e40af',
-                            borderRadius: '8px',
-                            fontSize: '13px',
-                            lineHeight: 1.5
-                        }}>
-                            <strong>Usability testing:</strong> You can skip login and use a test caregiver account (Testing button below). Use your real email when creating a patient. On Location, use simulated locations only. Participation is voluntary.
-                        </div>
-                    </div>
-                )}
                 <div style={{ textAlign: 'center', marginBottom: '32px' }}>
                     <h1 style={{ marginBottom: '8px', color: '#1e293b' }}>NeuroEase</h1>
                     <p style={{ color: '#64748b', fontSize: '14px' }}>
@@ -250,121 +204,6 @@ const Login = () => {
                         {loading ? 'Logging in...' : 'Login'}
                     </button>
                 </form>
-
-                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                    <p style={{ color: '#64748b', marginBottom: '12px', fontSize: '14px' }}>
-                        Usability testing:
-                    </p>
-                    <button
-                        onClick={() => setShowTestDisclaimer(true)}
-                        disabled={loading}
-                        style={{
-                            padding: '10px 24px',
-                            background: '#4A90E2',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: loading ? 'not-allowed' : 'pointer',
-                            opacity: loading ? 0.7 : 1,
-                            fontSize: '14px',
-                            fontWeight: '600',
-                            transition: 'all 0.2s'
-                        }}
-                    >
-                        Testing
-                    </button>
-                    <p style={{ color: '#64748b', marginTop: '8px', fontSize: '12px' }}>
-                        Skip login and use a test caregiver account.
-                    </p>
-                </div>
-
-                {showTestDisclaimer && (
-                    <div
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="test-disclaimer-title"
-                        style={{
-                            position: 'fixed',
-                            inset: 0,
-                            background: 'rgba(0,0,0,0.5)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            zIndex: 1000,
-                            padding: '20px'
-                        }}
-                        onClick={(e) => e.target === e.currentTarget && setShowTestDisclaimer(false)}
-                    >
-                        <div
-                            style={{
-                                background: 'white',
-                                borderRadius: '12px',
-                                padding: '24px',
-                                maxWidth: '420px',
-                                width: '100%',
-                                boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <h2 id="test-disclaimer-title" style={{ margin: '0 0 16px 0', fontSize: '18px', color: '#1e293b' }}>
-                                Usability testing disclaimer
-                            </h2>
-                            <div style={{ marginBottom: '20px', fontSize: '14px', lineHeight: 1.6, color: '#475569' }}>
-                                <p style={{ margin: '0 0 12px 0' }}>
-                                    <strong>Before continuing, please note:</strong>
-                                </p>
-                                <ul style={{ margin: '0 0 12px 0', paddingLeft: '20px' }}>
-                                    <li>Use your <strong>real email</strong> when creating a patient so you receive the activation link for the Patient App.</li>
-                                    <li>All other data (names, medical info, reminders) is <strong>simulated</strong>.</li>
-                                    <li>On the Location page, use <strong>simulated locations only</strong> (e.g. University of Leicester, National Space Centre). Do not use your real address.</li>
-                                    <li>This study relates to memory difficulties/dementia. Some people may find this topic sensitive.</li>
-                                </ul>
-                                <p style={{ margin: 0 }}>
-                                    Participation is voluntary. You may withdraw at any time.
-                                </p>
-                            </div>
-                            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowTestDisclaimer(false)}
-                                    style={{
-                                        padding: '10px 20px',
-                                        background: '#f1f5f9',
-                                        color: '#475569',
-                                        border: '1px solid #e2e8f0',
-                                        borderRadius: '6px',
-                                        fontSize: '14px',
-                                        fontWeight: '500',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setShowTestDisclaimer(false);
-                                        handleTestLogin();
-                                    }}
-                                    disabled={loading}
-                                    style={{
-                                        padding: '10px 20px',
-                                        background: '#4A90E2',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        fontSize: '14px',
-                                        fontWeight: '600',
-                                        cursor: loading ? 'not-allowed' : 'pointer',
-                                        opacity: loading ? 0.7 : 1
-                                    }}
-                                >
-                                    I understand, continue
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
 
                 <div style={{
                     textAlign: 'center',

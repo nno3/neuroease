@@ -91,7 +91,6 @@ export const AuthProvider = ({ children }) => {
         return { success: true };
     };
 
-    /** Usability testing: log in with token from test-session API (no password). */
     const loginWithToken = (userData, token) => {
         if (!userData || !token) return { success: false, error: 'Invalid session' };
         setUser(userData);

@@ -5,6 +5,7 @@ import {
     Bell,
     Activity,
     MapPin,
+    MessageSquare,
     Settings,
     X,
 } from "lucide-react";
@@ -16,9 +17,10 @@ const navItems = [
     { to: "/reminders", label: "Reminders", icon: Bell },
     { to: "/activity", label: "Activity", icon: Activity },
     { to: "/location", label: "Location", icon: MapPin },
+    { to: "/messages", label: "Messages", icon: MessageSquare, badgeKey: "messages" },
 ];
 
-const Sidebar = ({ isOpen = false, onClose }) => {
+const Sidebar = ({ isOpen = false, onClose, badges = {} }) => {
     return (
         <>
             {onClose && <div className={`sidebar-overlay ${isOpen ? "is-open" : ""}`} onClick={onClose} aria-hidden />}
@@ -32,18 +34,26 @@ const Sidebar = ({ isOpen = false, onClose }) => {
                 )}
             </div>
             <nav className="sidebar-nav">
-                {navItems.map(({ to, label, icon: Icon }) => (
-                    <NavLink
-                        key={to}
-                        to={to}
-                        end={to === "/"}
-                        onClick={onClose}
-                        className={({ isActive }) => `sidebar-link ${isActive ? "is-active" : ""}`}
-                    >
-                        <Icon size={20} className="sidebar-link-icon" aria-hidden />
-                        <span>{label}</span>
-                    </NavLink>
-                ))}
+                {navItems.map(({ to, label, icon: Icon, badgeKey }) => {
+                    const badgeCount = badgeKey ? (badges[badgeKey] ?? 0) : 0;
+                    return (
+                        <NavLink
+                            key={to}
+                            to={to}
+                            end={to === "/"}
+                            onClick={onClose}
+                            className={({ isActive }) => `sidebar-link ${isActive ? "is-active" : ""}`}
+                        >
+                            <span className="sidebar-link-icon-wrap">
+                                <Icon size={20} className="sidebar-link-icon" aria-hidden />
+                                {badgeCount > 0 && (
+                                    <span className="sidebar-badge">{badgeCount > 99 ? '99+' : badgeCount}</span>
+                                )}
+                            </span>
+                            <span>{label}</span>
+                        </NavLink>
+                    );
+                })}
             </nav>
             <nav className="sidebar-nav sidebar-nav-bottom">
                 <NavLink
