@@ -1,13 +1,11 @@
 /**
  * Patient login – two flows: (1) URL has ?token=... (magic link) → verify and redirect to home;
  * (2) no token → show email form, "Send login link", then show success or error message.
- * Usability testing: when VITE_USABILITY_TESTING=1, shows "Skip to testing" to bypass login.
  */
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { requestLoginLink, verifyMagicLink, verifyCode } from "../services/authService";
-import { apiRequest } from "../services/apiClient";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -17,9 +15,7 @@ export default function Login() {
   const [code, setCode] = useState("");
   const [codeStatus, setCodeStatus] = useState("idle"); // idle | submitting | error
   const [codeError, setCodeError] = useState("");
-  const [skipStatus, setSkipStatus] = useState("idle"); // idle | loading | error
   const { user, login } = useAuth();
-  const isUsabilityTesting = import.meta.env.VITE_USABILITY_TESTING === "1";
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
@@ -52,22 +48,6 @@ export default function Login() {
     } catch (err) {
       setStatus("error");
       setMessage(err.message || "Something went wrong. Please try again.");
-    }
-  };
-
-  const handleSkipToTesting = async () => {
-    setSkipStatus("loading");
-    try {
-      const res = await apiRequest("/api/auth/test-session");
-      const { user, token } = res?.data ?? {};
-      if (user && token) {
-        login(user, token);
-        navigate("/", { replace: true });
-      } else {
-        setSkipStatus("error");
-      }
-    } catch (err) {
-      setSkipStatus("error");
     }
   };
 
@@ -174,27 +154,6 @@ export default function Login() {
           </button>
         </form>
         {codeError && <p className="pa-error" style={{ marginTop: "0.75rem" }}>{codeError}</p>}
-        {isUsabilityTesting && (
-          <>
-            <hr style={{ margin: "1.5rem 0", border: "none", borderTop: "1px solid #e2e8f0" }} />
-            <p className="pa-muted" style={{ marginBottom: "0.75rem" }}>
-              Usability testing: skip login and use a test account.
-            </p>
-            <button
-              type="button"
-              className="pa-btn pa-btn--secondary"
-              onClick={handleSkipToTesting}
-              disabled={skipStatus === "loading"}
-            >
-              {skipStatus === "loading" ? "Loading…" : "Skip to testing"}
-            </button>
-            {skipStatus === "error" && (
-              <p className="pa-error" style={{ marginTop: "0.75rem" }}>
-                Could not start test session. Ensure backend has USABILITY_TESTING=1 and TEST_PATIENT_ID set.
-              </p>
-            )}
-          </>
-        )}
       </div>
     </div>
   );

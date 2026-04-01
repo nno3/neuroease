@@ -19,7 +19,6 @@ import {
 } from "../utils/voiceAssist";
 import { getGameSoundsEnabled, setGameSoundsEnabled } from "../utils/gameSounds";
 import { MapPin } from "lucide-react";
-import { SIMULATED_LOCATIONS } from "../services/locationService";
 import "./Profile.css";
 
 function urlBase64ToUint8Array(base64String) {
@@ -39,15 +38,13 @@ export default function Profile() {
     geoPermissionStatus,
     locationError,
     isGeolocationSupported,
-    isUsabilityTesting,
     recheckPermission,
     openLocationSettings,
     sendLocationNow,
-    sendSimulatedLocation,
-    startSimulatedLocationSharing,
-    stopSimulatedLocationSharing,
   } = useLocationSharing();
   const [channel, setChannel] = useState("none");
+  const [notifyReminders, setNotifyReminders] = useState(true);
+  const [notifyMessages, setNotifyMessages] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -63,7 +60,6 @@ export default function Profile() {
   const [gameSoundsEnabled, setGameSoundsEnabledState] = useState(true);
   const [locationRechecking, setLocationRechecking] = useState(false);
   const [locationSending, setLocationSending] = useState(false);
-  const [simulatedLocationId, setSimulatedLocationId] = useState("home");
 
   useEffect(() => {
     setGameSoundsEnabledState(getGameSoundsEnabled());
@@ -98,6 +94,9 @@ export default function Profile() {
         const profile = res?.data?.patient?.Patient ?? res?.data?.patient?.profile ?? null;
         const ch = (profile?.reminderNotificationChannel ?? "none").toLowerCase();
         setChannel(ch === "email" || ch === "push" ? ch : "none");
+        // reminderNotificationChannel being set means reminders are on; treat "none" as off
+        setNotifyReminders(ch === "email" || ch === "push");
+        setNotifyMessages(!!profile?.messageNotifications);
         if (profile?.locationConsent !== undefined) setLocationConsent(profile.locationConsent);
         if ("Notification" in window) setPermissionStatus(Notification.permission);
       })
@@ -143,16 +142,6 @@ export default function Profile() {
     return () => { cancelled = true; };
   }, [channel, user?.id, saveSuccess]);
 
-  // Usability testing: start/stop simulated location when consent or selection changes
-  useEffect(() => {
-    if (!isUsabilityTesting || !user?.id) return;
-    if (locationConsent === true) {
-      const loc = SIMULATED_LOCATIONS.find((l) => l.id === simulatedLocationId) || SIMULATED_LOCATIONS[0];
-      startSimulatedLocationSharing(loc.lat, loc.lng);
-      return () => stopSimulatedLocationSharing();
-    }
-    stopSimulatedLocationSharing();
-  }, [locationConsent, simulatedLocationId, isUsabilityTesting, user?.id]);
 
   const handleChannelChange = async (value) => {
     const newChannel = value === "email" ? "email" : value === "push" ? "push" : "none";
@@ -192,7 +181,7 @@ export default function Profile() {
       }
       await apiRequest(`/api/patients/${user.id}`, {
         method: "PUT",
-        body: JSON.stringify({ reminderNotificationChannel: newChannel }),
+        body: JSON.stringify({ reminderNotificationChannel: newChannel, messageNotifications: notifyMessages }),
       });
         setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -297,51 +286,100 @@ export default function Profile() {
         </h3>
         <hr className="pa-profile-card-divider" aria-hidden />
 
-        {/* Reminder channel */}
-        <div className="pa-profile-channel-section" role="radiogroup" aria-labelledby="pa-reminder-channel-heading">
-          <h4 id="pa-reminder-channel-heading" className="pa-profile-row-label">Reminder alerts</h4>
-          <p className="pa-profile-row-desc">Choose how you want to be notified when a reminder is due.</p>
-          <div className="pa-profile-radio-group">
-            <label className="pa-profile-radio">
+        {/* What to notify about */}
+        <div className="pa-profile-channel-section">
+          <h4 className="pa-profile-row-label">Notify me about</h4>
+          <p className="pa-profile-row-desc">Choose what you want to be notified about.</p>
+          <div className="pa-profile-notif-checks">
+            <label className="pa-profile-notif-check" htmlFor="notif-reminders">
               <input
-                type="radio"
-                name="reminderNotificationChannel"
-                value="email"
-                checked={channel === "email"}
-                onChange={() => handleChannelChange("email")}
-                disabled={saving}
-                aria-describedby="pa-reminder-email-desc"
+                id="notif-reminders"
+                type="checkbox"
+                checked={notifyReminders}
+                onChange={(e) => {
+                  const val = e.target.checked;
+                  setNotifyReminders(val);
+                  apiRequest(`/api/patients/${user.id}`, {
+                    method: "PUT",
+                    body: JSON.stringify({
+                      reminderNotificationChannel: val ? (channel === "none" ? "push" : channel) : "none",
+                      messageNotifications: notifyMessages,
+                    }),
+                  }).catch(() => setNotifyReminders(!val));
+                }}
+                className="pa-profile-notif-checkbox"
               />
-              <span>Email</span>
+              <span className="pa-profile-notif-check-label">Reminders</span>
+              <span className="pa-profile-notif-check-desc">Get notified when a reminder is due.</span>
             </label>
-            <p id="pa-reminder-email-desc" className="pa-profile-radio-desc">Receive an email when a reminder is due.</p>
-            <label className="pa-profile-radio">
+            <label className="pa-profile-notif-check" htmlFor="notif-messages">
               <input
-                type="radio"
-                name="reminderNotificationChannel"
-                value="push"
-                checked={channel === "push"}
-                onChange={() => handleChannelChange("push")}
-                disabled={saving}
-                aria-describedby="pa-reminder-push-desc"
+                id="notif-messages"
+                type="checkbox"
+                checked={notifyMessages}
+                onChange={(e) => {
+                  const val = e.target.checked;
+                  setNotifyMessages(val);
+                  apiRequest(`/api/patients/${user.id}`, {
+                    method: "PUT",
+                    body: JSON.stringify({ messageNotifications: val }),
+                  }).catch(() => setNotifyMessages(!val));
+                }}
+                className="pa-profile-notif-checkbox"
               />
-              <span>In-app push</span>
+              <span className="pa-profile-notif-check-label">Messages</span>
+              <span className="pa-profile-notif-check-desc">Get notified when your caregiver sends a message or meeting request.</span>
             </label>
-            <p id="pa-reminder-push-desc" className="pa-profile-radio-desc">Get a notification on this device (works with Add to Home Screen). iOS 16.4+ for iPhone/iPad.</p>
-            <label className="pa-profile-radio">
-              <input
-                type="radio"
-                name="reminderNotificationChannel"
-                value="none"
-                checked={channel === "none"}
-                onChange={() => handleChannelChange("none")}
-                disabled={saving}
-              />
-              <span>None</span>
-            </label>
-            <p className="pa-profile-radio-desc">Do not send reminder notifications.</p>
           </div>
         </div>
+
+        {/* How to notify */}
+        {(notifyReminders || notifyMessages) && (
+          <div className="pa-profile-channel-section pa-profile-channel-section--how" role="radiogroup" aria-labelledby="pa-channel-heading">
+            <h4 id="pa-channel-heading" className="pa-profile-row-label">How to notify me</h4>
+            <p className="pa-profile-row-desc">Applies to all notification types selected above.</p>
+            <div className="pa-profile-radio-group">
+              <label className="pa-profile-radio">
+                <input
+                  type="radio"
+                  name="notifChannel"
+                  value="email"
+                  checked={channel === "email"}
+                  onChange={() => handleChannelChange("email")}
+                  disabled={saving}
+                  aria-describedby="pa-channel-email-desc"
+                />
+                <span>Email</span>
+              </label>
+              <p id="pa-channel-email-desc" className="pa-profile-radio-desc">Receive an email notification.</p>
+              <label className="pa-profile-radio">
+                <input
+                  type="radio"
+                  name="notifChannel"
+                  value="push"
+                  checked={channel === "push"}
+                  onChange={() => handleChannelChange("push")}
+                  disabled={saving}
+                  aria-describedby="pa-channel-push-desc"
+                />
+                <span>In-app push</span>
+              </label>
+              <p id="pa-channel-push-desc" className="pa-profile-radio-desc">Get a notification on this device (works with Add to Home Screen). iOS 16.4+ for iPhone/iPad.</p>
+              <label className="pa-profile-radio">
+                <input
+                  type="radio"
+                  name="notifChannel"
+                  value="none"
+                  checked={channel === "none"}
+                  onChange={() => handleChannelChange("none")}
+                  disabled={saving}
+                />
+                <span>None</span>
+              </label>
+              <p className="pa-profile-radio-desc">Turn off delivery for now without changing your selections above.</p>
+            </div>
+          </div>
+        )}
 
         {saving && <p className="pa-muted pa-profile-saving" aria-live="polite">Saving…</p>}
         {saveSuccess && <p className="pa-profile-success" role="status">Saved.</p>}
@@ -354,7 +392,6 @@ export default function Profile() {
             )}
           </div>
         )}
-
       </div>
 
       {/* Voice & speech — separate from notification channel; applies to Read aloud + speech synthesis */}
@@ -487,51 +524,27 @@ export default function Profile() {
       </div>
 
       {/* Location sharing card */}
-      {(isGeolocationSupported || isUsabilityTesting) && (
+      {isGeolocationSupported && (
         <div className="pa-profile-card" role="region" aria-labelledby="pa-location-heading">
           <h3 id="pa-location-heading" className="pa-profile-card-title">
             <MapPin className="pa-profile-card-icon" aria-hidden />
             Location sharing
           </h3>
           <hr className="pa-profile-card-divider" aria-hidden />
-          {isUsabilityTesting && (
-            <p className="pa-profile-location-note pa-profile-simulated-banner" role="status">
-              <strong>Usability testing:</strong> Choose a simulated location below. Your real location is not shared.
-            </p>
-          )}
           <p className="pa-profile-row-desc pa-profile-location-desc">
             Share your location with your caregiver so they can see where you are and get alerts if you leave a safe zone.
           </p>
           <p className="pa-profile-location-note">
             <strong>For caregivers:</strong> Location is sent automatically. No need for the patient to do anything. When using the app in a browser, tracking works while the app is open. For <strong>24/7 tracking</strong> (even when the app is closed), install the native iOS/Android app – see setup guide in the project docs.
           </p>
-          {isUsabilityTesting && (
-            <div className="pa-profile-simulated-row">
-              <label htmlFor="pa-simulated-location" className="pa-profile-row-label">Simulated location</label>
-              <select
-                id="pa-simulated-location"
-                className="pa-profile-select"
-                value={simulatedLocationId}
-                onChange={(e) => setSimulatedLocationId(e.target.value)}
-                aria-describedby="pa-simulated-desc"
-              >
-                {SIMULATED_LOCATIONS.map((loc) => (
-                  <option key={loc.id} value={loc.id}>{loc.name}</option>
-                ))}
-              </select>
-              <p id="pa-simulated-desc" className="pa-profile-row-desc">Select a preset location to simulate. No real GPS is used.</p>
-            </div>
-          )}
           <div className="pa-profile-toggle-row">
             <div className="pa-profile-toggle-text">
               <span className="pa-profile-row-label">Location sharing</span>
               <span className="pa-profile-row-desc" id="pa-location-desc">
                 {locationConsent
-                  ? isUsabilityTesting
-                    ? "On – sending simulated location"
-                    : geoPermissionStatus === "denied" || locationError
-                      ? "On – enable location in Settings to share"
-                      : "On – sending location automatically"
+                  ? geoPermissionStatus === "denied" || locationError
+                    ? "On – enable location in Settings to share"
+                    : "On – sending location automatically"
                   : "Off"}
               </span>
             </div>
@@ -546,18 +559,13 @@ export default function Profile() {
               <span className="pa-profile-toggle-slider" />
             </label>
           </div>
-          {locationConsent && (isUsabilityTesting || !(geoPermissionStatus === "denied" || locationError)) && (
+          {locationConsent && !(geoPermissionStatus === "denied" || locationError) && (
             <button
               type="button"
               className="pa-btn pa-profile-location-send-now"
               onClick={async () => {
                 setLocationSending(true);
-                if (isUsabilityTesting) {
-                  const loc = SIMULATED_LOCATIONS.find((l) => l.id === simulatedLocationId) || SIMULATED_LOCATIONS[0];
-                  await sendSimulatedLocation(loc.lat, loc.lng);
-                } else {
-                  sendLocationNow();
-                }
+                sendLocationNow();
                 setTimeout(() => setLocationSending(false), 2000);
               }}
               disabled={locationSending}

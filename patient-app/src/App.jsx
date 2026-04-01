@@ -13,6 +13,7 @@ import Games from "./pages/Games";
 import MemoryGame from "./pages/MemoryGame";
 import MathGame from "./pages/MathGame";
 import Reminders from "./pages/Reminders";
+import Messages from "./pages/Messages";
 import Profile from "./pages/Profile";
 
 function App() {
@@ -35,6 +36,7 @@ function App() {
           <Route path="games/memory" element={<MemoryGame />} />
           <Route path="games/math" element={<MathGame />} />
           <Route path="reminders" element={<Reminders />} />
+          <Route path="messages" element={<Messages />} />
           <Route path="profile" element={<Profile />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -212,6 +212,87 @@
   margin-bottom: 0.5rem;
 }
 
+.pa-profile-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: var(--pa-touch-min);
+  padding: 0.5rem 0;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.pa-profile-toggle-checkbox {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  accent-color: var(--pa-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Notification type checkboxes */
+.pa-profile-notif-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.pa-profile-notif-check {
+  display: grid;
+  grid-template-columns: 1.25rem 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 0.875rem;
+  row-gap: 0.1rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pa-profile-notif-check:has(input:checked) {
+  border-color: var(--pa-primary);
+  background: #eff6ff;
+}
+
+.pa-profile-notif-checkbox {
+  grid-row: 1 / 3;
+  width: 1.125rem;
+  height: 1.125rem;
+  accent-color: var(--pa-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.pa-profile-notif-check-label {
+  grid-column: 2;
+  grid-row: 1;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.3;
+}
+
+.pa-profile-notif-check-desc {
+  grid-column: 2;
+  grid-row: 2;
+  font-size: 0.8125rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.pa-profile-channel-section--how {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #f1f5f9;
+}
+
 .pa-profile-channel-section .pa-profile-row-desc {
   margin-bottom: 1rem;
 }

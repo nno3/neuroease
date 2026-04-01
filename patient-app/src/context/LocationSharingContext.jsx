@@ -84,8 +84,6 @@ export function LocationSharingProvider({ children }) {
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   }, [user?.id, locationConsent]);
 
-  const isUsabilityTesting = import.meta.env.VITE_USABILITY_TESTING === "1";
-
   // Start/stop location service based on user and consent
   useEffect(() => {
     if (!user?.id) {
@@ -98,11 +96,6 @@ export function LocationSharingProvider({ children }) {
       stopLocationSharing();
       stopSimulatedLocationSharing();
       setLocationError(null);
-      return;
-    }
-    // Usability testing: use simulated locations only (no real GPS)
-    if (isUsabilityTesting) {
-      stopLocationSharing();
       return;
     }
     // Don't start if we already know permission is denied
@@ -120,7 +113,7 @@ export function LocationSharingProvider({ children }) {
       onError: (msg) => setLocationError(msg),
     });
     return () => stopLocationSharing();
-  }, [user?.id, locationConsent, geoPermissionStatus, isUsabilityTesting]);
+  }, [user?.id, locationConsent, geoPermissionStatus]);
 
   // Clear error when consent is turned off
   useEffect(() => {
@@ -157,7 +150,6 @@ export function LocationSharingProvider({ children }) {
     locationError,
     loading,
     isGeolocationSupported: isGeolocationSupported(),
-    isUsabilityTesting,
     recheckPermission,
     openLocationSettings,
     sendLocationNow,

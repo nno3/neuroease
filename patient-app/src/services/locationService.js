@@ -283,10 +283,7 @@ export function getGeolocationPermissionState() {
   return Promise.resolve("unknown");
 }
 
-/**
- * Preset locations for usability testing (simulated, no real GPS).
- * Used when VITE_USABILITY_TESTING=1 to avoid requesting device location.
- */
+/** Preset simulated locations (no real GPS). */
 export const SIMULATED_LOCATIONS = [
   { id: "home", name: "Home", lat: 52.2053, lng: 0.1218 },
   { id: "park", name: "Park", lat: 52.2104, lng: 0.1165 },

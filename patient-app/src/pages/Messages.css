@@ -1,0 +1,320 @@
+.pa-msg-page {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 64px);
+    background: #f8fafc;
+    overflow: hidden;
+}
+
+.pa-msg-empty {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 14px;
+    margin: auto;
+    padding: 40px 20px;
+}
+
+/* ── Contact tabs (multiple caregivers) ── */
+.pa-msg-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
+    overflow-x: auto;
+}
+
+.pa-msg-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 999px;
+    background: #fff;
+    font-size: 14px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+}
+
+.pa-msg-tab--active {
+    background: #eff6ff;
+    border-color: #3b82f6;
+    color: #1d4ed8;
+    font-weight: 600;
+}
+
+.pa-msg-tab-badge {
+    background: #3b82f6;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 1px 6px;
+}
+
+/* ── Conversation header ── */
+.pa-msg-conversation-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.pa-msg-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #6366f1;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 15px;
+    flex-shrink: 0;
+}
+
+.pa-msg-contact-name {
+    margin: 0;
+    font-weight: 600;
+    font-size: 15px;
+    color: #1e293b;
+}
+
+.pa-msg-contact-role {
+    margin: 0;
+    font-size: 12px;
+    color: #64748b;
+}
+
+/* ── Thread ── */
+.pa-msg-thread {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.pa-msg-bubble-row { display: flex; }
+.pa-msg-bubble-row--mine { justify-content: flex-end; }
+
+.pa-msg-bubble-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    max-width: 75%;
+}
+
+.pa-msg-seen-label {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 2px;
+    padding-right: 4px;
+}
+
+.pa-msg-bubble {
+    max-width: 100%;
+    padding: 10px 14px;
+    border-radius: 16px;
+}
+
+.pa-msg-bubble--mine {
+    background: #3b82f6;
+    color: #fff;
+    border-bottom-right-radius: 4px;
+}
+
+.pa-msg-bubble--theirs {
+    background: #fff;
+    color: #1e293b;
+    border: 1px solid #e2e8f0;
+    border-bottom-left-radius: 4px;
+}
+
+.pa-msg-bubble-text {
+    margin: 0 0 4px 0;
+    font-size: 15px;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.pa-msg-bubble-time {
+    font-size: 11px;
+    opacity: 0.65;
+    display: block;
+    text-align: right;
+}
+
+/* ── Meeting card ── */
+.pa-msg-meeting-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #6366f1;
+    border-radius: 12px;
+    padding: 14px 16px;
+    max-width: 320px;
+    width: 100%;
+}
+
+.pa-msg-meeting-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6366f1;
+    margin-bottom: 8px;
+}
+
+.pa-msg-meeting-status {
+    margin-left: auto;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 2px 8px;
+}
+
+.pa-msg-meeting-content {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #1e293b;
+}
+
+.pa-msg-meeting-time {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    color: #64748b;
+    margin: 0 0 12px 0;
+}
+
+.pa-msg-meeting-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.pa-msg-meeting-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 14px;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.pa-msg-meeting-btn:hover { opacity: 0.85; }
+.pa-msg-meeting-btn--accept { background: #22c55e; color: #fff; }
+.pa-msg-meeting-btn--decline { background: #ef4444; color: #fff; }
+
+/* ── Composer ── */
+.pa-msg-composer {
+    padding: 12px 16px;
+    background: #fff;
+    border-top: 1px solid #e2e8f0;
+}
+
+.pa-msg-meeting-form {
+    padding: 8px 0 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.pa-msg-meeting-form-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.pa-msg-meeting-form-input {
+    padding: 8px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #1e293b;
+    outline: none;
+}
+
+.pa-msg-meeting-form-input:focus { border-color: #6366f1; }
+
+.pa-msg-composer-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pa-msg-meeting-toggle {
+    padding: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+
+.pa-msg-meeting-toggle:hover { background: #f1f5f9; }
+.pa-msg-meeting-toggle--active { background: #ede9fe; border-color: #6366f1; color: #6366f1; }
+
+.pa-msg-input-wrap {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.pa-msg-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    font-size: 15px;
+    outline: none;
+    background: #f8fafc;
+    color: #1e293b;
+}
+
+.pa-msg-input:focus { border-color: #3b82f6; background: #fff; }
+
+.pa-msg-char-count {
+    position: absolute;
+    right: 12px;
+    font-size: 11px;
+    color: #94a3b8;
+    pointer-events: none;
+}
+
+.pa-msg-char-count--limit { color: #ef4444; font-weight: 600; }
+
+.pa-msg-send-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: none;
+    background: #3b82f6;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: opacity 0.15s;
+}
+
+.pa-msg-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.pa-msg-send-btn:not(:disabled):hover { opacity: 0.85; }
