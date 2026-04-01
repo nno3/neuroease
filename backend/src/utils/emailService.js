@@ -564,6 +564,141 @@ async function sendCaregiverGameCompletionEmail(caregiverEmail, caregiverName, p
     return { sent: true };
 }
 
+/**
+ * Send meeting notification emails to both caregiver and patient when a meeting is accepted.
+ * @param {{ caregiverEmail, caregiverName, patientEmail, patientName, meetingTime: Date, note: string }} opts
+ */
+async function sendMeetingAcceptedEmails({ caregiverEmail, caregiverName, patientEmail, patientName, meetingTime, note }) {
+    const formatted = new Date(meetingTime).toLocaleString('en-GB', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+    });
+
+    const sharedNote = note ? `<p style="color:#475569;font-size:14px;"><strong>Note:</strong> ${note}</p>` : '';
+    const sharedNoteTxt = note ? `\nNote: ${note}` : '';
+
+    const caregiverHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="font-family:sans-serif;line-height:1.6;color:#334155;max-width:520px;margin:0 auto;padding:24px">
+  <h2 style="color:#1e293b;margin-bottom:4px">Meeting confirmed ✓</h2>
+  <p>Hi ${caregiverName || 'there'},</p>
+  <p><strong>${patientName || 'Your patient'}</strong> has accepted your meeting request.</p>
+  <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin:16px 0">
+    <p style="margin:0;font-size:15px;font-weight:600;color:#166534">📅 ${formatted}</p>
+  </div>
+  ${sharedNote}
+  <p>This meeting has been added to your NeuroEase calendar.</p>
+  <p>— NeuroEase</p>
+</body></html>`;
+
+    const patientHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="font-family:sans-serif;line-height:1.6;color:#334155;max-width:520px;margin:0 auto;padding:24px">
+  <h2 style="color:#1e293b;margin-bottom:4px">Meeting scheduled ✓</h2>
+  <p>Hi ${patientName || 'there'},</p>
+  <p>You accepted a meeting with your caregiver <strong>${caregiverName || ''}</strong>.</p>
+  <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:16px;margin:16px 0">
+    <p style="margin:0;font-size:15px;font-weight:600;color:#1d4ed8">📅 ${formatted}</p>
+  </div>
+  ${sharedNote}
+  <p>A reminder has been added to your NeuroEase app.</p>
+  <p>— NeuroEase</p>
+</body></html>`;
+
+    const resend = getResendClient();
+    const transporter = await getTransporter();
+
+    const sendOne = async (to, subject, html, text) => {
+        const payload = { from: MAIL_FROM, to, subject, html, text };
+        if (resend) {
+            try {
+                const { error } = await resend.emails.send(payload);
+                if (!error) return { sent: true };
+                console.warn('Resend meeting email failed, trying SMTP:', error.message);
+            } catch (err) {
+                console.warn('Resend meeting email threw, trying SMTP:', err.message);
+            }
+        }
+        if (transporter) {
+            try {
+                await transporter.sendMail(payload);
+                return { sent: true };
+            } catch (err) {
+                console.error('SMTP meeting email error:', err.message);
+                return { sent: false, error: err.message };
+            }
+        }
+        console.warn('No email transport configured. Meeting email not sent to:', to);
+        return { sent: false };
+    };
+
+    await Promise.allSettled([
+        sendOne(
+            caregiverEmail,
+            `Meeting confirmed with ${patientName || 'your patient'} – ${formatted}`,
+            caregiverHtml,
+            `Hi ${caregiverName || 'there'},\n\n${patientName || 'Your patient'} accepted your meeting.\n\n📅 ${formatted}${sharedNoteTxt}\n\n— NeuroEase`
+        ),
+        sendOne(
+            patientEmail,
+            `Meeting scheduled with ${caregiverName || 'your caregiver'} – ${formatted}`,
+            patientHtml,
+            `Hi ${patientName || 'there'},\n\nYou accepted a meeting with ${caregiverName || 'your caregiver'}.\n\n📅 ${formatted}${sharedNoteTxt}\n\n— NeuroEase`
+        ),
+    ]);
+}
+
+async function sendNewMessageEmail(toEmail, toName, senderName, isMeetingRequest, appUrl, overrides = {}) {
+    const subject = overrides.subject ?? (isMeetingRequest
+        ? `${senderName || 'Your contact'} sent you a meeting request`
+        : `New message from ${senderName || 'your contact'}`);
+
+    const actionLabel = isMeetingRequest ? 'View Meeting Request' : 'View Message';
+    const bodyLine = overrides.bodyLine ?? (isMeetingRequest
+        ? `<strong>${senderName || 'Your contact'}</strong> has sent you a meeting request.`
+        : `<strong>${senderName || 'Your contact'}</strong> has sent you a new message.`);
+
+    const link = appUrl ? `${appUrl}/messages` : null;
+    const buttonHtml = link
+        ? `<a href="${link}" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#6366f1;color:#fff;border-radius:6px;text-decoration:none;font-weight:600">${actionLabel}</a>`
+        : '';
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="font-family:sans-serif;line-height:1.6;color:#334155;max-width:520px;margin:0 auto;padding:24px">
+  <h2 style="color:#1e293b;margin-bottom:4px">${isMeetingRequest ? '📅 Meeting Request' : '💬 New Message'}</h2>
+  <p>Hi ${toName || 'there'},</p>
+  <p>${bodyLine}</p>
+  <p>Log in to NeuroEase to respond.</p>
+  ${buttonHtml}
+  <p style="margin-top:24px">— NeuroEase</p>
+</body></html>`;
+
+    const text = `Hi ${toName || 'there'},\n\n${senderName || 'Your patient'} ${isMeetingRequest ? 'sent you a meeting request' : 'sent you a new message'}.\n\nLog in to NeuroEase to respond.${link ? `\n${link}` : ''}\n\n— NeuroEase`;
+
+    const resend = getResendClient();
+    const transporter = await getTransporter();
+    const payload = { from: MAIL_FROM, to: toEmail, subject, html, text };
+
+    if (resend) {
+        try {
+            const { error } = await resend.emails.send(payload);
+            if (!error) return { sent: true };
+            console.warn('Resend new-message email failed, trying SMTP:', error.message);
+        } catch (err) {
+            console.warn('Resend new-message email threw, trying SMTP:', err.message);
+        }
+    }
+    if (transporter) {
+        try {
+            await transporter.sendMail(payload);
+            return { sent: true };
+        } catch (err) {
+            console.error('SMTP new-message email error:', err.message);
+            return { sent: false, error: err.message };
+        }
+    }
+    console.warn('No email transport configured. New-message email not sent to:', toEmail);
+    return { sent: false };
+}
+
 module.exports = {
     sendVerificationEmail,
     sendPatientInviteEmail,
@@ -573,4 +708,6 @@ module.exports = {
     sendCaregiverReturnedToZoneEmail,
     sendCaregiverMissedReminderEmail,
     sendCaregiverGameCompletionEmail,
+    sendMeetingAcceptedEmails,
+    sendNewMessageEmail,
 };

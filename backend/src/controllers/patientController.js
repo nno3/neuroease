@@ -158,7 +158,7 @@ const patientController = {
         address, gender, phoneNumber,
         preferredCommunication, accessibilityNeeds, careNotes,
         emergencyContactName, emergencyContactRelationship, emergencyContactPhone,
-        reminderNotificationChannel,
+        reminderNotificationChannel, messageNotifications,
       } = req.body;
 
       const historyObj = parseMedicalHistory(medicalHistory);
@@ -430,6 +430,7 @@ const patientController = {
         emergencyContactName, emergencyContactRelationship, emergencyContactPhone,
         locationConsent,
         reminderNotificationChannel,
+        messageNotifications,
       } = req.body;
 
       const patientProfile = patientUser.Patient;
@@ -521,6 +522,9 @@ const patientController = {
           if (ch === 'email' || ch === 'push' || ch === 'none') {
             updates.reminderNotificationChannel = ch;
           }
+        }
+        if (messageNotifications !== undefined && req.user.userType === 'patient' && req.user.userId === patientId) {
+          updates.messageNotifications = Boolean(messageNotifications);
         }
 
         if (Object.keys(updates).length) {

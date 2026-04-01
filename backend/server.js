@@ -12,11 +12,15 @@ dns.setDefaultResultOrder('ipv4first');
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
+const http = require('http');
+const { Server: SocketIOServer } = require('socket.io');
+const jwt = require('jsonwebtoken');
 
 const { sequelize, User } = require('./src/models');
 const { startReminderEmailJob } = require('./src/jobs/reminderEmailJob');
 
 const app = express();
+const httpServer = http.createServer(app);
 const PORT = process.env.PORT || 5001;
 
 /** Warn when Render has SMTP but no Resend — otherwise invite email waits ~45s and times out */
@@ -52,6 +56,41 @@ app.use(cors({
     origin: allowedOrigins.length > 0 ? allowedOrigins : true,
     credentials: true,
 }));
+
+// Socket.io – attach to the http server, same CORS policy
+const io = new SocketIOServer(httpServer, {
+    cors: {
+        origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+        credentials: true,
+    },
+});
+
+// Authenticate socket connections with the same JWT used by the REST API
+io.use((socket, next) => {
+    const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.replace('Bearer ', '');
+    if (!token) return next(new Error('Authentication required'));
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        socket.userId = decoded.userId;
+        socket.userType = decoded.userType;
+        next();
+    } catch {
+        next(new Error('Invalid token'));
+    }
+});
+
+io.on('connection', (socket) => {
+    // Each user joins their own private room so we can target them by userId
+    socket.join(`user:${socket.userId}`);
+
+    // Keepalive ping/pong to prevent Render free tier from closing idle connections
+    socket.on('ping', () => socket.emit('pong'));
+
+    socket.on('disconnect', () => {});
+});
+
+// Make io accessible in route handlers via req.app.get('io')
+app.set('io', io);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -79,6 +118,9 @@ app.use('/api/safe-zones', safeZoneRoutes);
 
 const gameRoutes = require('./src/routes/gameRoutes');
 app.use('/api/games', gameRoutes);
+
+const messageRoutes = require('./src/routes/messageRoutes');
+app.use('/api/messages', messageRoutes);
 
 // Quick check for deployment and monitoring
 app.get('/api/health', (req, res) => {
@@ -175,8 +217,8 @@ const startServer = async () => {
             // Ignore
         }
 
-        // Start server
-        app.listen(PORT, () => {
+        // Start server (httpServer wraps app so socket.io works)
+        httpServer.listen(PORT, () => {
             console.log(`NeuroEase Backend running on port ${PORT}`);
             console.log(`Health check: http://localhost:${PORT}/api/health`);
             console.log(`Database: ${process.env.DB_NAME}@${process.env.DB_HOST}`);

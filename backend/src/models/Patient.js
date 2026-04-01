@@ -95,6 +95,12 @@ const Patient = sequelize.define('Patient', {
         allowNull: false,
         defaultValue: 'none',
         field: 'reminder_notification_channel'
+    },
+    messageNotifications: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+        field: 'message_notifications'
     }
 }, {
     tableName: 'patients'

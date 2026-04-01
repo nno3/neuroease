@@ -12,6 +12,7 @@ const LocationLog = require('./LocationLog');
 const SafeZone = require('./SafeZone');
 const LocationAlert = require('./LocationAlert');
 const PushSubscription = require('./PushSubscription');
+const Message = require('./Message');
 
 // Initialize all models first
 const models = {
@@ -23,6 +24,7 @@ const models = {
   SafeZone,
   LocationAlert,
   PushSubscription,
+  Message,
 };
 
 // Set up associations - this must happen AFTER all models are loaded
@@ -35,5 +37,5 @@ Object.keys(models).forEach(modelName => {
 // Export everything
 module.exports = {
   sequelize,
-  ...models
+  ...models,
 };

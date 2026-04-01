@@ -10,7 +10,7 @@ const {
     sendCaregiverGameCompletionEmail,
 } = require('./emailService');
 
-const DEFAULT_PREFS = { locationAlerts: false, missedReminders: false, gameCompletion: false };
+const DEFAULT_PREFS = { locationAlerts: false, missedReminders: false, gameCompletion: false, messages: false };
 
 function parsePrefs(raw) {
     if (!raw) return DEFAULT_PREFS;
@@ -20,6 +20,7 @@ function parsePrefs(raw) {
             locationAlerts: !!p.locationAlerts,
             missedReminders: !!p.missedReminders,
             gameCompletion: !!p.gameCompletion,
+            messages: !!p.messages,
         };
     } catch {
         return DEFAULT_PREFS;

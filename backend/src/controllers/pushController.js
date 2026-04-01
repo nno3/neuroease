@@ -27,12 +27,7 @@ function getVapidPublicKey(req, res) {
  * Stores subscription for the authenticated patient (req.user.userId). Replaces or adds per endpoint.
  */
 async function saveSubscription(req, res) {
-  if (req.user.userType !== 'patient') {
-    return res.status(403).json({
-      success: false,
-      message: 'Only patients can register push subscriptions.',
-    });
-  }
+  // Both caregivers and patients can register push subscriptions
   const userId = req.user.userId;
   const { endpoint, keys } = req.body || {};
   if (!endpoint || !keys || !keys.p256dh || !keys.auth) {
@@ -69,9 +64,6 @@ async function saveSubscription(req, res) {
  * Returns whether the authenticated patient has any push subscriptions (for Profile UI).
  */
 async function getPushStatus(req, res) {
-  if (req.user.userType !== 'patient') {
-    return res.json({ success: true, data: { count: 0 } });
-  }
   const count = await PushSubscriptionModel.count({
     where: { userId: req.user.userId },
   });
