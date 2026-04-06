@@ -9,11 +9,16 @@
     color: #fff;
 }
 
-/* Remote WebRTC audio — hidden but must stay in DOM for playback */
+/* Remote WebRTC audio — hidden; avoid 0×0 on iOS (can block playback) */
 .call-remote-audio {
     position: absolute;
-    width: 0;
-    height: 0;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
     opacity: 0;
     pointer-events: none;
 }

@@ -104,7 +104,13 @@ export default function CallOverlay({
     return (
         <div className="call-overlay">
             {callState !== 'idle' && (
-                <audio ref={remoteAudioRef} className="call-remote-audio" playsInline aria-hidden />
+                <audio
+                    ref={remoteAudioRef}
+                    className="call-remote-audio"
+                    autoPlay
+                    playsInline
+                    aria-hidden
+                />
             )}
             {/* Remote video — muted; audio comes from call-remote-audio */}
             {callState === 'active' && isVideoCall && (

@@ -79,6 +79,68 @@ function logPlayErrorUnlessAbort(err) {
 }
 
 /**
+ * Remote WebRTC audio often starts after ICE; browsers then block play() (NotAllowedError) with no user gesture.
+ * Retries on track unmute and after the next pointer/key (tap anywhere on the call overlay works).
+ */
+function wireRemoteAudioPlayback(el, stream) {
+    if (!el || !stream) return () => {};
+    let cleaned = false;
+    const trackCleanups = [];
+    let pointerRetry = null;
+    let keyRetry = null;
+
+    const removeGestures = () => {
+        if (pointerRetry) {
+            window.removeEventListener('pointerdown', pointerRetry, true);
+            pointerRetry = null;
+        }
+        if (keyRetry) {
+            window.removeEventListener('keydown', keyRetry, true);
+            keyRetry = null;
+        }
+    };
+
+    const tryPlay = () => {
+        if (cleaned) return;
+        el.autoplay = true;
+        el.muted = false;
+        el.volume = 1;
+        void el.play().catch((err) => {
+            if (err?.name === 'AbortError') return;
+            if (err?.name === 'NotAllowedError' && !cleaned && !pointerRetry && !keyRetry) {
+                pointerRetry = () => {
+                    void el.play().catch(() => {});
+                    removeGestures();
+                };
+                keyRetry = () => {
+                    void el.play().catch(() => {});
+                    removeGestures();
+                };
+                window.addEventListener('pointerdown', pointerRetry, { capture: true });
+                window.addEventListener('keydown', keyRetry, { capture: true });
+                return;
+            }
+            logPlayErrorUnlessAbort(err);
+        });
+    };
+
+    el.srcObject = stream;
+    tryPlay();
+
+    stream.getAudioTracks().forEach((track) => {
+        const onUnmute = () => tryPlay();
+        track.addEventListener('unmute', onUnmute);
+        trackCleanups.push(() => track.removeEventListener('unmute', onUnmute));
+    });
+
+    return () => {
+        cleaned = true;
+        removeGestures();
+        trackCleanups.forEach((fn) => fn());
+    };
+}
+
+/**
  * iPhone / Android Chrome block camera+mic on http://192.168.x.x (not a secure context).
  * Localhost is exempt — LAN IP over plain HTTP usually fails getUserMedia or kills tracks immediately.
  */
@@ -109,6 +171,7 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
     const remoteAudioRef = useRef(null);
     const pendingRemoteVideoRef = useRef(null);
     const pendingRemoteAudioRef = useRef(null);
+    const remoteAudioWireCleanupRef = useRef(null);
 
     const timeoutRef = useRef(null);
     const timerRef = useRef(null);
@@ -157,6 +220,8 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
     }, []);
 
     const clearRemoteAudioEl = useCallback(() => {
+        remoteAudioWireCleanupRef.current?.();
+        remoteAudioWireCleanupRef.current = null;
         pendingRemoteAudioRef.current = null;
         const el = remoteAudioRef.current;
         if (el) {
@@ -234,10 +299,8 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
         const attach = () => {
             const a = remoteAudioRef.current;
             if (!a) return;
-            a.srcObject = stream;
-            a.muted = false;
-            a.volume = 1;
-            void a.play().catch(logPlayErrorUnlessAbort);
+            remoteAudioWireCleanupRef.current?.();
+            remoteAudioWireCleanupRef.current = wireRemoteAudioPlayback(a, stream);
         };
         if (el) {
             attach();
@@ -554,11 +617,8 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
     useLayoutEffect(() => {
         const pending = pendingRemoteAudioRef.current;
         if (!pending || !remoteAudioRef.current) return;
-        const el = remoteAudioRef.current;
-        el.srcObject = pending;
-        el.muted = false;
-        el.volume = 1;
-        void el.play().catch(logPlayErrorUnlessAbort);
+        remoteAudioWireCleanupRef.current?.();
+        remoteAudioWireCleanupRef.current = wireRemoteAudioPlayback(remoteAudioRef.current, pending);
         pendingRemoteAudioRef.current = null;
     }, [callState]);
 
