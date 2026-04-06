@@ -1,6 +1,6 @@
 /**
  * Push controller – VAPID public key and save push subscription.
- * Only patients can save their own subscription (JWT identifies user).
+ * Caregivers and patients can save subscriptions (JWT identifies user).
  */
 const { PushSubscription: PushSubscriptionModel } = require('../models');
 const { configureVapid } = require('../utils/pushService');
@@ -24,7 +24,7 @@ function getVapidPublicKey(req, res) {
 /**
  * POST /api/push/subscribe
  * Body: { endpoint, keys: { p256dh, auth } } (from pushManager.subscribe()).
- * Stores subscription for the authenticated patient (req.user.userId). Replaces or adds per endpoint.
+ * Stores subscription for the authenticated user (req.user.userId). Replaces or adds per endpoint.
  */
 async function saveSubscription(req, res) {
   // Both caregivers and patients can register push subscriptions
@@ -61,7 +61,7 @@ async function saveSubscription(req, res) {
 
 /**
  * GET /api/push/status
- * Returns whether the authenticated patient has any push subscriptions (for Profile UI).
+ * Returns whether the authenticated user has any push subscriptions (for Profile UI).
  */
 async function getPushStatus(req, res) {
   const count = await PushSubscriptionModel.count({

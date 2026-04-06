@@ -2,6 +2,7 @@
  * Reminders list – fetches GET /api/reminders/patient/:patientId for the logged-in patient.
  * Shows loading state, empty state, and a readable list (time, title, type, recurrence).
  */
+import React from 'react';
 import { useState, useEffect, useRef } from "react";
 import { CheckCircle2, Pill, CalendarDays, ClipboardList, AlertCircle, Volume2, Square } from "lucide-react";
 import "./Reminders.css";

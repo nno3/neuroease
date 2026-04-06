@@ -1,3 +1,4 @@
+import React from 'react';
 import { useEffect, useState } from "react";
 import ActivitySummaryVisual from "../components/dashboard/ActivitySummaryVisual";
 import { getDashboardStats } from "../services/dashboardService";

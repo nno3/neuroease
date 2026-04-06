@@ -2,6 +2,7 @@
  * Patient login – two flows: (1) URL has ?token=... (magic link) → verify and redirect to home;
  * (2) no token → show email form, "Send login link", then show success or error message.
  */
+import React from 'react';
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -35,6 +36,11 @@ export default function Login() {
       });
   }, [token, login, navigate]);
 
+  useEffect(() => {
+    if (!user) return;
+    navigate("/", { replace: true });
+  }, [user, navigate]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const trimmed = email.trim().toLowerCase();
@@ -67,7 +73,6 @@ export default function Login() {
   };
 
   if (user) {
-    navigate("/", { replace: true });
     return null;
   }
 

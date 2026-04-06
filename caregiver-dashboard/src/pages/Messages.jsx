@@ -3,13 +3,13 @@
  * Left panel: contact list with unread badges and last message preview.
  * Right panel: conversation thread with plain messages and meeting requests.
  */
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { MessageSquare, Send, Calendar, Check, X, Clock, ChevronLeft } from 'lucide-react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { MessageSquare, Send, Calendar, Check, X, Clock, ChevronLeft, Phone, Video } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { apiRequest } from '../services/apiClient';
-import { useSocket } from '../hooks/useSocket';
 import { useAuth } from '../context/AuthContext';
+import { useCall } from '../context/useCall';
 import './Messages.css';
 
 function formatTime(iso) {
@@ -65,8 +65,9 @@ function MeetingBadge({ message, myId, onRespond, onCancel }) {
 
 export default function Messages() {
     const { user } = useAuth();
-    const socketRef = useSocket();
     const myId = user?.id;
+
+    const { socket, callState, startCall } = useCall();
 
     const [contacts, setContacts] = useState([]);
     const [activeContact, setActiveContact] = useState(null);
@@ -123,7 +124,6 @@ export default function Messages() {
 
     // Listen for incoming messages via socket
     useEffect(() => {
-        const socket = socketRef.current;
         if (!socket) return;
 
         const handleNewMessage = (msg) => {
@@ -153,7 +153,7 @@ export default function Messages() {
             socket.off('meeting_response', handleMeetingResponse);
             socket.off('messages_read', handleMessagesRead);
         };
-    }, [socketRef, activeContact, fetchContacts]);
+    }, [socket, activeContact, fetchContacts]);
 
     const sendMessage = async (type = 'message') => {
         if (!input.trim() || !activeContact || sending) return;
@@ -269,9 +269,27 @@ export default function Messages() {
                             <div className="msg-conversation-avatar">
                                 {activeContact.user.name?.[0]?.toUpperCase()}
                             </div>
-                            <div>
+                            <div className="msg-conversation-identity">
                                 <p className="msg-conversation-name">{activeContact.user.name}</p>
                                 <p className="msg-conversation-role">Patient</p>
+                            </div>
+                            <div className="msg-call-btns">
+                                <button
+                                    className="msg-call-btn"
+                                    title="Audio call"
+                                    onClick={() => startCall(activeContact.user.id, 'audio')}
+                                    disabled={callState !== 'idle'}
+                                >
+                                    <Phone size={18} />
+                                </button>
+                                <button
+                                    className="msg-call-btn"
+                                    title="Video call"
+                                    onClick={() => startCall(activeContact.user.id, 'video')}
+                                    disabled={callState !== 'idle'}
+                                >
+                                    <Video size={18} />
+                                </button>
                             </div>
                         </div>
 

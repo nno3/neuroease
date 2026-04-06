@@ -4,9 +4,13 @@
   "description": "Monorepo root — production API on Render (see docs/Deployment.md); optional Railway/nixpacks scripts below",
   "scripts": {
     "build": "cd backend && npm ci",
-    "start": "cd backend && npm start"
+    "start": "cd backend && npm start",
+    "dev:all": "concurrently -k -n api,dash,patient -c blue,magenta,green \"npm run dev --prefix backend\" \"npm run dev --prefix caregiver-dashboard\" \"npm run dev --prefix patient-app\""
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
   }
 }

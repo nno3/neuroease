@@ -1,3 +1,4 @@
+import React from 'react';
 import { useMemo } from "react";
 import "./ReminderCalendar.css";
 import { ChevronLeft, ChevronRight, CalendarPlus, Calendar as CalendarIcon } from "lucide-react";

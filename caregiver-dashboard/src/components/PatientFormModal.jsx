@@ -5,6 +5,7 @@
  * per line. Create sends to POST /api/patients; update to PUT /api/patients/:id. Validation
  * matches backend. No password on create — patients are passwordless (invite / magic link).
  */
+import React from 'react';
 import { useEffect, useMemo, useState, forwardRef, useRef } from "react";
 import "./PatientFormModal.css";
 import { createPatient, updatePatient } from "../services/patients";

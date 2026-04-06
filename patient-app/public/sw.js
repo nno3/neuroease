@@ -16,6 +16,14 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
+  /* Do not proxy cross-origin requests (e.g. Socket.IO on :5001) — avoids brittle failures. */
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+  if (url.pathname.includes("/socket.io/")) {
+    return;
+  }
   /* Offline: serve index.html for navigation requests (SPA). */
   if (event.request.mode === "navigate") {
     event.respondWith(

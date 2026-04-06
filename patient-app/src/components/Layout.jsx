@@ -1,15 +1,26 @@
 /**
- * Logged-in shell: header (app name + logout), main content area, bottom nav (Games, Reminders, Profile).
- * Skip link and focus order support accessibility; touch targets and contrast in CSS.
+ * Logged-in shell: header (app name + logout), main content area, bottom nav.
+ * Wraps the whole app in CallProvider so incoming calls are detected on every page.
  */
+import React from 'react';
 import { Outlet, useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import VoiceAssistListener from "./VoiceAssistListener";
+import CallOverlay from "./CallOverlay";
+import { CallProvider } from "../context/CallContext";
+import { useCall } from "../context/useCall";
 import "./Layout.css";
 
-export default function Layout() {
+function LayoutInner() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  const {
+    callState, callType, incomingCallType, callerName, callDuration,
+    localVideoRef, remoteVideoRef, remoteAudioRef,
+    acceptCall, rejectCall, endCall, cancelCall,
+    toggleMute, toggleVideo,
+  } = useCall();
 
   const handleLogout = () => {
     logout();
@@ -18,6 +29,22 @@ export default function Layout() {
 
   return (
     <div className="pa-layout">
+      <CallOverlay
+        callState={callState}
+        callType={callType}
+        incomingCallType={incomingCallType}
+        contactName={callerName}
+        callDuration={callDuration}
+        localVideoRef={localVideoRef}
+        remoteVideoRef={remoteVideoRef}
+        remoteAudioRef={remoteAudioRef}
+        onAccept={acceptCall}
+        onReject={rejectCall}
+        onEnd={endCall}
+        onCancel={cancelCall}
+        onToggleMute={toggleMute}
+        onToggleVideo={toggleVideo}
+      />
       {user && <VoiceAssistListener />}
       <a href="#pa-main" className="pa-skip-link">
         Skip to main content
@@ -40,32 +67,28 @@ export default function Layout() {
       </main>
       {user && (
         <nav className="pa-bottom-nav" aria-label="Main navigation">
-          <NavLink
-            to="/games"
-            className={({ isActive }) => `pa-bottom-nav-link ${isActive ? "is-active" : ""}`}
-          >
+          <NavLink to="/games" className={({ isActive }) => `pa-bottom-nav-link ${isActive ? "is-active" : ""}`}>
             Games
           </NavLink>
-          <NavLink
-            to="/reminders"
-            className={({ isActive }) => `pa-bottom-nav-link ${isActive ? "is-active" : ""}`}
-          >
+          <NavLink to="/reminders" className={({ isActive }) => `pa-bottom-nav-link ${isActive ? "is-active" : ""}`}>
             Reminders
           </NavLink>
-          <NavLink
-            to="/messages"
-            className={({ isActive }) => `pa-bottom-nav-link ${isActive ? "is-active" : ""}`}
-          >
+          <NavLink to="/messages" className={({ isActive }) => `pa-bottom-nav-link ${isActive ? "is-active" : ""}`}>
             Messages
           </NavLink>
-          <NavLink
-            to="/profile"
-            className={({ isActive }) => `pa-bottom-nav-link ${isActive ? "is-active" : ""}`}
-          >
+          <NavLink to="/profile" className={({ isActive }) => `pa-bottom-nav-link ${isActive ? "is-active" : ""}`}>
             Profile
           </NavLink>
         </nav>
       )}
     </div>
+  );
+}
+
+export default function Layout() {
+  return (
+    <CallProvider>
+      <LayoutInner />
+    </CallProvider>
   );
 }

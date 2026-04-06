@@ -1,3 +1,4 @@
+import React from 'react';
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { getProfile, updateProfile, deleteAccount } from "../services/authService";

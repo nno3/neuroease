@@ -2,6 +2,7 @@
  * Caregiver dashboard – root router. AuthProvider wraps the app; protected routes
  * use Layout (sidebar + outlet). Public: login, register, verify-email.
  */
+import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Layout from './components/Layout';

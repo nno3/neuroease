@@ -1,11 +1,15 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import basicSsl from "@vitejs/plugin-basic-ssl";
 import { readFileSync } from "fs";
 import { join } from "path";
+
+const useHttps = process.env.VITE_DEV_HTTPS === "1";
 
 export default defineConfig({
   plugins: [
     react(),
+    ...(useHttps ? [basicSsl()] : []),
     {
       name: "manifest-mime",
       configureServer(server) {
@@ -25,6 +29,7 @@ export default defineConfig({
     },
   ],
   server: {
+    https: useHttps,
     port: 5175,
     strictPort: true, // Fail if port in use instead of trying next
     host: true,
@@ -34,6 +39,12 @@ export default defineConfig({
     proxy: {
       "/api": {
         target: "http://localhost:5001",
+        changeOrigin: true,
+        secure: false,
+      },
+      "/socket.io": {
+        target: "http://localhost:5001",
+        ws: true,
         changeOrigin: true,
         secure: false,
       },

@@ -2,6 +2,7 @@
  * Wraps routes that require a logged-in patient. Shows loading until auth is restored from storage;
  * if no user, redirects to /login. Used for Layout (Home, Reminders).
  */
+import React from 'react';
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 

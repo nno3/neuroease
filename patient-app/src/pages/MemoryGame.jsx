@@ -3,6 +3,7 @@
  * Adapted from DementiaGames/card_memory_game_fruits with React, large touch targets,
  * clear feedback, and optional backend session save.
  */
+import React from 'react';
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { apiRequest } from "../services/apiClient";

@@ -1,8 +1,23 @@
 /**
  * Caregiver dashboard API client – base URL from env; apiRequest adds Bearer token from
  * localStorage and throws on non-OK response with server message. Used by auth and data services.
+ *
+ * In dev, default to relative `/api` so Vite proxies to the backend (works from phone via LAN and
+ * avoids mixed-content when using `npm run dev:https`). If unset and not dev, use LAN host :5001.
  */
-export const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001/api';
+function resolveApiBase() {
+    const raw = import.meta.env.VITE_API_BASE || '';
+    if (raw) return raw.replace(/\/$/, '');
+    if (import.meta.env.DEV) {
+        return '/api';
+    }
+    if (typeof window !== 'undefined' && window.location?.hostname) {
+        return `http://${window.location.hostname}:5001/api`;
+    }
+    return 'http://localhost:5001/api';
+}
+
+export const API_BASE = resolveApiBase();
 
 const REQUEST_TIMEOUT_MS = 90000; // 90s – Render free tier cold starts can take 30–60s
 

@@ -1,3 +1,4 @@
+import React from 'react';
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getPatients, getArchivedPatients, getPatientById, archivePatient, unarchivePatient, sendInvite } from "../services/patients";
 import "./Patients.css";

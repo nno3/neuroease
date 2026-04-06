@@ -1,7 +1,7 @@
+import React from 'react';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001/api';
+import { API_BASE } from '../services/apiClient';
 
 export default function VerifyEmail() {
     const [searchParams] = useSearchParams();

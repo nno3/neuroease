@@ -64,6 +64,51 @@
     border-bottom: 1px solid #e2e8f0;
 }
 
+.pa-msg-conversation-identity {
+    flex: 1;
+    min-width: 0;
+}
+
+.pa-msg-call-btns {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.pa-msg-call-btn {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #475569;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.pa-msg-call-btn svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.pa-msg-call-btn:hover:not(:disabled) {
+    background: #6366f1;
+    color: #fff;
+    border-color: #6366f1;
+}
+
+.pa-msg-call-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
 .pa-msg-avatar {
     width: 38px;
     height: 38px;
@@ -256,7 +301,11 @@
 }
 
 .pa-msg-meeting-toggle {
-    padding: 8px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
     background: #fff;
@@ -266,6 +315,13 @@
     flex-shrink: 0;
     display: flex;
     align-items: center;
+    justify-content: center;
+}
+
+.pa-msg-meeting-toggle svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
 }
 
 .pa-msg-meeting-toggle:hover { background: #f1f5f9; }
@@ -302,8 +358,11 @@
 .pa-msg-char-count--limit { color: #ef4444; font-weight: 600; }
 
 .pa-msg-send-btn {
-    width: 42px;
-    height: 42px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
     border-radius: 50%;
     border: none;
     background: #3b82f6;
@@ -314,6 +373,12 @@
     cursor: pointer;
     flex-shrink: 0;
     transition: opacity 0.15s;
+}
+
+.pa-msg-send-btn svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
 }
 
 .pa-msg-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }

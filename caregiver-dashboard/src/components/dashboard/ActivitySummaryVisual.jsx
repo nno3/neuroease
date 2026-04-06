@@ -1,3 +1,4 @@
+import React from 'react';
 import { Link } from "react-router-dom";
 import { CheckCircle2, Gamepad2, MapPin, Users, ChevronRight, Sparkles } from "lucide-react";
 import "./ActivitySummaryVisual.css";

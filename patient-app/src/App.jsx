@@ -2,6 +2,7 @@
  * Patient PWA – root router. Public: /login (email magic link), /activate (invite link).
  * Protected: Layout shell with Games, Reminders, Profile; redirect to /login if not authenticated.
  */
+import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { LocationSharingProvider } from "./context/LocationSharingContext";

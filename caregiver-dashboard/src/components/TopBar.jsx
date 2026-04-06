@@ -1,3 +1,4 @@
+import React from 'react';
 import './TopBar.css';
 import { Menu } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';

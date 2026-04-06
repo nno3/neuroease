@@ -64,7 +64,7 @@ input[type="button"] {
   min-width: var(--pa-touch-min);
 }
 
-button:not(.pa-icon-btn),
+button:not(.pa-icon-btn):not(.pa-msg-call-btn):not(.pa-msg-send-btn):not(.pa-msg-meeting-toggle):not(.pa-msg-meeting-btn):not(.pa-msg-tab):not(.call-btn),
 .pa-btn {
   padding: 12px 20px;
   font-size: 1rem;

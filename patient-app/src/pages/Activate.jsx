@@ -3,6 +3,7 @@
  * Validates token, activates account (no password), signs user in and redirects to home.
  * Passwordless by design for accessibility (e.g. people with dementia).
  */
+import React from 'react';
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";

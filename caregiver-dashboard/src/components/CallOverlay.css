@@ -1,0 +1,175 @@
+.call-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #0f172a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+}
+
+/* Remote WebRTC audio — hidden but must stay in DOM for playback */
+.call-remote-audio {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Remote video fills the whole background */
+.call-remote-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: #000;
+}
+
+/* Audio-only background */
+.call-audio-bg {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.call-avatar-ring {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12);
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: call-pulse 2s infinite;
+}
+
+.call-avatar-initials {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+@keyframes call-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.2); }
+    50%       { box-shadow: 0 0 0 20px rgba(255,255,255,0); }
+}
+
+.call-avatar-ring--pulse {
+    animation: call-pulse 1s infinite;
+}
+
+/* UI layer sits on top of video */
+.call-ui {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    width: 100%;
+    padding: 40px 24px;
+}
+
+.call-info {
+    text-align: center;
+}
+
+.call-contact-name {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 0 0 6px;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+}
+
+.call-status-label {
+    font-size: 0.95rem;
+    color: rgba(255,255,255,0.75);
+    margin: 0;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+}
+
+/* Local picture-in-picture */
+.call-local-pip {
+    position: fixed;
+    bottom: 120px;
+    right: 20px;
+    width: 120px;
+    height: 160px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 2px solid rgba(255,255,255,0.4);
+    background: #000;
+    z-index: 2;
+}
+
+/* Control buttons */
+.call-controls {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    justify-content: center;
+}
+
+.call-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s, opacity 0.15s;
+    color: #fff;
+}
+
+.call-btn:active { transform: scale(0.92); }
+
+.call-btn-accept {
+    background: #22c55e;
+}
+
+.call-btn-end {
+    background: #ef4444;
+}
+
+.call-btn-toggle {
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(6px);
+}
+
+.call-btn-toggle.call-btn-active {
+    background: rgba(255,255,255,0.35);
+}
+
+.call-btn-dismiss {
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(6px);
+}
+
+.call-status-label--timer {
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: rgba(255,255,255,0.9);
+}
+
+@media (max-width: 480px) {
+    .call-local-pip {
+        width: 90px;
+        height: 120px;
+        bottom: 100px;
+        right: 12px;
+    }
+    .call-btn {
+        width: 52px;
+        height: 52px;
+    }
+}

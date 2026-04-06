@@ -1,5 +1,7 @@
+import React from 'react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { API_BASE } from '../services/apiClient';
 
 const Register = () => {
     const navigate = useNavigate();
@@ -28,7 +30,7 @@ const Register = () => {
 
         try {
             const normalizedEmail = (email || '').trim().toLowerCase();
-            const response = await fetch('http://localhost:5001/api/auth/register', {
+            const response = await fetch(`${API_BASE}/auth/register`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

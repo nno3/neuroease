@@ -9,6 +9,7 @@
  * Ref: Frontiers in Sports and Active Living (2024) – enhancing prompt perception
  * in dementia with mixed reality cue modalities.
  */
+import React from 'react';
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../services/apiClient";

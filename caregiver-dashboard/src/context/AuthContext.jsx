@@ -3,7 +3,7 @@
  * user from localStorage if token and user data exist. login() calls backend and
  * stores token + user; logout() clears them and redirects to /login.
  */
-import { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { API_BASE } from '../services/apiClient';
 
 const AuthContext = createContext();

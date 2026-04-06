@@ -9,9 +9,16 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import "./index.css";
 
-// Register service worker. ?v=3 forces fresh fetch when we update sw.js (bypasses cache).
+// PWA: register SW only in production. In dev, unregister so we don't intercept Vite HMR,
+// Socket.IO (other origin), or fail closed when the API is down (FetchEvent / Failed to fetch).
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js?v=3", { scope: "/" }).catch(() => {});
+  if (import.meta.env.PROD) {
+    navigator.serviceWorker.register("/sw.js?v=3", { scope: "/" }).catch(() => {});
+  } else {
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      for (const r of regs) r.unregister();
+    });
+  }
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(

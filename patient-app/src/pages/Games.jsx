@@ -2,6 +2,7 @@
  * Games list – dementia-friendly cognitive games.
  * Large touch targets, clear labels; links to Memory Match and future games.
  */
+import React from 'react';
 import { Link } from "react-router-dom";
 import "./Games.css";
 

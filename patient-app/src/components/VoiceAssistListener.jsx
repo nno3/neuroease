@@ -3,6 +3,7 @@
  * (2) visibility change when user returns to app (e.g. after tapping notification);
  * (3) mount (user opened app from notification click → new page, visibilitychange may not fire).
  */
+import React from 'react';
 import { useEffect, useRef } from "react";
 import {
   getVoiceAssistEnabled,

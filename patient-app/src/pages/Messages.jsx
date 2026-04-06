@@ -2,13 +2,13 @@
  * Patient Messages page – real-time chat with caregiver(s) via socket.io.
  * Patients can send plain messages and meeting requests.
  */
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { Send, Calendar, Check, X, Clock } from 'lucide-react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { Send, Calendar, Check, X, Clock, Phone, Video } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { apiRequest } from '../services/apiClient';
-import { useSocket } from '../hooks/useSocket';
 import { useAuth } from '../context/AuthContext';
+import { useCall } from '../context/useCall';
 import './Messages.css';
 
 function formatTime(iso) {
@@ -61,8 +61,9 @@ function MeetingBadge({ message, myId, onRespond, onCancel }) {
 
 export default function Messages() {
     const { user } = useAuth();
-    const socketRef = useSocket();
     const myId = user?.id;
+
+    const { socket, callState, startCall } = useCall();
 
     const [contacts, setContacts] = useState([]);
     const [activeContact, setActiveContact] = useState(null);
@@ -114,19 +115,18 @@ export default function Messages() {
         }
     }, [myId]);
 
-    // Load conversation when active contact is set
+    // Initial load when fetchContacts auto-selects a contact (messages still empty)
     useEffect(() => {
         if (activeContact && messages.length === 0) {
             loadConversation(activeContact);
         }
-    }, [activeContact]); // eslint-disable-line
+    }, [activeContact, messages.length, loadConversation]);
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
     useEffect(() => {
-        const socket = socketRef.current;
         if (!socket) return;
 
         const handleNewMessage = (msg) => {
@@ -156,7 +156,7 @@ export default function Messages() {
             socket.off('meeting_response', handleMeetingResponse);
             socket.off('messages_read', handleMessagesRead);
         };
-    }, [socketRef, activeContact, fetchContacts]);
+    }, [socket, activeContact, fetchContacts]);
 
     const sendMessage = async (type = 'message') => {
         if (!input.trim() || !activeContact || sending) return;
@@ -239,9 +239,27 @@ export default function Messages() {
             {activeContact && (
                 <div className="pa-msg-conversation-header">
                     <div className="pa-msg-avatar">{activeContact.user.name?.[0]?.toUpperCase()}</div>
-                    <div>
+                    <div className="pa-msg-conversation-identity">
                         <p className="pa-msg-contact-name">{activeContact.user.name}</p>
                         <p className="pa-msg-contact-role">Caregiver</p>
+                    </div>
+                    <div className="pa-msg-call-btns">
+                        <button
+                            className="pa-msg-call-btn"
+                            title="Audio call"
+                            onClick={() => startCall(activeContact.user.id, 'audio')}
+                            disabled={callState !== 'idle'}
+                        >
+                            <Phone size={18} />
+                        </button>
+                        <button
+                            className="pa-msg-call-btn"
+                            title="Video call"
+                            onClick={() => startCall(activeContact.user.id, 'video')}
+                            disabled={callState !== 'idle'}
+                        >
+                            <Video size={18} />
+                        </button>
                     </div>
                 </div>
             )}

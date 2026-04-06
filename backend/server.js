@@ -44,23 +44,48 @@ function logEmailDeliveryHint() {
 // Log every API request (method, URL, status) for debugging and auditing
 app.use(morgan('combined'));
 
-// Allow frontend(s) on different origins to call this API; parse JSON and form bodies
-// When credentials are used, we must specify exact origins (no wildcard)
+// Allow frontend(s) on different origins. Socket.IO uses the browser's Origin header
+// (e.g. http://127.0.0.1:5173 vs http://localhost:5173) — both must be allowed or the
+// handshake fails silently while REST via Vite proxy still works.
 const allowedOrigins = [
     process.env.FRONTEND_URL,
     process.env.PATIENT_APP_URL,
     'http://localhost:5173',
     'http://localhost:5175',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:5175',
 ].filter(Boolean);
+
+const isDevLocalOrigin = (origin) =>
+    /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(origin || '');
+
+/** Phone/tablet on same Wi‑Fi hitting http://192.168.x.x:5173 — allow in dev only */
+const isPrivateLanOrigin = (origin) =>
+    /^https?:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$/.test(
+        origin || ''
+    );
+
+function corsOriginCallback(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    if (
+        process.env.NODE_ENV !== 'production' &&
+        (isDevLocalOrigin(origin) || isPrivateLanOrigin(origin))
+    ) {
+        return callback(null, true);
+    }
+    callback(null, false);
+}
+
 app.use(cors({
-    origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+    origin: corsOriginCallback,
     credentials: true,
 }));
 
 // Socket.io – attach to the http server, same CORS policy
 const io = new SocketIOServer(httpServer, {
     cors: {
-        origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+        origin: corsOriginCallback,
         credentials: true,
     },
 });
@@ -71,7 +96,12 @@ io.use((socket, next) => {
     if (!token) return next(new Error('Authentication required'));
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        socket.userId = decoded.userId;
+        const uid = decoded.userId ?? decoded.id;
+        const n = Number(uid);
+        if (!Number.isFinite(n)) {
+            return next(new Error('Invalid token payload'));
+        }
+        socket.userId = n;
         socket.userType = decoded.userType;
         next();
     } catch {
@@ -79,12 +109,94 @@ io.use((socket, next) => {
     }
 });
 
-io.on('connection', (socket) => {
-    // Each user joins their own private room so we can target them by userId
-    socket.join(`user:${socket.userId}`);
+/** Socket.IO rooms use `user:<numeric user id>` — must match JWT userId and client `to` payloads. */
+function userRoom(userId) {
+    const n = Number(userId);
+    if (!Number.isFinite(n)) return null;
+    return `user:${n}`;
+}
+
+io.on('connection', async (socket) => {
+    const myRoom = userRoom(socket.userId);
+    // Socket.IO v4+: join is async — await so io.to(room) can deliver immediately after.
+    if (myRoom) await socket.join(myRoom);
+    if (process.env.NODE_ENV !== 'production') {
+        const adapter = io.sockets.adapter;
+        const n = adapter.rooms.get(myRoom)?.size ?? 0;
+        console.log(`[socket] user ${socket.userId} joined ${myRoom} (room size ${n})`);
+    }
 
     // Keepalive ping/pong to prevent Render free tier from closing idle connections
     socket.on('ping', () => socket.emit('pong'));
+
+    // ── WebRTC call signalling ──────────────────────────────────────────────
+    // All events are forwarded to the target user's room; the server never
+    // inspects the SDP/ICE payloads — it is a pure relay.
+
+    // Caller initiates: { to, offer (RTCSessionDescription), callType ('video'|'audio') }
+    socket.on('call:offer', ({ to, offer, callType }) => {
+        const room = userRoom(to);
+        if (!room || !offer) return;
+        const payload = {
+            from: socket.userId,
+            offer,
+            callType: callType || 'video',
+        };
+        io.to(room).emit('call:offer', payload);
+        if (process.env.NODE_ENV !== 'production') {
+            const adapter = io.sockets.adapter;
+            const n = adapter.rooms.get(room)?.size ?? 0;
+            console.log(`[call:offer] from=${socket.userId} to=${to} room=${room} recipientsInRoom=${n}`);
+        }
+    });
+
+    socket.on('call:answer', ({ to, answer }) => {
+        const room = userRoom(to);
+        if (!room || !answer) return;
+        io.to(room).emit('call:answer', {
+            from: socket.userId,
+            answer,
+        });
+    });
+
+    // ICE candidate exchange: { to, candidate }
+    socket.on('call:ice-candidate', ({ to, candidate }) => {
+        const room = userRoom(to);
+        if (!room) return;
+        io.to(room).emit('call:ice-candidate', {
+            from: socket.userId,
+            candidate,
+        });
+    });
+
+    // Either party ends the call: { to }
+    socket.on('call:end', ({ to }) => {
+        const room = userRoom(to);
+        if (!room) return;
+        io.to(room).emit('call:end', { from: socket.userId });
+    });
+
+    // Callee rejects the incoming call: { to }
+    socket.on('call:reject', ({ to }) => {
+        const room = userRoom(to);
+        if (!room) return;
+        io.to(room).emit('call:reject', { from: socket.userId });
+    });
+
+    // Caller cancels before callee answers: { to }
+    socket.on('call:cancel', ({ to }) => {
+        const room = userRoom(to);
+        if (!room) return;
+        io.to(room).emit('call:cancel', { from: socket.userId });
+    });
+
+    // Caller notifies callee of a missed call (timeout with no answer): { to }
+    socket.on('call:missed', ({ to }) => {
+        const room = userRoom(to);
+        if (!room) return;
+        io.to(room).emit('call:missed', { from: socket.userId });
+    });
+    // ───────────────────────────────────────────────────────────────────────
 
     socket.on('disconnect', () => {});
 });

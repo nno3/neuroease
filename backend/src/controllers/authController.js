@@ -663,4 +663,14 @@ const authController = {
 };
 
 
+authController.getUserName = async (req, res) => {
+    try {
+        const user = await User.findByPk(req.params.id, { attributes: ['id', 'name'] });
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+        res.json({ success: true, data: { id: user.id, name: user.name } });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Failed to fetch user' });
+    }
+};
+
 module.exports = authController;

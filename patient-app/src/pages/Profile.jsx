@@ -3,6 +3,7 @@
  * Notification channel persisted via PUT /api/patients/:id. Voice/speed apply to Read aloud and TTS;
  * "Speak reminders automatically" only gates push/open-app speech (see VoiceAssistListener).
  */
+import React from 'react';
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useLocationSharing } from "../context/LocationSharingContext";

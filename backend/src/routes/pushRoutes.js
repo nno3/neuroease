@@ -1,17 +1,17 @@
 /**
- * Push routes – VAPID public key (no auth), subscribe and status (patient only).
+ * Push routes – VAPID public key (no auth), subscribe and status (caregiver or patient).
  */
 const express = require('express');
 const pushController = require('../controllers/pushController');
 const { verifyToken } = require('../middleware/auth');
-const { requirePatient } = require('../middleware/roles');
+const { requireAny } = require('../middleware/roles');
 
 const router = express.Router();
 
 router.get('/vapid-public-key', pushController.getVapidPublicKey);
 
 router.use(verifyToken);
-router.post('/subscribe', requirePatient, pushController.saveSubscription);
-router.get('/status', requirePatient, pushController.getPushStatus);
+router.post('/subscribe', requireAny, pushController.saveSubscription);
+router.get('/status', requireAny, pushController.getPushStatus);
 
 module.exports = router;

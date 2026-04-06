@@ -1,3 +1,4 @@
+import React from 'react';
 import KPICard from "./KPICard";
 import { Users, CheckCircle2, Gamepad2, AlertTriangle } from "lucide-react";
 
