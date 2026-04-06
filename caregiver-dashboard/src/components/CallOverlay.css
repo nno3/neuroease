@@ -82,6 +82,24 @@
     padding: 40px 24px;
 }
 
+.call-audio-unlock {
+    width: 100%;
+    max-width: 320px;
+    padding: 14px 18px;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: #fbbf24;
+    color: #1e293b;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.call-audio-unlock:active {
+    transform: scale(0.98);
+}
+
 .call-info {
     text-align: center;
 }

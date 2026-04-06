@@ -75,69 +75,7 @@ function iceCandidatePayload(c) {
 /** play() often rejects with AbortError when srcObject is replaced or pause() runs — expected, not a bug. */
 function logPlayErrorUnlessAbort(err) {
     if (err?.name === 'AbortError') return;
-    console.warn('[call] remote audio play', err);
-}
-
-/**
- * Remote WebRTC audio often starts after ICE; browsers then block play() (NotAllowedError) with no user gesture.
- * Retries on track unmute and after the next pointer/key (tap anywhere on the call overlay works).
- */
-function wireRemoteAudioPlayback(el, stream) {
-    if (!el || !stream) return () => {};
-    let cleaned = false;
-    const trackCleanups = [];
-    let pointerRetry = null;
-    let keyRetry = null;
-
-    const removeGestures = () => {
-        if (pointerRetry) {
-            window.removeEventListener('pointerdown', pointerRetry, true);
-            pointerRetry = null;
-        }
-        if (keyRetry) {
-            window.removeEventListener('keydown', keyRetry, true);
-            keyRetry = null;
-        }
-    };
-
-    const tryPlay = () => {
-        if (cleaned) return;
-        el.autoplay = true;
-        el.muted = false;
-        el.volume = 1;
-        void el.play().catch((err) => {
-            if (err?.name === 'AbortError') return;
-            if (err?.name === 'NotAllowedError' && !cleaned && !pointerRetry && !keyRetry) {
-                pointerRetry = () => {
-                    void el.play().catch(() => {});
-                    removeGestures();
-                };
-                keyRetry = () => {
-                    void el.play().catch(() => {});
-                    removeGestures();
-                };
-                window.addEventListener('pointerdown', pointerRetry, { capture: true });
-                window.addEventListener('keydown', keyRetry, { capture: true });
-                return;
-            }
-            logPlayErrorUnlessAbort(err);
-        });
-    };
-
-    el.srcObject = stream;
-    tryPlay();
-
-    stream.getAudioTracks().forEach((track) => {
-        const onUnmute = () => tryPlay();
-        track.addEventListener('unmute', onUnmute);
-        trackCleanups.push(() => track.removeEventListener('unmute', onUnmute));
-    });
-
-    return () => {
-        cleaned = true;
-        removeGestures();
-        trackCleanups.forEach((fn) => fn());
-    };
+    console.warn('[call] remote media play', err);
 }
 
 /**
@@ -172,6 +110,7 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
     const pendingRemoteVideoRef = useRef(null);
     const pendingRemoteAudioRef = useRef(null);
     const remoteAudioWireCleanupRef = useRef(null);
+    const remoteVideoWireCleanupRef = useRef(null);
 
     const timeoutRef = useRef(null);
     const timerRef = useRef(null);
@@ -190,6 +129,8 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
     const [incomingCallType, setIncomingCallType] = useState('video');
     const [incomingFrom, setIncomingFrom] = useState(null);
     const [callDuration, setCallDuration] = useState(0);
+    /** True when the browser blocked remote play(); show “Tap to hear” (mobile Safari / autoplay policy). */
+    const [needsAudioUnlock, setNeedsAudioUnlock] = useState(false);
 
     const setCallStateSynced = useCallback((s) => {
         callStateRef.current = s;
@@ -219,6 +160,72 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
         }, 1000);
     }, []);
 
+    const wireMediaElementPlayback = useCallback((el, stream) => {
+        if (!el || !stream) return () => {};
+        let cleaned = false;
+        const trackCleanups = [];
+        let pointerRetry = null;
+        let keyRetry = null;
+
+        const removeGestures = () => {
+            if (pointerRetry) {
+                window.removeEventListener('pointerdown', pointerRetry, true);
+                pointerRetry = null;
+            }
+            if (keyRetry) {
+                window.removeEventListener('keydown', keyRetry, true);
+                keyRetry = null;
+            }
+        };
+
+        const tryPlay = () => {
+            if (cleaned) return;
+            el.autoplay = true;
+            if (el.tagName === 'VIDEO') {
+                el.muted = stream.getAudioTracks().length === 0;
+            } else {
+                el.muted = false;
+                el.volume = 1;
+            }
+            void el
+                .play()
+                .then(() => setNeedsAudioUnlock(false))
+                .catch((err) => {
+                    if (err?.name === 'AbortError') return;
+                    if (err?.name === 'NotAllowedError' && !cleaned && !pointerRetry && !keyRetry) {
+                        setNeedsAudioUnlock(true);
+                        pointerRetry = () => {
+                            void el.play().then(() => setNeedsAudioUnlock(false)).catch(() => {});
+                            removeGestures();
+                        };
+                        keyRetry = () => {
+                            void el.play().then(() => setNeedsAudioUnlock(false)).catch(() => {});
+                            removeGestures();
+                        };
+                        window.addEventListener('pointerdown', pointerRetry, { capture: true });
+                        window.addEventListener('keydown', keyRetry, { capture: true });
+                        return;
+                    }
+                    logPlayErrorUnlessAbort(err);
+                });
+        };
+
+        el.srcObject = stream;
+        tryPlay();
+
+        stream.getAudioTracks().forEach((track) => {
+            const onUnmute = () => tryPlay();
+            track.addEventListener('unmute', onUnmute);
+            trackCleanups.push(() => track.removeEventListener('unmute', onUnmute));
+        });
+
+        return () => {
+            cleaned = true;
+            removeGestures();
+            trackCleanups.forEach((fn) => fn());
+        };
+    }, []);
+
     const clearRemoteAudioEl = useCallback(() => {
         remoteAudioWireCleanupRef.current?.();
         remoteAudioWireCleanupRef.current = null;
@@ -242,6 +249,8 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
 
     const closePeer = useCallback(() => {
         pendingRemoteVideoRef.current = null;
+        remoteVideoWireCleanupRef.current?.();
+        remoteVideoWireCleanupRef.current = null;
         clearRemoteAudioEl();
         pcRef.current?.close();
         pcRef.current = null;
@@ -251,6 +260,7 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
     }, [clearRemoteAudioEl]);
 
     const reset = useCallback(() => {
+        setNeedsAudioUnlock(false);
         clearCallTimeout();
         stopTimer();
         stopLocalStream();
@@ -300,7 +310,7 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
             const a = remoteAudioRef.current;
             if (!a) return;
             remoteAudioWireCleanupRef.current?.();
-            remoteAudioWireCleanupRef.current = wireRemoteAudioPlayback(a, stream);
+            remoteAudioWireCleanupRef.current = wireMediaElementPlayback(a, stream);
         };
         if (el) {
             attach();
@@ -309,17 +319,28 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
         }
     }, []);
 
-    const attachRemoteVideo = useCallback((stream) => {
-        const el = remoteVideoRef.current;
-        if (!el) {
-            pendingRemoteVideoRef.current = stream;
-            return;
-        }
-        el.srcObject = stream;
-        el.muted = true;
-        el.playsInline = true;
-        el.play().catch(() => {});
-    }, []);
+    const attachRemoteVideo = useCallback(
+        (stream, playAudioThroughVideo = false) => {
+            const el = remoteVideoRef.current;
+            if (!el) {
+                pendingRemoteVideoRef.current = { stream, playAudioThroughVideo };
+                return;
+            }
+            el.playsInline = true;
+            el.srcObject = stream;
+            remoteVideoWireCleanupRef.current?.();
+            remoteVideoWireCleanupRef.current = null;
+            const hasAud = stream.getAudioTracks().length > 0;
+            if (playAudioThroughVideo && hasAud) {
+                el.muted = false;
+                remoteVideoWireCleanupRef.current = wireMediaElementPlayback(el, stream);
+            } else {
+                el.muted = true;
+                void el.play().catch(() => {});
+            }
+        },
+        [wireMediaElementPlayback]
+    );
 
     const createPeer = useCallback(
         (mediaKind) => {
@@ -340,11 +361,15 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
                     stream = new MediaStream([ev.track]);
                 }
                 if (!stream) return;
-                if (stream.getAudioTracks().length > 0) {
-                    routeRemoteAudio(stream);
+                const hasVideo = stream.getVideoTracks().length > 0;
+                const hasAudio = stream.getAudioTracks().length > 0;
+                const bundledVideoAudio =
+                    mediaKind === 'video' && hasVideo && hasAudio;
+                if (mediaKind === 'video' && hasVideo) {
+                    attachRemoteVideo(stream, bundledVideoAudio);
                 }
-                if (mediaKind === 'video' && stream.getVideoTracks().length > 0) {
-                    attachRemoteVideo(stream);
+                if (hasAudio && !bundledVideoAudio) {
+                    routeRemoteAudio(stream);
                 }
             };
 
@@ -606,21 +631,31 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
 
     useEffect(() => {
         const pending = pendingRemoteVideoRef.current;
-        if (pending && remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = pending;
-            remoteVideoRef.current.muted = true;
-            remoteVideoRef.current.play().catch(() => {});
-            pendingRemoteVideoRef.current = null;
-        }
-    }, [callState, callType]);
+        if (!pending || !remoteVideoRef.current) return;
+        const { stream, playAudioThroughVideo } =
+            pending && typeof pending === 'object' && 'stream' in pending
+                ? pending
+                : { stream: pending, playAudioThroughVideo: false };
+        if (!stream) return;
+        attachRemoteVideo(stream, playAudioThroughVideo);
+        pendingRemoteVideoRef.current = null;
+    }, [callState, callType, attachRemoteVideo]);
 
     useLayoutEffect(() => {
         const pending = pendingRemoteAudioRef.current;
         if (!pending || !remoteAudioRef.current) return;
         remoteAudioWireCleanupRef.current?.();
-        remoteAudioWireCleanupRef.current = wireRemoteAudioPlayback(remoteAudioRef.current, pending);
+        remoteAudioWireCleanupRef.current = wireMediaElementPlayback(remoteAudioRef.current, pending);
         pendingRemoteAudioRef.current = null;
     }, [callState]);
+
+    const unlockRemoteAudio = useCallback(() => {
+        const nodes = [remoteAudioRef.current, remoteVideoRef.current];
+        nodes.forEach((el) => {
+            if (!el?.srcObject) return;
+            void el.play().then(() => setNeedsAudioUnlock(false)).catch(() => {});
+        });
+    }, []);
 
     return {
         callState,
@@ -632,6 +667,8 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
         localVideoRef,
         remoteVideoRef,
         remoteAudioRef,
+        needsAudioUnlock,
+        unlockRemoteAudio,
         startCall,
         acceptCall,
         rejectCall,

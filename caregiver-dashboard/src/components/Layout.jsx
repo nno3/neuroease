@@ -33,6 +33,7 @@ function LayoutInner() {
         socket,
         callState, callType, incomingCallType, callerName, callDuration,
         localVideoRef, remoteVideoRef, remoteAudioRef,
+        needsAudioUnlock, unlockRemoteAudio,
         acceptCall, rejectCall, endCall, cancelCall,
         toggleMute, toggleVideo,
     } = useCall();
@@ -73,6 +74,8 @@ function LayoutInner() {
                 localVideoRef={localVideoRef}
                 remoteVideoRef={remoteVideoRef}
                 remoteAudioRef={remoteAudioRef}
+                needsAudioUnlock={needsAudioUnlock}
+                onUnlockAudio={unlockRemoteAudio}
                 onAccept={acceptCall}
                 onReject={rejectCall}
                 onEnd={endCall}

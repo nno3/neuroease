@@ -26,6 +26,8 @@ export default function CallOverlay({
     localVideoRef,
     remoteVideoRef,
     remoteAudioRef,
+    needsAudioUnlock,
+    onUnlockAudio,
     onAccept,
     onReject,
     onEnd,
@@ -114,7 +116,12 @@ export default function CallOverlay({
             )}
             {/* Remote video — muted; audio comes from call-remote-audio */}
             {callState === 'active' && isVideoCall && (
-                <video ref={remoteVideoRef} className="call-remote-video" autoPlay playsInline muted />
+                <video
+                    ref={remoteVideoRef}
+                    className="call-remote-video"
+                    autoPlay
+                    playsInline
+                />
             )}
 
             {/* Avatar circle for audio calls or pre-connect states */}
@@ -138,6 +145,11 @@ export default function CallOverlay({
             )}
 
             <div className="call-ui">
+                {callState === 'active' && needsAudioUnlock && (
+                    <button type="button" className="call-audio-unlock" onClick={onUnlockAudio}>
+                        Tap to hear the other person
+                    </button>
+                )}
                 <div className="call-info">
                     <p className="call-contact-name">{contactName || 'Unknown'}</p>
                     <p className={`call-status-label ${callState === 'active' ? 'call-status-label--timer' : ''}`}>
