@@ -157,9 +157,16 @@ export default function CallOverlay({
                     </p>
                 </div>
 
-                {callState === 'active' && isVideoCall && (
-                    <video ref={localVideoRef} className="call-local-pip" autoPlay playsInline muted />
-                )}
+                {isVideoCall &&
+                    (callState === 'calling' || callState === 'incoming' || callState === 'active') && (
+                        <video
+                            ref={localVideoRef}
+                            className="call-local-pip"
+                            autoPlay
+                            playsInline
+                            muted
+                        />
+                    )}
 
                 <div className="call-controls">
                     {callState === 'calling' && (

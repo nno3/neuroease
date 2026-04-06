@@ -29,6 +29,23 @@ const ICE_SERVERS = [
     },
 ];
 
+/**
+ * Production: set `VITE_ICE_SERVERS` to a JSON array of RTCIceServer objects from your TURN provider
+ * (e.g. Metered free tier) — much more reliable than public relays alone. Build-time env in Vite.
+ */
+function getIceServers() {
+    const raw = import.meta.env.VITE_ICE_SERVERS;
+    if (typeof raw === 'string' && raw.trim().length > 0) {
+        try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch (_) {
+            if (import.meta.env.DEV) console.warn('[call] VITE_ICE_SERVERS invalid JSON; using defaults');
+        }
+    }
+    return ICE_SERVERS;
+}
+
 const SOCKET_CONNECT_MS = 20_000;
 
 function waitForSocket(sock, ms = SOCKET_CONNECT_MS) {
@@ -111,6 +128,10 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
     const pendingRemoteAudioRef = useRef(null);
     const remoteAudioWireCleanupRef = useRef(null);
     const remoteVideoWireCleanupRef = useRef(null);
+    /** Ignore connectionState 'closed' right after we call pc.close() (otherwise reset runs twice / random hangups). */
+    const intentionalPeerCloseRef = useRef(false);
+    const connectionFailedTimerRef = useRef(null);
+    const localTrackEndedDebounceRef = useRef(null);
 
     const timeoutRef = useRef(null);
     const timerRef = useRef(null);
@@ -252,7 +273,15 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
         remoteVideoWireCleanupRef.current?.();
         remoteVideoWireCleanupRef.current = null;
         clearRemoteAudioEl();
-        pcRef.current?.close();
+        if (connectionFailedTimerRef.current) {
+            clearTimeout(connectionFailedTimerRef.current);
+            connectionFailedTimerRef.current = null;
+        }
+        const pc = pcRef.current;
+        if (pc) {
+            intentionalPeerCloseRef.current = true;
+            pc.close();
+        }
         pcRef.current = null;
         if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = null;
@@ -262,6 +291,14 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
     const reset = useCallback(() => {
         setNeedsAudioUnlock(false);
         clearCallTimeout();
+        if (connectionFailedTimerRef.current) {
+            clearTimeout(connectionFailedTimerRef.current);
+            connectionFailedTimerRef.current = null;
+        }
+        if (localTrackEndedDebounceRef.current) {
+            clearTimeout(localTrackEndedDebounceRef.current);
+            localTrackEndedDebounceRef.current = null;
+        }
         stopTimer();
         stopLocalStream();
         closePeer();
@@ -282,15 +319,24 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
             let handled = false;
             const onEnded = () => {
                 if (callStateRef.current === 'idle' || handled) return;
-                handled = true;
-                console.warn(
-                    '[call] Local mic/camera stopped — ending call. Phone on http://192.168.x often needs HTTPS (npm run dev:https). Otherwise: device unplugged, another app using the camera, or two browsers on one Mac fighting for the device.'
-                );
-                const peer = remotePeerIdRef.current || incomingFromRef.current;
-                if (peer && socketRef.current?.connected) {
-                    socketRef.current.emit('call:end', { to: peer });
-                }
-                reset();
+                clearTimeout(localTrackEndedDebounceRef.current);
+                localTrackEndedDebounceRef.current = setTimeout(() => {
+                    localTrackEndedDebounceRef.current = null;
+                    if (callStateRef.current === 'idle' || handled) return;
+                    const st = localStreamRef.current;
+                    if (!st) return;
+                    const anyEnded = st.getTracks().some((t) => t.readyState === 'ended');
+                    if (!anyEnded) return;
+                    handled = true;
+                    console.warn(
+                        '[call] Local mic/camera stopped — ending call. If this was unexpected, iOS sometimes fires spurious "ended"; we debounce. Otherwise: HTTPS required on LAN, unplugged device, or another app using the camera.'
+                    );
+                    const peer = remotePeerIdRef.current || incomingFromRef.current;
+                    if (peer && socketRef.current?.connected) {
+                        socketRef.current.emit('call:end', { to: peer });
+                    }
+                    reset();
+                }, 750);
             };
             const cleanups = [];
             stream.getTracks().forEach((track) => {
@@ -298,7 +344,11 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
                 track.addEventListener('ended', fn);
                 cleanups.push(() => track.removeEventListener('ended', fn));
             });
-            localTrackEndedCleanupRef.current = () => cleanups.forEach((c) => c());
+            localTrackEndedCleanupRef.current = () => {
+                clearTimeout(localTrackEndedDebounceRef.current);
+                localTrackEndedDebounceRef.current = null;
+                cleanups.forEach((c) => c());
+            };
         },
         [reset]
     );
@@ -344,7 +394,11 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
 
     const createPeer = useCallback(
         (mediaKind) => {
-            const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+            const pc = new RTCPeerConnection({
+                iceServers: getIceServers(),
+                iceCandidatePoolSize: 10,
+            });
+            let iceRestartAttempted = false;
 
             pc.onicecandidate = (ev) => {
                 if (ev.candidate && remotePeerIdRef.current && socketRef.current?.connected) {
@@ -373,10 +427,58 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
                 }
             };
 
+            pc.oniceconnectionstatechange = () => {
+                if (pcRef.current !== pc) return;
+                const ice = pc.iceConnectionState;
+                if (ice === 'connected' || ice === 'completed') {
+                    iceRestartAttempted = false;
+                }
+                if (
+                    ice === 'disconnected' &&
+                    !iceRestartAttempted &&
+                    callStateRef.current === 'active' &&
+                    pc.signalingState !== 'closed'
+                ) {
+                    iceRestartAttempted = true;
+                    try {
+                        pc.restartIce();
+                    } catch (_) {
+                        /* ignore */
+                    }
+                }
+            };
+
             pc.onconnectionstatechange = () => {
+                if (pcRef.current !== pc) return;
                 const s = pc.connectionState;
-                if (s === 'failed' || s === 'closed') {
-                    reset();
+                if (s === 'connected' || s === 'connecting') {
+                    if (connectionFailedTimerRef.current) {
+                        clearTimeout(connectionFailedTimerRef.current);
+                        connectionFailedTimerRef.current = null;
+                    }
+                }
+                if (s === 'closed') {
+                    if (connectionFailedTimerRef.current) {
+                        clearTimeout(connectionFailedTimerRef.current);
+                        connectionFailedTimerRef.current = null;
+                    }
+                    if (intentionalPeerCloseRef.current) {
+                        intentionalPeerCloseRef.current = false;
+                        return;
+                    }
+                    if (callStateRef.current !== 'idle') reset();
+                    return;
+                }
+                if (s === 'failed') {
+                    if (connectionFailedTimerRef.current) {
+                        clearTimeout(connectionFailedTimerRef.current);
+                    }
+                    connectionFailedTimerRef.current = setTimeout(() => {
+                        connectionFailedTimerRef.current = null;
+                        if (pcRef.current === pc && pc.connectionState === 'failed') {
+                            reset();
+                        }
+                    }, 3000);
                 }
             };
 
@@ -648,6 +750,21 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
         remoteAudioWireCleanupRef.current = wireMediaElementPlayback(remoteAudioRef.current, pending);
         pendingRemoteAudioRef.current = null;
     }, [callState]);
+
+    /** Local preview must attach whenever the <video> exists; getUserMedia often runs before refs mount (calling/incoming). */
+    useLayoutEffect(() => {
+        const stream = localStreamRef.current;
+        if (!stream || callType !== 'video') return;
+        if (!['calling', 'incoming', 'active'].includes(callState)) return;
+        const el = localVideoRef.current;
+        if (!el) return;
+        if (el.srcObject !== stream) {
+            el.srcObject = stream;
+            el.muted = true;
+            el.playsInline = true;
+            void el.play().catch(() => {});
+        }
+    }, [callState, callType]);
 
     const unlockRemoteAudio = useCallback(() => {
         const nodes = [remoteAudioRef.current, remoteVideoRef.current];
