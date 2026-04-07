@@ -64,11 +64,12 @@ export function CallProvider({ children }) {
     useEffect(() => { fetchContacts(); }, [fetchContacts]);
 
     useEffect(() => {
-        const peerId = webRTC.incomingFrom ?? webRTC.remoteUserId;
-        if (!peerId || webRTC.callState === 'idle') {
+        if (webRTC.callState === 'idle') {
             setCallerName('Unknown');
             return;
         }
+        const peerId = webRTC.incomingFrom ?? webRTC.remoteUserId;
+        if (!peerId) return;
         const id = Number(peerId);
         const cached = nameByPeerIdRef.current.get(id);
         if (cached) setCallerName(cached);

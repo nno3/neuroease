@@ -103,6 +103,13 @@ export default function CallOverlay({
 
     const isTerminal = ['ended', 'no-answer', 'busy'].includes(callState);
 
+    const showAvatarRing =
+        callState === 'calling' ||
+        callState === 'incoming' ||
+        (callState === 'active' && !isVideoCall);
+
+    const showGradientBackdrop = !(callState === 'active' && isVideoCall);
+
     return (
         <div className="call-overlay">
             {callState !== 'idle' && (
@@ -114,7 +121,8 @@ export default function CallOverlay({
                     aria-hidden
                 />
             )}
-            {/* Remote video — muted; audio comes from call-remote-audio */}
+            {showGradientBackdrop && <div className="call-overlay__backdrop" aria-hidden />}
+
             {callState === 'active' && isVideoCall && (
                 <video
                     ref={remoteVideoRef}
@@ -124,38 +132,38 @@ export default function CallOverlay({
                 />
             )}
 
-            {/* Avatar circle for audio calls or pre-connect states */}
-            {callState === 'active' && !isVideoCall && (
-                <div className="call-audio-bg">
-                    <div className="call-avatar-ring">
-                        <span className="call-avatar-initials">
-                            {contactName ? contactName[0].toUpperCase() : '?'}
-                        </span>
-                    </div>
-                </div>
-            )}
-            {(callState === 'calling' || callState === 'incoming') && (
-                <div className="call-audio-bg">
-                    <div className={`call-avatar-ring ${callState === 'incoming' ? 'call-avatar-ring--pulse' : ''}`}>
-                        <span className="call-avatar-initials">
-                            {contactName ? contactName[0].toUpperCase() : '?'}
-                        </span>
-                    </div>
-                </div>
-            )}
-
-            <div className="call-ui">
+            <div
+                className={`call-ui${callState === 'active' && isVideoCall ? ' call-ui--video-active' : ''}`}
+            >
                 {callState === 'active' && needsAudioUnlock && (
                     <button type="button" className="call-audio-unlock" onClick={onUnlockAudio}>
                         Tap to hear the other person
                     </button>
                 )}
-                <div className="call-info">
-                    <p className="call-contact-name">{contactName || 'Unknown'}</p>
-                    <p className={`call-status-label ${callState === 'active' ? 'call-status-label--timer' : ''}`}>
-                        {statusLabel}
-                    </p>
-                </div>
+                <header className="call-ui__header">
+                    <div className="call-info">
+                        <p className="call-contact-name">{contactName || 'Unknown'}</p>
+                        <p className={`call-status-label ${callState === 'active' ? 'call-status-label--timer' : ''}`}>
+                            {statusLabel}
+                        </p>
+                    </div>
+                </header>
+
+                {showAvatarRing && (
+                    <div className="call-stage">
+                        <div
+                            className={`call-avatar-ring ${callState === 'incoming' ? 'call-avatar-ring--pulse' : ''}`}
+                        >
+                            <span className="call-avatar-initials">
+                                {contactName ? contactName[0].toUpperCase() : '?'}
+                            </span>
+                        </div>
+                    </div>
+                )}
+
+                {callState === 'active' && isVideoCall && (
+                    <div className="call-stage call-stage--filler" aria-hidden />
+                )}
 
                 {isVideoCall &&
                     (callState === 'calling' || callState === 'incoming' || callState === 'active') && (

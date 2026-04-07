@@ -4,9 +4,18 @@
     z-index: 9999;
     background: #0f172a;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    flex-direction: column;
+    min-height: 100dvh;
     color: #fff;
+}
+
+/* Gradient behind ringing / audio-only / terminal — no content here (avoids stacking with UI). */
+.call-overlay__backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: linear-gradient(165deg, #1e3a5f 0%, #0f172a 55%, #0c1222 100%);
 }
 
 /* Remote WebRTC audio — hidden; avoid 0×0 on iOS (can block playback) */
@@ -31,55 +40,85 @@
     height: 100%;
     object-fit: cover;
     background: #000;
+    z-index: 0;
 }
 
-/* Audio-only background */
-.call-audio-bg {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+/* Single column: header → avatar (optional) → controls — no competing full-screen centers */
+.call-ui {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 28rem;
+    margin: 0 auto;
+    padding: max(0.75rem, env(safe-area-inset-top)) 1.25rem max(1.25rem, env(safe-area-inset-bottom));
+    box-sizing: border-box;
+    min-height: 0;
+}
+
+.call-ui--video-active .call-ui__header {
+    background: rgba(15, 23, 42, 0.72);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 14px;
+    padding: 10px 18px 12px;
+    margin-bottom: 8px;
+    width: calc(100% - 8px);
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.call-ui__header {
+    flex-shrink: 0;
+    width: 100%;
+    text-align: center;
+}
+
+.call-stage {
+    flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
+    min-height: 8rem;
+    width: 100%;
+}
+
+/* Video call: leave vertical space so header + footer don’t cover remote feed */
+.call-ui--video-active .call-stage--filler {
+    pointer-events: none;
+    min-height: 2rem;
 }
 
 .call-avatar-ring {
-    width: 120px;
-    height: 120px;
+    width: 112px;
+    height: 112px;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.12);
-    border: 3px solid rgba(255, 255, 255, 0.3);
+    border: 3px solid rgba(255, 255, 255, 0.28);
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
     animation: call-pulse 2s infinite;
 }
 
 .call-avatar-initials {
-    font-size: 2.5rem;
+    font-size: 2.35rem;
     font-weight: 700;
     color: #fff;
+    line-height: 1;
 }
 
 @keyframes call-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.2); }
-    50%       { box-shadow: 0 0 0 20px rgba(255,255,255,0); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.18); }
+    50%      { box-shadow: 0 0 0 16px rgba(255, 255, 255, 0); }
 }
 
 .call-avatar-ring--pulse {
-    animation: call-pulse 1s infinite;
-}
-
-/* UI layer sits on top of video */
-.call-ui {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 24px;
-    width: 100%;
-    padding: 40px 24px;
+    animation: call-pulse 1.1s infinite;
 }
 
 .call-audio-unlock {
@@ -94,6 +133,8 @@
     background: #fbbf24;
     color: #1e293b;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    flex-shrink: 0;
+    margin-bottom: 12px;
 }
 
 .call-audio-unlock:active {
@@ -105,44 +146,56 @@
 }
 
 .call-contact-name {
-    font-size: 1.6rem;
+    font-size: clamp(1.25rem, 4vw, 1.55rem);
     font-weight: 700;
-    margin: 0 0 6px;
-    text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+    margin: 0 0 4px;
+    line-height: 1.25;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
 }
 
 .call-status-label {
-    font-size: 0.95rem;
-    color: rgba(255,255,255,0.75);
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.82);
     margin: 0;
-    text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+    line-height: 1.35;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+.call-status-label--timer {
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.95);
 }
 
 /* Local picture-in-picture */
 .call-local-pip {
     position: fixed;
-    bottom: 120px;
-    right: 20px;
-    width: 120px;
-    height: 160px;
+    bottom: max(6.5rem, calc(env(safe-area-inset-bottom) + 5.5rem));
+    right: max(1rem, env(safe-area-inset-right));
+    width: 112px;
+    height: 150px;
     object-fit: cover;
     border-radius: 12px;
-    border: 2px solid rgba(255,255,255,0.4);
+    border: 2px solid rgba(255, 255, 255, 0.45);
     background: #000;
     z-index: 2;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
-/* Control buttons */
 .call-controls {
     display: flex;
-    gap: 20px;
+    gap: 1.25rem;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
+    margin-top: auto;
+    padding-top: 1.25rem;
 }
 
 .call-btn {
-    width: 60px;
-    height: 60px;
+    width: 58px;
+    height: 58px;
     border-radius: 50%;
     border: none;
     cursor: pointer;
@@ -153,7 +206,9 @@
     color: #fff;
 }
 
-.call-btn:active { transform: scale(0.92); }
+.call-btn:active {
+    transform: scale(0.92);
+}
 
 .call-btn-accept {
     background: #22c55e;
@@ -164,35 +219,37 @@
 }
 
 .call-btn-toggle {
-    background: rgba(255,255,255,0.15);
-    backdrop-filter: blur(6px);
+    background: rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
 .call-btn-toggle.call-btn-active {
-    background: rgba(255,255,255,0.35);
+    background: rgba(255, 255, 255, 0.34);
 }
 
 .call-btn-dismiss {
-    background: rgba(255,255,255,0.15);
-    backdrop-filter: blur(6px);
-}
-
-.call-status-label--timer {
-    font-size: 1.1rem;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    color: rgba(255,255,255,0.9);
+    background: rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
 @media (max-width: 480px) {
     .call-local-pip {
-        width: 90px;
-        height: 120px;
-        bottom: 100px;
-        right: 12px;
+        width: 92px;
+        height: 122px;
+        bottom: max(6rem, calc(env(safe-area-inset-bottom) + 5rem));
+        right: max(0.75rem, env(safe-area-inset-right));
     }
     .call-btn {
         width: 52px;
         height: 52px;
+    }
+    .call-avatar-ring {
+        width: 100px;
+        height: 100px;
+    }
+    .call-avatar-initials {
+        font-size: 2rem;
     }
 }
