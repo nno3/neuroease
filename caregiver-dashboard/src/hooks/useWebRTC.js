@@ -38,9 +38,19 @@ function getIceServers() {
     if (typeof raw === 'string' && raw.trim().length > 0) {
         try {
             const parsed = JSON.parse(raw);
-            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                const probe = JSON.stringify(parsed);
+                if (probe.includes('YOUR_USER') || probe.includes('YOUR_PASS')) {
+                    console.warn(
+                        '[call] VITE_ICE_SERVERS still has placeholders — use real Metered username/credential or cross-network calls will fail'
+                    );
+                }
+                return parsed;
+            }
         } catch (_) {
-            if (import.meta.env.DEV) console.warn('[call] VITE_ICE_SERVERS invalid JSON; using defaults');
+            console.warn(
+                '[call] VITE_ICE_SERVERS is not valid JSON (on Render avoid wrapping in single quotes) — using default ICE; different networks may fail'
+            );
         }
     }
     return ICE_SERVERS;

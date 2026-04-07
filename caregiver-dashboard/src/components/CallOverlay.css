@@ -43,7 +43,7 @@
     z-index: 0;
 }
 
-/* Single column: header → avatar (optional) → controls — no competing full-screen centers */
+/* Single column: header → avatar (optional) → controls */
 .call-ui {
     position: relative;
     z-index: 1;
@@ -54,9 +54,22 @@
     width: 100%;
     max-width: 28rem;
     margin: 0 auto;
-    padding: max(0.75rem, env(safe-area-inset-top)) 1.25rem max(1.25rem, env(safe-area-inset-bottom));
     box-sizing: border-box;
     min-height: 0;
+}
+
+/* Ringing / incoming / audio / terminal: compact cluster — slightly below notch, clear of browser bar */
+.call-ui:not(.call-ui--video-active) {
+    justify-content: center;
+    gap: 0.7rem;
+    padding: calc(env(safe-area-inset-top) + 2rem) 1.25rem max(4.75rem, calc(env(safe-area-inset-bottom) + 3.75rem));
+}
+
+/* Active video: header at top, controls just above safe area over remote video */
+.call-ui--video-active {
+    justify-content: flex-start;
+    padding: calc(env(safe-area-inset-top) + 0.65rem) 1.25rem max(0.75rem, env(safe-area-inset-bottom));
+    gap: 0.5rem;
 }
 
 .call-ui--video-active .call-ui__header {
@@ -77,19 +90,20 @@
     text-align: center;
 }
 
-.call-stage {
-    flex: 1;
+/* Compact cluster: avatar doesn’t stretch to fill the screen */
+.call-ui:not(.call-ui--video-active) .call-stage {
+    flex: 0 0 auto;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 8rem;
     width: 100%;
 }
 
-/* Video call: leave vertical space so header + footer don’t cover remote feed */
 .call-ui--video-active .call-stage--filler {
+    flex: 1;
+    min-height: 3rem;
+    width: 100%;
     pointer-events: none;
-    min-height: 2rem;
 }
 
 .call-avatar-ring {
@@ -148,7 +162,7 @@
 .call-contact-name {
     font-size: clamp(1.25rem, 4vw, 1.55rem);
     font-weight: 700;
-    margin: 0 0 4px;
+    margin: 0 0 2px;
     line-height: 1.25;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
 }
@@ -185,12 +199,21 @@
 
 .call-controls {
     display: flex;
-    gap: 1.25rem;
+    gap: 1.15rem;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+}
+
+.call-ui:not(.call-ui--video-active) .call-controls {
+    margin-top: 0;
+    padding-top: 0.1rem;
+}
+
+.call-ui--video-active .call-controls {
     margin-top: auto;
-    padding-top: 1.25rem;
+    padding-top: 0.75rem;
+    padding-bottom: 0.35rem;
 }
 
 .call-btn {
