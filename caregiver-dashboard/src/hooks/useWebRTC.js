@@ -82,9 +82,45 @@ function waitForSocket(sock, ms = SOCKET_CONNECT_MS) {
     });
 }
 
-/** Plain SDP object — Socket.IO JSON round-trip can drop RTCSessionDescription prototypes. */
-function sdpPayload(desc) {
+const SDP_TYPES = new Set(['offer', 'answer', 'pranswer', 'rollback']);
+
+/**
+ * Socket/reconnect edge cases sometimes deliver { sdp, type: null }. RTCPeerConnection rejects that.
+ * When we know the role (incoming leg is always an offer; answer leg is always an answer), fill in type.
+ */
+function normalizeSessionDescription(raw, expectedRole) {
+    if (!raw || typeof raw !== 'object') return null;
+    let type = raw.type;
+    const sdp = raw.sdp != null ? String(raw.sdp) : '';
+    if (!sdp.trim()) return null;
+    if (typeof type === 'number') {
+        type = { 1: 'offer', 2: 'answer', 3: 'pranswer', 4: 'rollback' }[type] ?? null;
+    } else if (type != null && type !== '') {
+        type = String(type);
+    } else {
+        type = null;
+    }
+    if (!type || !SDP_TYPES.has(type)) {
+        if (expectedRole && SDP_TYPES.has(expectedRole)) type = expectedRole;
+        else return null;
+    }
+    return { type, sdp };
+}
+
+/**
+ * Plain SDP for Socket.IO — always include a valid `type` (some clients send type: null after reconnect).
+ * Pass 'offer' or 'answer' so the field is never omitted on the wire.
+ */
+function sdpPayload(desc, expectedRole) {
     if (!desc || typeof desc !== 'object') return desc;
+    const n = normalizeSessionDescription(
+        { type: desc.type, sdp: desc.sdp },
+        expectedRole
+    );
+    if (n) return n;
+    if (expectedRole && SDP_TYPES.has(expectedRole)) {
+        return { type: expectedRole, sdp: String(desc.sdp ?? '') };
+    }
     return { type: desc.type, sdp: desc.sdp };
 }
 
@@ -142,6 +178,8 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
     const intentionalPeerCloseRef = useRef(false);
     const connectionFailedTimerRef = useRef(null);
     const localTrackEndedDebounceRef = useRef(null);
+    /** Trickle ICE can arrive before RTCPeerConnection exists or before setRemoteDescription — buffer then flush. */
+    const pendingIceCandidatesRef = useRef([]);
 
     const timeoutRef = useRef(null);
     const timerRef = useRef(null);
@@ -287,6 +325,7 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
             clearTimeout(connectionFailedTimerRef.current);
             connectionFailedTimerRef.current = null;
         }
+        pendingIceCandidatesRef.current = [];
         const pc = pcRef.current;
         if (pc) {
             intentionalPeerCloseRef.current = true;
@@ -320,6 +359,19 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
         setIncomingOffer(null);
         setIncomingFrom(null);
     }, [clearCallTimeout, stopTimer, stopLocalStream, closePeer, setCallStateSynced]);
+
+    const flushPendingIce = useCallback(async (pc) => {
+        if (!pc?.remoteDescription) return;
+        const queued = pendingIceCandidatesRef.current;
+        pendingIceCandidatesRef.current = [];
+        for (const init of queued) {
+            try {
+                await pc.addIceCandidate(init ? new RTCIceCandidate(init) : null);
+            } catch (e) {
+                console.warn('[call] flush pending ICE', e);
+            }
+        }
+    }, []);
 
     const attachLocalTrackEndedHandlers = useCallback(
         (stream) => {
@@ -411,12 +463,11 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
             let iceRestartAttempted = false;
 
             pc.onicecandidate = (ev) => {
-                if (ev.candidate && remotePeerIdRef.current && socketRef.current?.connected) {
-                    socketRef.current.emit('call:ice-candidate', {
-                        to: remotePeerIdRef.current,
-                        candidate: iceCandidatePayload(ev.candidate),
-                    });
-                }
+                if (!remotePeerIdRef.current || !socketRef.current?.connected) return;
+                socketRef.current.emit('call:ice-candidate', {
+                    to: remotePeerIdRef.current,
+                    candidate: ev.candidate ? iceCandidatePayload(ev.candidate) : null,
+                });
             };
 
             pc.ontrack = (ev) => {
@@ -543,7 +594,7 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
 
                 socketRef.current.emit('call:offer', {
                     to: peerId,
-                    offer: sdpPayload(offer),
+                    offer: sdpPayload(offer, 'offer'),
                     callType: mediaKind,
                 });
 
@@ -598,13 +649,19 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
 
             const stream = await getMedia(mediaKind);
             const pc = createPeer(mediaKind);
+            const offerInit = normalizeSessionDescription(incomingOfferRef.current, 'offer');
+            if (!offerInit) {
+                console.error('[call] acceptCall: invalid or missing offer SDP');
+                reset();
+                return;
+            }
+            await pc.setRemoteDescription(new RTCSessionDescription(offerInit));
+            await flushPendingIce(pc);
             stream.getTracks().forEach((t) => pc.addTrack(t, stream));
-
-            await pc.setRemoteDescription(new RTCSessionDescription(incomingOfferRef.current));
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
 
-            socketRef.current.emit('call:answer', { to: from, answer: sdpPayload(answer) });
+            socketRef.current.emit('call:answer', { to: from, answer: sdpPayload(answer, 'answer') });
 
             setCallStateSynced('active');
             startTimer();
@@ -624,6 +681,7 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
         setRemoteUserIdSynced,
         reset,
         socket,
+        flushPendingIce,
     ]);
 
     const rejectCall = useCallback(() => {
@@ -663,23 +721,25 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
 
         const onOffer = ({ from, offer, callType: ct }) => {
             const fromId = Number(from);
-            if (!Number.isFinite(fromId) || !offer) return;
+            const normalizedOffer = normalizeSessionDescription(offer, 'offer');
+            if (!Number.isFinite(fromId) || !normalizedOffer) return;
             if (callStateRef.current !== 'idle') {
                 socket.emit('call:reject', { to: fromId, reason: 'busy' });
                 return;
             }
             incomingFromRef.current = fromId;
-            incomingOfferRef.current = offer;
+            incomingOfferRef.current = normalizedOffer;
             incomingCallTypeRef.current = ct === 'audio' ? 'audio' : 'video';
             setIncomingFrom(fromId);
-            setIncomingOffer(offer);
+            setIncomingOffer(normalizedOffer);
             setIncomingCallType(incomingCallTypeRef.current);
             setCallStateSynced('incoming');
         };
 
         const onAnswer = async ({ answer }) => {
             const pc = pcRef.current;
-            if (!pc || !answer) return;
+            const normalized = normalizeSessionDescription(answer, 'answer');
+            if (!pc || !normalized) return;
             // Caller must be waiting for the answer; duplicate socket events are common (reconnect).
             if (pc.signalingState !== 'have-local-offer') {
                 if (pc.signalingState === 'stable' && callStateRef.current === 'active') {
@@ -689,7 +749,8 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
             }
             clearCallTimeout();
             try {
-                await pc.setRemoteDescription(new RTCSessionDescription(answer));
+                await pc.setRemoteDescription(new RTCSessionDescription(normalized));
+                await flushPendingIce(pc);
                 setCallStateSynced('active');
                 startTimer();
             } catch (e) {
@@ -698,11 +759,17 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
             }
         };
 
-        const onIce = async ({ candidate }) => {
+        const onIce = async ({ from, candidate }) => {
+            const fromId = Number(from);
+            const peer = remotePeerIdRef.current ?? incomingFromRef.current;
+            if (!Number.isFinite(fromId) || !Number.isFinite(peer) || fromId !== peer) return;
+            const pc = pcRef.current;
             try {
-                if (pcRef.current && candidate) {
-                    await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+                if (!pc || !pc.remoteDescription) {
+                    pendingIceCandidatesRef.current.push(candidate);
+                    return;
                 }
+                await pc.addIceCandidate(candidate ? new RTCIceCandidate(candidate) : null);
             } catch (e) {
                 console.error('[call] onIce', e);
             }
@@ -739,7 +806,7 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
             socket.off('call:reject', onReject);
             socket.off('call:cancel', onCancel);
         };
-    }, [socket, setCallStateSynced, clearCallTimeout, startTimer, stopTimer, stopLocalStream, closePeer, reset]);
+    }, [socket, setCallStateSynced, clearCallTimeout, startTimer, stopTimer, stopLocalStream, closePeer, reset, flushPendingIce]);
 
     useEffect(() => {
         const pending = pendingRemoteVideoRef.current;

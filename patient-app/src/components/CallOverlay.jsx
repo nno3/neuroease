@@ -37,6 +37,8 @@ export default function CallOverlay({
 }) {
     const [muted, setMuted] = useState(false);
     const [videoOff, setVideoOff] = useState(false);
+    /** Stop Web Audio ring before getUserMedia — iOS often breaks mic/remote play if oscillator is still running. */
+    const [suppressRingtone, setSuppressRingtone] = useState(false);
 
     useEffect(() => {
         if (callState === 'active') {
@@ -45,9 +47,13 @@ export default function CallOverlay({
         }
     }, [callState]);
 
+    useEffect(() => {
+        if (callState === 'idle') setSuppressRingtone(false);
+    }, [callState]);
+
     // Ringtone: synthesise two-tone ring on incoming
     useEffect(() => {
-        if (callState !== 'incoming') return;
+        if (callState !== 'incoming' || suppressRingtone) return;
         let ctx;
         let stopped = false;
         let timeouts = [];
@@ -80,7 +86,7 @@ export default function CallOverlay({
             timeouts.forEach(clearTimeout);
             ctx?.close();
         };
-    }, [callState]);
+    }, [callState, suppressRingtone]);
 
     if (callState === 'idle') return null;
 
@@ -185,7 +191,15 @@ export default function CallOverlay({
 
                     {callState === 'incoming' && (
                         <>
-                            <button className="call-btn call-btn-accept" onClick={onAccept} title="Accept">
+                            <button
+                                type="button"
+                                className="call-btn call-btn-accept"
+                                onClick={() => {
+                                    setSuppressRingtone(true);
+                                    onAccept();
+                                }}
+                                title="Accept"
+                            >
                                 <PhoneIncoming size={24} />
                             </button>
                             <button className="call-btn call-btn-end" onClick={onReject} title="Decline">
