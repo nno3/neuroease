@@ -115,20 +115,66 @@ export function CallProvider({ children }) {
             return;
         }
 
+        const peerId = webRTC.incomingFrom;
+        if (peerId == null) return;
+
         const type = webRTC.incomingCallType === 'audio' ? 'audio' : 'video';
+        let cancelled = false;
 
-        notifRef.current = new Notification(`Incoming ${type} call`, {
-            body: `${callerName} is calling you`,
-            icon: '/favicon.ico',
-            tag: 'incoming-call',
-            requireInteraction: true,
-        });
-
-        notifRef.current.onclick = () => {
-            window.focus();
+        const show = (name) => {
+            if (cancelled) return;
+            const label = (name && String(name).trim()) || 'Someone';
             notifRef.current?.close();
+            notifRef.current = new Notification(`Incoming ${type} call`, {
+                body: `${label} is calling you`,
+                icon: '/favicon.ico',
+                tag: 'incoming-call',
+                requireInteraction: true,
+            });
+            notifRef.current.onclick = () => {
+                window.focus();
+                notifRef.current?.close();
+            };
         };
-    }, [webRTC.callState, webRTC.incomingFrom, webRTC.incomingCallType, callerName]);
+
+        const id = Number(peerId);
+        const fromContacts = contacts.find((c) => samePeerId(c.user?.id, peerId))?.user?.name;
+        if (fromContacts && String(fromContacts).trim()) {
+            show(fromContacts);
+            return () => {
+                cancelled = true;
+            };
+        }
+
+        const cached = nameByPeerIdRef.current.get(id);
+        if (cached && String(cached).trim()) {
+            show(cached);
+            return () => {
+                cancelled = true;
+            };
+        }
+
+        if (callerName !== 'Unknown' && String(callerName).trim()) {
+            show(callerName);
+            return () => {
+                cancelled = true;
+            };
+        }
+
+        apiRequest(`/api/auth/user/${peerId}/name`)
+            .then((res) => {
+                if (cancelled) return;
+                show(pickDisplayName(res));
+            })
+            .catch(() => {
+                if (cancelled) return;
+                show(null);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [webRTC.callState, webRTC.incomingFrom, webRTC.incomingCallType, callerName, contacts]);
 
     return (
         <CallContext.Provider value={{ ...webRTC, socketRef, socket, callerName }}>

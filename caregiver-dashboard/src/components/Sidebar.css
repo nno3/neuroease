@@ -30,12 +30,10 @@
     flex-direction: column;
     gap: 4px;
     padding: 0 12px;
-}
-
-.sidebar-nav-bottom {
-    margin-top: auto;
-    padding-top: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .sidebar-link {

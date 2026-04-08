@@ -345,14 +345,30 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
         el.srcObject = stream;
         tryPlay();
 
-        stream.getAudioTracks().forEach((track) => {
-            const onUnmute = () => tryPlay();
-            track.addEventListener('unmute', onUnmute);
-            trackCleanups.push(() => track.removeEventListener('unmute', onUnmute));
-        });
+        const attachAudioTrackListeners = () => {
+            stream.getAudioTracks().forEach((track) => {
+                const onUnmute = () => tryPlay();
+                track.addEventListener('unmute', onUnmute);
+                trackCleanups.push(() => track.removeEventListener('unmute', onUnmute));
+            });
+        };
+        attachAudioTrackListeners();
+
+        // Video often arrives before audio on the same MediaStream; without this, <video> stays muted forever.
+        const onStreamAddTrack = (ev) => {
+            const t = ev.track;
+            if (t && t.kind === 'audio') {
+                const onUnmute = () => tryPlay();
+                t.addEventListener('unmute', onUnmute);
+                trackCleanups.push(() => t.removeEventListener('unmute', onUnmute));
+            }
+            tryPlay();
+        };
+        stream.addEventListener('addtrack', onStreamAddTrack);
 
         return () => {
             cleaned = true;
+            stream.removeEventListener('addtrack', onStreamAddTrack);
             removeGestures();
             trackCleanups.forEach((fn) => fn());
         };
@@ -499,24 +515,20 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
     }, []);
 
     const attachRemoteVideo = useCallback(
-        (stream, playAudioThroughVideo = false) => {
+        (stream, _playAudioThroughVideo = false) => {
             const el = remoteVideoRef.current;
             if (!el) {
-                pendingRemoteVideoRef.current = { stream, playAudioThroughVideo };
+                pendingRemoteVideoRef.current = { stream, playAudioThroughVideo: _playAudioThroughVideo };
                 return;
             }
+            if (!stream || stream.getVideoTracks().length === 0) return;
             el.playsInline = true;
-            el.srcObject = stream;
             remoteVideoWireCleanupRef.current?.();
             remoteVideoWireCleanupRef.current = null;
-            const hasAud = stream.getAudioTracks().length > 0;
-            if (playAudioThroughVideo && hasAud) {
-                el.muted = false;
-                remoteVideoWireCleanupRef.current = wireMediaElementPlayback(el, stream);
-            } else {
-                el.muted = true;
-                void el.play().catch(() => {});
-            }
+            el.srcObject = stream;
+            // Always wire remote <video>: muted until stream has audio / addtrack, then tryPlay unmutes.
+            // The old muted + play() branch missed late audio on the same MediaStream (no audio).
+            remoteVideoWireCleanupRef.current = wireMediaElementPlayback(el, stream);
         },
         [wireMediaElementPlayback]
     );

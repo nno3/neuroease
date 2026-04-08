@@ -19,6 +19,7 @@ const navItems = [
     { to: "/activity", label: "Activity", icon: Activity },
     { to: "/location", label: "Location", icon: MapPin },
     { to: "/messages", label: "Messages", icon: MessageSquare, badgeKey: "messages" },
+    { to: "/settings", label: "Settings", icon: Settings },
 ];
 
 const Sidebar = ({ isOpen = false, onClose, badges = {} }) => {
@@ -55,16 +56,6 @@ const Sidebar = ({ isOpen = false, onClose, badges = {} }) => {
                         </NavLink>
                     );
                 })}
-            </nav>
-            <nav className="sidebar-nav sidebar-nav-bottom">
-                <NavLink
-                    to="/settings"
-                    onClick={onClose}
-                    className={({ isActive }) => `sidebar-link ${isActive ? "is-active" : ""}`}
-                >
-                    <Settings size={20} className="sidebar-link-icon" aria-hidden />
-                    <span>Settings</span>
-                </NavLink>
             </nav>
         </aside>
         </>
