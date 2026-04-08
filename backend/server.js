@@ -53,14 +53,30 @@ app.use(morgan('combined'));
 // Allow frontend(s) on different origins. Socket.IO uses the browser's Origin header
 // (e.g. http://127.0.0.1:5173 vs http://localhost:5173) — both must be allowed or the
 // handshake fails silently while REST via Vite proxy still works.
-const allowedOrigins = [
-    process.env.FRONTEND_URL,
-    process.env.PATIENT_APP_URL,
-    'http://localhost:5173',
-    'http://localhost:5175',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:5175',
-].filter(Boolean);
+/** Compare browser Origin header to env URLs even when env has a trailing slash. */
+function normalizeWebOrigin(raw) {
+    if (!raw || typeof raw !== 'string') return null;
+    const s = raw.trim();
+    if (!s) return null;
+    try {
+        return new URL(s).origin;
+    } catch {
+        return null;
+    }
+}
+
+const allowedOriginSet = new Set(
+    [
+        process.env.FRONTEND_URL,
+        process.env.PATIENT_APP_URL,
+        'http://localhost:5173',
+        'http://localhost:5175',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:5175',
+    ]
+        .map(normalizeWebOrigin)
+        .filter(Boolean)
+);
 
 const isDevLocalOrigin = (origin) =>
     /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(origin || '');
@@ -73,7 +89,8 @@ const isPrivateLanOrigin = (origin) =>
 
 function corsOriginCallback(origin, callback) {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
+    const reqOrigin = normalizeWebOrigin(origin);
+    if (reqOrigin && allowedOriginSet.has(reqOrigin)) return callback(null, true);
     if (
         process.env.NODE_ENV !== 'production' &&
         (isDevLocalOrigin(origin) || isPrivateLanOrigin(origin))
@@ -88,12 +105,17 @@ app.use(cors({
     credentials: true,
 }));
 
-// Socket.io – attach to the http server, same CORS policy
+// Socket.io – attach to the http server, same CORS policy.
+// Longer pingTimeout helps mobile networks + Render’s edge (default 20s is aggressive).
 const io = new SocketIOServer(httpServer, {
     cors: {
         origin: corsOriginCallback,
         credentials: true,
     },
+    pingInterval: 25_000,
+    pingTimeout: 50_000,
+    connectTimeout: 45_000,
+    transports: ['polling', 'websocket'],
 });
 
 // Authenticate socket connections with the same JWT used by the REST API

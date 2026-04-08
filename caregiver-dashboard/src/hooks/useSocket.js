@@ -55,18 +55,31 @@ export function useSocket() {
         // and Vite proxy EPIPE when disconnect races the proxied upgrade.
         const connectTimer = window.setTimeout(() => {
             const base = resolveSocketBaseUrl();
+            let lastConnectErrLog = 0;
             sock = io(base, {
                 auth: { token: t },
                 transports: import.meta.env.DEV ? ['websocket'] : ['polling', 'websocket'],
-                reconnectionAttempts: 10,
-                reconnectionDelay: 500,
+                reconnectionAttempts: 50,
+                reconnectionDelay: 1500,
+                reconnectionDelayMax: 20_000,
+                randomizationFactor: 0.5,
+                timeout: 45_000,
             });
             sharedSocket = sock;
             socketRef.current = sock;
             setSocket(sock);
 
             onConnectErr = (err) => {
-                if (import.meta.env.DEV) console.warn('[socket] connect_error', base, err?.message || err);
+                const msg = err?.message || String(err);
+                const now = Date.now();
+                if (import.meta.env.DEV) {
+                    console.warn('[socket] connect_error', base, msg);
+                    return;
+                }
+                if (now - lastConnectErrLog > 25_000) {
+                    lastConnectErrLog = now;
+                    console.warn('[socket] connect_error (throttled):', msg);
+                }
             };
             sock.on('connect_error', onConnectErr);
 
