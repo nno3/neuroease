@@ -24,7 +24,7 @@ self.addEventListener("push", (event) => {
         event.waitUntil(
             self.registration.showNotification(title || "Incoming call", {
                 body: body || "Open to answer",
-                icon: "/caregiver-icon.svg",
+                icon: "/icon-192.png",
                 tag: "incoming-call",
                 renotify: true,
                 requireInteraction: true,
@@ -37,7 +37,7 @@ self.addEventListener("push", (event) => {
     event.waitUntil(
         self.registration.showNotification(title, {
             body,
-            icon: "/caregiver-icon.svg",
+            icon: "/icon-192.png",
             tag: "neuroease-caregiver",
             requireInteraction: false,
         })
