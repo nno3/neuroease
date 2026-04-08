@@ -15,7 +15,7 @@ function isBenignProxySocketErr(err) {
 export default defineConfig({
   plugins: [
     react(),
-    ...(useBasicSsl ? [basicSsl()] : []),
+    ...(useHttps ? [basicSsl()] : []),
     {
       name: "manifest-mime",
       configureServer(server) {
