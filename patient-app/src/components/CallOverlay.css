@@ -135,6 +135,19 @@
     animation: call-pulse 1.1s infinite;
 }
 
+.call-audio-unlock-wrap {
+    width: 100%;
+    max-width: 320px;
+    margin-bottom: 8px;
+}
+.call-audio-unlock-hint {
+    margin: 10px 0 0;
+    font-size: 0.82rem;
+    line-height: 1.35;
+    color: rgba(255, 255, 255, 0.85);
+    text-align: center;
+}
+
 .call-audio-unlock {
     width: 100%;
     max-width: 320px;

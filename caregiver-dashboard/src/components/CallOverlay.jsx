@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     Phone, PhoneOff, PhoneIncoming, Video, VideoOff,
-    Mic, MicOff, PhoneMissed,
+    Mic, MicOff, PhoneMissed, Volume2,
 } from 'lucide-react';
 import './CallOverlay.css';
 
@@ -34,6 +34,9 @@ export default function CallOverlay({
     onCancel,
     onToggleMute,
     onToggleVideo,
+    speakerOutputOn = false,
+    onToggleSpeakerOutput,
+    speakerOutputAvailable = false,
 }) {
     const [muted, setMuted] = useState(false);
     const [videoOff, setVideoOff] = useState(false);
@@ -142,9 +145,14 @@ export default function CallOverlay({
                 className={`call-ui${callState === 'active' && isVideoCall ? ' call-ui--video-active' : ''}`}
             >
                 {callState === 'active' && needsAudioUnlock && (
-                    <button type="button" className="call-audio-unlock" onClick={onUnlockAudio}>
-                        Tap to hear the other person
-                    </button>
+                    <div className="call-audio-unlock-wrap">
+                        <button type="button" className="call-audio-unlock" onClick={onUnlockAudio}>
+                            Tap to hear the other person
+                        </button>
+                        <p className="call-audio-unlock-hint">
+                            Safari and some browsers block sound until you tap. This does not mean the call failed.
+                        </p>
+                    </div>
                 )}
                 <header className="call-ui__header">
                     <div className="call-info">
@@ -217,6 +225,20 @@ export default function CallOverlay({
                             >
                                 {muted ? <MicOff size={22} /> : <Mic size={22} />}
                             </button>
+                            {speakerOutputAvailable && typeof onToggleSpeakerOutput === 'function' && (
+                                <button
+                                    type="button"
+                                    className={`call-btn call-btn-toggle ${speakerOutputOn ? 'call-btn-active' : ''}`}
+                                    onClick={onToggleSpeakerOutput}
+                                    title={
+                                        speakerOutputOn
+                                            ? 'Use phone earpiece / default output'
+                                            : 'Use loudspeaker (where supported)'
+                                    }
+                                >
+                                    <Volume2 size={22} />
+                                </button>
+                            )}
                             {callType === 'video' && (
                                 <button
                                     className={`call-btn call-btn-toggle ${videoOff ? 'call-btn-active' : ''}`}

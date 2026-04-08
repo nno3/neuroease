@@ -46,32 +46,43 @@ export function useSocket() {
             sharedSocket = null;
         }
 
-        const base = resolveSocketBaseUrl();
-        // Dev + Vite HTTPS proxy: websocket-only avoids polling→upgrade races that spam "socket has been ended"
-        const sock = io(base, {
-            auth: { token: t },
-            transports: import.meta.env.DEV ? ['websocket'] : ['polling', 'websocket'],
-            reconnectionAttempts: 10,
-            reconnectionDelay: 500,
-        });
-        sharedSocket = sock;
-        socketRef.current = sock;
-        setSocket(sock);
+        let sock = null;
+        let keepalive = null;
+        let onConnectErr = null;
 
-        const onConnectErr = (err) => {
-            if (import.meta.env.DEV) console.warn('[socket] connect_error', base, err?.message || err);
-        };
-        sock.on('connect_error', onConnectErr);
+        // Defer connect to next task: React 18 Strict Mode runs effect cleanup before the
+        // socket would finish handshaking, which spams "WebSocket closed before established"
+        // and Vite proxy EPIPE when disconnect races the proxied upgrade.
+        const connectTimer = window.setTimeout(() => {
+            const base = resolveSocketBaseUrl();
+            sock = io(base, {
+                auth: { token: t },
+                transports: import.meta.env.DEV ? ['websocket'] : ['polling', 'websocket'],
+                reconnectionAttempts: 10,
+                reconnectionDelay: 500,
+            });
+            sharedSocket = sock;
+            socketRef.current = sock;
+            setSocket(sock);
 
-        const keepalive = setInterval(() => {
-            if (sock.connected) sock.emit('ping');
-        }, 30000);
+            onConnectErr = (err) => {
+                if (import.meta.env.DEV) console.warn('[socket] connect_error', base, err?.message || err);
+            };
+            sock.on('connect_error', onConnectErr);
+
+            keepalive = setInterval(() => {
+                if (sock.connected) sock.emit('ping');
+            }, 30000);
+        }, 0);
 
         return () => {
-            clearInterval(keepalive);
-            sock.off('connect_error', onConnectErr);
-            sock.disconnect();
-            if (sharedSocket === sock) sharedSocket = null;
+            clearTimeout(connectTimer);
+            if (keepalive) clearInterval(keepalive);
+            if (sock && onConnectErr) sock.off('connect_error', onConnectErr);
+            if (sock) {
+                sock.disconnect();
+                if (sharedSocket === sock) sharedSocket = null;
+            }
         };
     }, [token]);
 

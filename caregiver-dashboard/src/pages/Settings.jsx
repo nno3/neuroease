@@ -2,6 +2,8 @@ import React from 'react';
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { getProfile, updateProfile, deleteAccount } from "../services/authService";
+import { apiRequest } from "../services/apiClient";
+import { registerCaregiverPushSubscription } from "../hooks/usePushSubscription";
 import { LogOut, User, Save, Trash2, KeyRound, LogOut as SessionIcon, AlertTriangle, Camera, Mail, MapPin, Bell, Gamepad2, MessageSquare } from "lucide-react";
 import "./Settings.css";
 
@@ -70,6 +72,8 @@ const Settings = () => {
     const [message, setMessage] = useState({ type: "", text: "" });
     const [passwordForm, setPasswordForm] = useState({ current: "", new: "", confirm: "" });
     const [passwordErrors, setPasswordErrors] = useState({});
+    const [pushCallDeviceCount, setPushCallDeviceCount] = useState(null);
+    const [pushCallBusy, setPushCallBusy] = useState(false);
     const fileInputRef = useRef(null);
 
     useEffect(() => {
@@ -96,6 +100,38 @@ const Settings = () => {
             })
             .finally(() => setLoading(false));
     }, [contextUser]);
+
+    useEffect(() => {
+        if (!contextUser?.id) return;
+        let cancelled = false;
+        apiRequest("/push/status")
+            .then((r) => {
+                if (!cancelled && r?.data?.count !== undefined) setPushCallDeviceCount(r.data.count);
+            })
+            .catch(() => {
+                if (!cancelled) setPushCallDeviceCount(0);
+            });
+        return () => { cancelled = true; };
+    }, [contextUser?.id]);
+
+    const handleRegisterCallPush = async () => {
+        setPushCallBusy(true);
+        setMessage({ type: "", text: "" });
+        try {
+            const result = await registerCaregiverPushSubscription();
+            if (!result.ok) {
+                setMessage({ type: "error", text: result.error || "Could not enable call alerts." });
+                return;
+            }
+            const st = await apiRequest("/push/status");
+            setPushCallDeviceCount(st?.data?.count ?? 0);
+            setMessage({ type: "success", text: "This device can now receive incoming call notifications." });
+        } catch (err) {
+            setMessage({ type: "error", text: err?.message || "Could not register for call alerts." });
+        } finally {
+            setPushCallBusy(false);
+        }
+    };
 
     const handleProfileChange = (field, value) => {
         setProfile((p) => ({ ...p, [field]: value }));
@@ -372,6 +408,32 @@ const Settings = () => {
                             );
                         })}
                     </div>
+                </section>
+
+                <section className="stg-section" aria-labelledby="stg-call-push-heading">
+                    <h3 id="stg-call-push-heading" className="stg-section-title">
+                        <Bell size={18} aria-hidden /> Calls (browser push)
+                    </h3>
+                    <p className="stg-section-text">
+                        When a patient calls you and this dashboard is closed or in the background, we send a push if you allow notifications.
+                        Requires VAPID keys on the server (same as reminders). iOS: install the site to the Home Screen for best results.
+                    </p>
+                    <p className="stg-section-text">
+                        {pushCallDeviceCount === null && <span className="stg-muted">Checking devices…</span>}
+                        {pushCallDeviceCount !== null && (
+                            <>
+                                Registered devices for your account: <strong>{pushCallDeviceCount}</strong>
+                            </>
+                        )}
+                    </p>
+                    <button
+                        type="button"
+                        className="stg-btn stg-btn-secondary"
+                        onClick={handleRegisterCallPush}
+                        disabled={pushCallBusy || saving}
+                    >
+                        {pushCallBusy ? "Working…" : "Allow incoming call notifications on this device"}
+                    </button>
                 </section>
 
                 <section className="stg-section" aria-labelledby="stg-password-heading">

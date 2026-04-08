@@ -2,7 +2,7 @@
  * Logged-in shell: header (app name + logout), main content area, bottom nav.
  * Wraps the whole app in CallProvider so incoming calls are detected on every page.
  */
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Outlet, useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import VoiceAssistListener from "./VoiceAssistListener";
@@ -19,9 +19,21 @@ function LayoutInner() {
     callState, callType, incomingCallType, callerName, callDuration,
     localVideoRef, remoteVideoRef, remoteAudioRef,
     needsAudioUnlock, unlockRemoteAudio,
+    callBanner, clearCallBanner,
     acceptCall, rejectCall, endCall, cancelCall,
     toggleMute, toggleVideo,
+    speakerOutputOn, toggleSpeakerOutput, speakerOutputAvailable,
   } = useCall();
+
+  useEffect(() => {
+    const onMsg = (e) => {
+      if (e.data?.type === "sw-navigate" && typeof e.data.url === "string") {
+        navigate(e.data.url);
+      }
+    };
+    navigator.serviceWorker?.addEventListener("message", onMsg);
+    return () => navigator.serviceWorker?.removeEventListener("message", onMsg);
+  }, [navigate]);
 
   const handleLogout = () => {
     logout();
@@ -47,11 +59,22 @@ function LayoutInner() {
         onCancel={cancelCall}
         onToggleMute={toggleMute}
         onToggleVideo={toggleVideo}
+        speakerOutputOn={speakerOutputOn}
+        onToggleSpeakerOutput={toggleSpeakerOutput}
+        speakerOutputAvailable={speakerOutputAvailable}
       />
       {user && <VoiceAssistListener />}
       <a href="#pa-main" className="pa-skip-link">
         Skip to main content
       </a>
+      {callBanner && (
+        <div className="pa-call-banner" role="alert">
+          <p className="pa-call-banner-text">{callBanner}</p>
+          <button type="button" className="pa-call-banner-dismiss" onClick={clearCallBanner}>
+            Dismiss
+          </button>
+        </div>
+      )}
       <header className="pa-header" role="banner">
         <h1 className="pa-header-title">NeuroEase</h1>
         {user && (

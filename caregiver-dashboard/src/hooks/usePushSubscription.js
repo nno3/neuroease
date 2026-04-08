@@ -5,47 +5,49 @@
 import { useEffect } from 'react';
 import { apiRequest, API_BASE } from '../services/apiClient';
 
+/** @returns {{ ok: boolean, error?: string }} */
+export async function registerCaregiverPushSubscription() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        return { ok: false, error: 'This browser does not support web push.' };
+    }
+    const res = await fetch(`${API_BASE}/push/vapid-public-key`);
+    const json = await res.json();
+    if (!json?.data?.publicKey) {
+        return { ok: false, error: 'Push is not configured on the server.' };
+    }
+    const vapidKey = json.data.publicKey;
+    if (Notification.permission === 'default') {
+        const p = await Notification.requestPermission();
+        if (p !== 'granted') return { ok: false, error: 'Notification permission was denied.' };
+    } else if (Notification.permission !== 'granted') {
+        return { ok: false, error: 'Enable notifications in your browser settings for this site.' };
+    }
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+        sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidKey),
+        });
+    }
+    await apiRequest('/push/subscribe', {
+        method: 'POST',
+        body: JSON.stringify({
+            endpoint: sub.endpoint,
+            keys: {
+                p256dh: btoa(String.fromCharCode(...new Uint8Array(sub.getKey('p256dh')))),
+                auth: btoa(String.fromCharCode(...new Uint8Array(sub.getKey('auth')))),
+            },
+        }),
+    });
+    return { ok: true };
+}
+
 export function usePushSubscription(user) {
     useEffect(() => {
         if (!user) return;
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-
-        (async () => {
-            try {
-                // Fetch VAPID public key
-                const res = await fetch(`${API_BASE}/push/vapid-public-key`);
-                const json = await res.json();
-                if (!json?.data?.publicKey) return;
-                const vapidKey = json.data.publicKey;
-
-                // Register service worker
-                const reg = await navigator.serviceWorker.register('/sw.js');
-                await navigator.serviceWorker.ready;
-
-                // Check existing subscription
-                let sub = await reg.pushManager.getSubscription();
-                if (!sub) {
-                    sub = await reg.pushManager.subscribe({
-                        userVisibleOnly: true,
-                        applicationServerKey: urlBase64ToUint8Array(vapidKey),
-                    });
-                }
-
-                // Save to backend
-                await apiRequest('/push/subscribe', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        endpoint: sub.endpoint,
-                        keys: {
-                            p256dh: btoa(String.fromCharCode(...new Uint8Array(sub.getKey('p256dh')))),
-                            auth: btoa(String.fromCharCode(...new Uint8Array(sub.getKey('auth')))),
-                        },
-                    }),
-                });
-            } catch (_) {
-                // Push is optional — never block the UI
-            }
-        })();
+        void registerCaregiverPushSubscription().catch(() => {});
     }, [user?.id]); // eslint-disable-line
 }
 

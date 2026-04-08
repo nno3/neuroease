@@ -1,6 +1,6 @@
 import React from 'react';
 import { useState, useEffect, useCallback } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
 import CallOverlay from "./CallOverlay";
@@ -23,6 +23,7 @@ const routeTitles = {
 
 function LayoutInner() {
     const { pathname } = useLocation();
+    const navigate = useNavigate();
     const { user } = useAuth();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [unreadMessages, setUnreadMessages] = useState(0);
@@ -34,9 +35,21 @@ function LayoutInner() {
         callState, callType, incomingCallType, callerName, callDuration,
         localVideoRef, remoteVideoRef, remoteAudioRef,
         needsAudioUnlock, unlockRemoteAudio,
+        callBanner, clearCallBanner,
         acceptCall, rejectCall, endCall, cancelCall,
         toggleMute, toggleVideo,
+        speakerOutputOn, toggleSpeakerOutput, speakerOutputAvailable,
     } = useCall();
+
+    useEffect(() => {
+        const onMsg = (e) => {
+            if (e.data?.type === "sw-navigate" && typeof e.data.url === "string") {
+                navigate(e.data.url);
+            }
+        };
+        navigator.serviceWorker?.addEventListener("message", onMsg);
+        return () => navigator.serviceWorker?.removeEventListener("message", onMsg);
+    }, [navigate]);
 
     const fetchUnread = useCallback(async () => {
         try {
@@ -82,6 +95,9 @@ function LayoutInner() {
                 onCancel={cancelCall}
                 onToggleMute={toggleMute}
                 onToggleVideo={toggleVideo}
+                speakerOutputOn={speakerOutputOn}
+                onToggleSpeakerOutput={toggleSpeakerOutput}
+                speakerOutputAvailable={speakerOutputAvailable}
             />
             <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} badges={{ messages: unreadMessages }} />
             <div className="layout-main">
@@ -90,6 +106,14 @@ function LayoutInner() {
                     onPrimaryAction={handleAddPatient}
                     onMenuClick={() => setSidebarOpen((o) => !o)}
                 />
+                {callBanner && (
+                    <div className="layout-call-banner" role="alert">
+                        <p className="layout-call-banner-text">{callBanner}</p>
+                        <button type="button" className="layout-call-banner-dismiss" onClick={clearCallBanner}>
+                            Dismiss
+                        </button>
+                    </div>
+                )}
                 <main className="layout-content">
                     <Outlet />
                 </main>

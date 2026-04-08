@@ -53,6 +53,8 @@ export default function Profile() {
   const [permissionStatus, setPermissionStatus] = useState(null); // 'default' | 'granted' | 'denied'
   const [requestingPermission, setRequestingPermission] = useState(false);
   const [pushSubscriptionCount, setPushSubscriptionCount] = useState(null); // null = unknown, number = count from API
+  const [callPushDeviceCount, setCallPushDeviceCount] = useState(null);
+  const [callPushBusy, setCallPushBusy] = useState(false);
   const [voiceAssistOnOpen, setVoiceAssistOnOpen] = useState(false);
   const [voices, setVoices] = useState([]);
   const [selectedVoice, setSelectedVoice] = useState("");
@@ -71,6 +73,19 @@ export default function Profile() {
     setSelectedVoice(getVoiceAssistVoice());
     setSpeechRate(getVoiceAssistRate());
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    apiRequest("/api/push/status")
+      .then((res) => {
+        if (!cancelled && res?.data?.count !== undefined) setCallPushDeviceCount(res.data.count);
+      })
+      .catch(() => {
+        if (!cancelled) setCallPushDeviceCount(0);
+      });
+    return () => { cancelled = true; };
+  }, [user?.id, saveSuccess]);
 
   useEffect(() => {
     const load = () => setVoices(getAvailableVoices());
@@ -210,6 +225,48 @@ export default function Profile() {
       setError(err?.message || "Could not save. Try again.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleEnableCallPush = async () => {
+    if (!user?.id) return;
+    setError(null);
+    setCallPushBusy(true);
+    try {
+      const keyRes = await apiRequest("/api/push/vapid-public-key");
+      const publicKey = keyRes?.data?.publicKey;
+      if (!publicKey) throw new Error("Push is not configured on the server.");
+      if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+        throw new Error("This browser does not support call notifications.");
+      }
+      let permission = Notification.permission;
+      if (permission === "default") permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        throw new Error("Allow notifications to ring when your caregiver calls while the app is closed.");
+      }
+      await navigator.serviceWorker.register("/sw.js");
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey),
+        });
+      }
+      const subJson = sub.toJSON();
+      await apiRequest("/api/push/subscribe", {
+        method: "POST",
+        body: JSON.stringify({ endpoint: subJson.endpoint, keys: subJson.keys }),
+      });
+      const st = await apiRequest("/api/push/status");
+      setCallPushDeviceCount(st?.data?.count ?? 0);
+      setPermissionStatus("granted");
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      setError(err?.message || "Could not enable call notifications.");
+    } finally {
+      setCallPushBusy(false);
     }
   };
 
@@ -393,6 +450,33 @@ export default function Profile() {
             )}
           </div>
         )}
+      </div>
+
+      <div className="pa-profile-card" role="region" aria-labelledby="pa-calls-push-heading">
+        <h3 id="pa-calls-push-heading" className="pa-profile-card-title">
+          Calls (voice &amp; video)
+        </h3>
+        <hr className="pa-profile-card-divider" aria-hidden />
+        <p className="pa-profile-row-desc">
+          When your caregiver calls and NeuroEase is in the background, we use the same web push service as reminders.
+          Allow notifications and register this device—you can still use Email for reminders if you prefer.
+        </p>
+        <p className="pa-profile-row-desc">
+          {callPushDeviceCount === null && <span className="pa-muted">Checking devices…</span>}
+          {callPushDeviceCount !== null && (
+            <>
+              Devices registered for your account: <strong>{callPushDeviceCount}</strong>
+            </>
+          )}
+        </p>
+        <button
+          type="button"
+          className="pa-btn pa-btn--secondary"
+          onClick={handleEnableCallPush}
+          disabled={callPushBusy || saving}
+        >
+          {callPushBusy ? "Working…" : "Allow incoming call notifications on this device"}
+        </button>
       </div>
 
       {/* Voice & speech — separate from notification channel; applies to Read aloud + speech synthesis */}

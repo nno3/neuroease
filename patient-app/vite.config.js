@@ -6,10 +6,16 @@ import { join } from "path";
 
 const useHttps = process.env.VITE_DEV_HTTPS === "1";
 
+function isBenignProxySocketErr(err) {
+  const c = err?.code;
+  if (c === "EPIPE" || c === "ECONNRESET") return true;
+  return /EPIPE|ECONNRESET/.test(String(err?.message || ""));
+}
+
 export default defineConfig({
   plugins: [
     react(),
-    ...(useHttps ? [basicSsl()] : []),
+    ...(useBasicSsl ? [basicSsl()] : []),
     {
       name: "manifest-mime",
       configureServer(server) {
@@ -47,6 +53,18 @@ export default defineConfig({
         ws: true,
         changeOrigin: true,
         secure: false,
+        configure: (proxy) => {
+          proxy.on("error", (err) => {
+            if (isBenignProxySocketErr(err)) return;
+            console.error("[vite] /socket.io proxy error:", err);
+          });
+          proxy.on("proxyReqWs", (_proxyReq, _req, socket) => {
+            socket.on("error", (e) => {
+              if (isBenignProxySocketErr(e)) return;
+              console.error("[vite] /socket.io proxy ws error:", e);
+            });
+          });
+        },
       },
     },
   },

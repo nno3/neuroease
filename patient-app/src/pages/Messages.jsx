@@ -3,6 +3,7 @@
  * Patients can send plain messages and meeting requests.
  */
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Send, Calendar, Check, X, Clock, Phone, Video } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -10,6 +11,10 @@ import { apiRequest } from '../services/apiClient';
 import { useAuth } from '../context/AuthContext';
 import { useCall } from '../context/useCall';
 import './Messages.css';
+
+function isMissedCallContent(content) {
+    return typeof content === 'string' && (content.includes('Missed call') || content.includes('📞'));
+}
 
 function formatTime(iso) {
     if (!iso) return '';
@@ -64,6 +69,7 @@ export default function Messages() {
     const myId = user?.id;
 
     const { socket, callState, startCall } = useCall();
+    const [searchParams, setSearchParams] = useSearchParams();
 
     const [contacts, setContacts] = useState([]);
     const [activeContact, setActiveContact] = useState(null);
@@ -114,6 +120,20 @@ export default function Messages() {
             setLoadingMessages(false);
         }
     }, [myId]);
+
+    useEffect(() => {
+        const peerStr = searchParams.get('callPeer');
+        if (!peerStr || contacts.length === 0) return;
+        const peerId = Number(peerStr);
+        if (!Number.isFinite(peerId)) return;
+        const row = contacts.find((c) => Number(c.user?.id) === peerId);
+        if (!row) return;
+        loadConversation(row);
+        const next = new URLSearchParams(searchParams);
+        next.delete('callPeer');
+        next.delete('callType');
+        setSearchParams(next, { replace: true });
+    }, [contacts, searchParams, setSearchParams, loadConversation]);
 
     // Initial load when fetchContacts auto-selects a contact (messages still empty)
     useEffect(() => {
@@ -285,6 +305,18 @@ export default function Messages() {
                                                 <p className="pa-msg-bubble-text">{msg.content}</p>
                                                 <span className="pa-msg-bubble-time">{formatTime(msg.createdAt)}</span>
                                             </div>
+                                            {isMissedCallContent(msg.content) && (
+                                                <button
+                                                    type="button"
+                                                    className="pa-msg-redial"
+                                                    disabled={callState !== 'idle'}
+                                                    onClick={() =>
+                                                        startCall(isMine ? msg.receiverId : msg.senderId, 'audio')
+                                                    }
+                                                >
+                                                    Call back
+                                                </button>
+                                            )}
                                             {isMine && isLastMine && seenByContact && (
                                                 <span className="pa-msg-seen-label">Seen</span>
                                             )}

@@ -141,6 +141,55 @@ function logPlayErrorUnlessAbort(err) {
     console.warn('[call] remote media play', err);
 }
 
+function mediaElementSupportsSetSinkId(el) {
+    return el && typeof el.setSinkId === 'function';
+}
+
+/** Best-effort: route remote playout to loudspeaker on Android/desktop Chrome. Often unsupported on iOS Safari. */
+async function pickSpeakerOutputDeviceId() {
+    if (!navigator.mediaDevices?.enumerateDevices) return null;
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const outs = devices.filter((d) => d.kind === 'audiooutput');
+    if (outs.length === 0) return null;
+    const byLabel = (re) => outs.find((d) => re.test(String(d.label || '')));
+    const named = byLabel(/speakerphone|loudspeaker|built[- ]?in speaker|\bspeaker\b/i);
+    if (named?.deviceId) return named.deviceId;
+    const notHeadphones = outs.filter(
+        (d) => !/headphone|headset|airpods|earbud|bluetooth|usb audio/i.test(String(d.label || ''))
+    );
+    const pool = notHeadphones.length ? notHeadphones : outs;
+    if (pool.length >= 2) {
+        const nonDefault = pool.filter((d) => d.deviceId && d.deviceId !== 'default');
+        if (nonDefault.length) return nonDefault[nonDefault.length - 1].deviceId;
+    }
+    return pool[pool.length - 1]?.deviceId || null;
+}
+
+async function applyRemoteAudioOutput(el, useSpeaker) {
+    if (!mediaElementSupportsSetSinkId(el)) return;
+    const hasAudio =
+        el.tagName === 'AUDIO' ||
+        (el.srcObject &&
+            typeof el.srcObject.getAudioTracks === 'function' &&
+            el.srcObject.getAudioTracks().length > 0);
+    if (!hasAudio) return;
+    try {
+        if (useSpeaker) {
+            const id = await pickSpeakerOutputDeviceId();
+            if (id) await el.setSinkId(id);
+        } else {
+            await el.setSinkId('');
+        }
+    } catch (err) {
+        if (import.meta.env.DEV) console.warn('[call] setSinkId', err);
+    }
+}
+
+export function remoteSpeakerOutputAvailable() {
+    if (typeof document === 'undefined') return false;
+    return typeof HTMLAudioElement !== 'undefined' && 'setSinkId' in HTMLAudioElement.prototype;
+}
+
 /**
  * iPhone / Android Chrome block camera+mic on http://192.168.x.x (not a secure context).
  * Localhost is exempt — LAN IP over plain HTTP usually fails getUserMedia or kills tracks immediately.
@@ -180,6 +229,8 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
     const localTrackEndedDebounceRef = useRef(null);
     /** Trickle ICE can arrive before RTCPeerConnection exists or before setRemoteDescription — buffer then flush. */
     const pendingIceCandidatesRef = useRef([]);
+    /** Route remote audio to speaker output when true (see `setSinkId` / `remoteSpeakerOutputAvailable`). */
+    const speakerOutputOnRef = useRef(false);
 
     const timeoutRef = useRef(null);
     const timerRef = useRef(null);
@@ -200,6 +251,15 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
     const [callDuration, setCallDuration] = useState(0);
     /** True when the browser blocked remote play(); show “Tap to hear” (mobile Safari / autoplay policy). */
     const [needsAudioUnlock, setNeedsAudioUnlock] = useState(false);
+    /** Shown in Layout after failed calls / disconnect (cleared on dismiss or new call). */
+    const [callBanner, setCallBanner] = useState(null);
+    const setCallBannerRef = useRef(setCallBanner);
+    setCallBannerRef.current = setCallBanner;
+    const [speakerOutputOn, setSpeakerOutputOn] = useState(false);
+
+    useEffect(() => {
+        speakerOutputOnRef.current = speakerOutputOn;
+    }, [speakerOutputOn]);
 
     const setCallStateSynced = useCallback((s) => {
         callStateRef.current = s;
@@ -258,7 +318,10 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
             }
             void el
                 .play()
-                .then(() => setNeedsAudioUnlock(false))
+                .then(() => {
+                    setNeedsAudioUnlock(false);
+                    return applyRemoteAudioOutput(el, speakerOutputOnRef.current);
+                })
                 .catch((err) => {
                     if (err?.name === 'AbortError') return;
                     if (err?.name === 'NotAllowedError' && !cleaned && !pointerRetry && !keyRetry) {
@@ -337,8 +400,12 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
         }
     }, [clearRemoteAudioEl]);
 
+    const clearCallBanner = useCallback(() => setCallBanner(null), []);
+
     const reset = useCallback(() => {
         setNeedsAudioUnlock(false);
+        speakerOutputOnRef.current = false;
+        setSpeakerOutputOn(false);
         clearCallTimeout();
         if (connectionFailedTimerRef.current) {
             clearTimeout(connectionFailedTimerRef.current);
@@ -537,6 +604,9 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
                     connectionFailedTimerRef.current = setTimeout(() => {
                         connectionFailedTimerRef.current = null;
                         if (pcRef.current === pc && pc.connectionState === 'failed') {
+                            setCallBannerRef.current(
+                                'The call could not connect. Check internet on both sides and try again.'
+                            );
                             reset();
                         }
                     }, 3000);
@@ -572,6 +642,7 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
     const startCall = useCallback(
         async (toUserId, mediaKind = 'video') => {
             if (callStateRef.current !== 'idle') return;
+            setCallBanner(null);
             const peerId = Number(toUserId);
             if (!Number.isFinite(peerId)) {
                 console.error('[call] invalid peer id', toUserId);
@@ -616,7 +687,17 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
                 if (import.meta.env.DEV && e?.mediaHint) {
                     window.alert(e.message);
                 }
+                const n = e?.cause?.name || e?.name;
+                let b = null;
+                if (n === 'NotAllowedError' || n === 'PermissionDeniedError') {
+                    b = 'Microphone or camera access was denied. Allow NeuroEase in your browser or system settings, then try again.';
+                } else if (e?.mediaHint) {
+                    b = e.message;
+                } else if (String(e?.message || '').toLowerCase().includes('socket')) {
+                    b = 'Could not connect to the server to place the call. Check your connection and try again.';
+                }
                 reset();
+                if (b) setCallBanner(b);
             }
         },
         [
@@ -653,6 +734,7 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
             if (!offerInit) {
                 console.error('[call] acceptCall: invalid or missing offer SDP');
                 reset();
+                setCallBanner('That call invite was invalid or expired. Ask the caller to try again.');
                 return;
             }
             await pc.setRemoteDescription(new RTCSessionDescription(offerInit));
@@ -670,7 +752,15 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
             if (import.meta.env.DEV && e?.mediaHint) {
                 window.alert(e.message);
             }
+            const n = e?.cause?.name || e?.name;
+            let b = null;
+            if (n === 'NotAllowedError' || n === 'PermissionDeniedError') {
+                b = 'Microphone or camera access was denied. Allow access to answer the call.';
+            } else if (e?.mediaHint) {
+                b = e.message;
+            }
             reset();
+            if (b) setCallBanner(b);
         }
     }, [
         getMedia,
@@ -809,6 +899,19 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
     }, [socket, setCallStateSynced, clearCallTimeout, startTimer, stopTimer, stopLocalStream, closePeer, reset, flushPendingIce]);
 
     useEffect(() => {
+        if (!socket) return;
+        const onDisconnect = () => {
+            if (callStateRef.current === 'idle') return;
+            setCallBannerRef.current(
+                'You were disconnected from the server during the call. Open Messages and try again when you have a stable connection.'
+            );
+            reset();
+        };
+        socket.on('disconnect', onDisconnect);
+        return () => socket.off('disconnect', onDisconnect);
+    }, [socket, reset]);
+
+    useEffect(() => {
         const pending = pendingRemoteVideoRef.current;
         if (!pending || !remoteVideoRef.current) return;
         const { stream, playAudioThroughVideo } =
@@ -847,9 +950,38 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
         const nodes = [remoteAudioRef.current, remoteVideoRef.current];
         nodes.forEach((el) => {
             if (!el?.srcObject) return;
-            void el.play().then(() => setNeedsAudioUnlock(false)).catch(() => {});
+            void el
+                .play()
+                .then(() => {
+                    setNeedsAudioUnlock(false);
+                    return applyRemoteAudioOutput(el, speakerOutputOnRef.current);
+                })
+                .catch(() => {});
         });
     }, []);
+
+    const toggleSpeakerOutput = useCallback(() => {
+        setSpeakerOutputOn((prev) => {
+            const next = !prev;
+            speakerOutputOnRef.current = next;
+            queueMicrotask(async () => {
+                await applyRemoteAudioOutput(remoteAudioRef.current, next);
+                await applyRemoteAudioOutput(remoteVideoRef.current, next);
+            });
+            return next;
+        });
+    }, []);
+
+    useEffect(() => {
+        if (callState !== 'active' || !remoteSpeakerOutputAvailable()) return;
+        const h = requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                void applyRemoteAudioOutput(remoteAudioRef.current, speakerOutputOn);
+                void applyRemoteAudioOutput(remoteVideoRef.current, speakerOutputOn);
+            });
+        });
+        return () => cancelAnimationFrame(h);
+    }, [callState, speakerOutputOn]);
 
     return {
         callState,
@@ -863,6 +995,8 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
         remoteAudioRef,
         needsAudioUnlock,
         unlockRemoteAudio,
+        callBanner,
+        clearCallBanner,
         startCall,
         acceptCall,
         rejectCall,
@@ -870,5 +1004,8 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
         cancelCall,
         toggleMute,
         toggleVideo,
+        speakerOutputOn,
+        toggleSpeakerOutput,
+        speakerOutputAvailable: remoteSpeakerOutputAvailable(),
     };
 }

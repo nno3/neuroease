@@ -10,6 +10,11 @@
     padding: 24px 0;
 }
 
+.stg-muted {
+    color: #64748b;
+    font-size: 14px;
+}
+
 .stg-panel {
     background: #fff;
     border: 1px solid #e9ecef;

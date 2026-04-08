@@ -156,6 +156,24 @@
     max-width: 75%;
 }
 
+.pa-msg-redial {
+    margin-top: 8px;
+    border: none;
+    background: #15803d;
+    color: #fff;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    width: 100%;
+    max-width: 200px;
+}
+.pa-msg-redial:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
 .pa-msg-seen-label {
     font-size: 11px;
     color: #94a3b8;

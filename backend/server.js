@@ -17,6 +17,12 @@ const { Server: SocketIOServer } = require('socket.io');
 const jwt = require('jsonwebtoken');
 
 const { sequelize, User } = require('./src/models');
+const {
+    storePendingOffer,
+    getPendingOfferForCallee,
+    clearPendingForCallee,
+    notifyIncomingCallViaPush,
+} = require('./src/utils/callIncoming');
 const { startReminderEmailJob } = require('./src/jobs/reminderEmailJob');
 
 const app = express();
@@ -120,6 +126,16 @@ io.on('connection', async (socket) => {
     const myRoom = userRoom(socket.userId);
     // Socket.IO v4+: join is async — await so io.to(room) can deliver immediately after.
     if (myRoom) await socket.join(myRoom);
+
+    const replay = getPendingOfferForCallee(socket.userId);
+    if (replay) {
+        socket.emit('call:offer', {
+            from: replay.from,
+            offer: replay.offer,
+            callType: replay.callType,
+        });
+    }
+
     if (process.env.NODE_ENV !== 'production') {
         const adapter = io.sockets.adapter;
         const n = adapter.rooms.get(myRoom)?.size ?? 0;
@@ -137,12 +153,19 @@ io.on('connection', async (socket) => {
     socket.on('call:offer', ({ to, offer, callType }) => {
         const room = userRoom(to);
         if (!room || !offer) return;
+        const ct = callType || 'video';
         const payload = {
             from: socket.userId,
             offer,
-            callType: callType || 'video',
+            callType: ct,
         };
+        storePendingOffer(to, payload);
         io.to(room).emit('call:offer', payload);
+        void notifyIncomingCallViaPush({
+            calleeUserId: to,
+            fromUserId: socket.userId,
+            callType: ct,
+        });
         if (process.env.NODE_ENV !== 'production') {
             const adapter = io.sockets.adapter;
             const n = adapter.rooms.get(room)?.size ?? 0;
@@ -153,6 +176,7 @@ io.on('connection', async (socket) => {
     socket.on('call:answer', ({ to, answer }) => {
         const room = userRoom(to);
         if (!room || !answer) return;
+        clearPendingForCallee(socket.userId);
         io.to(room).emit('call:answer', {
             from: socket.userId,
             answer,
@@ -173,6 +197,8 @@ io.on('connection', async (socket) => {
     socket.on('call:end', ({ to }) => {
         const room = userRoom(to);
         if (!room) return;
+        clearPendingForCallee(to);
+        clearPendingForCallee(socket.userId);
         io.to(room).emit('call:end', { from: socket.userId });
     });
 
@@ -180,6 +206,7 @@ io.on('connection', async (socket) => {
     socket.on('call:reject', ({ to }) => {
         const room = userRoom(to);
         if (!room) return;
+        clearPendingForCallee(socket.userId);
         io.to(room).emit('call:reject', { from: socket.userId });
     });
 
@@ -187,6 +214,7 @@ io.on('connection', async (socket) => {
     socket.on('call:cancel', ({ to }) => {
         const room = userRoom(to);
         if (!room) return;
+        clearPendingForCallee(to);
         io.to(room).emit('call:cancel', { from: socket.userId });
     });
 
@@ -194,6 +222,7 @@ io.on('connection', async (socket) => {
     socket.on('call:missed', ({ to }) => {
         const room = userRoom(to);
         if (!room) return;
+        clearPendingForCallee(to);
         io.to(room).emit('call:missed', { from: socket.userId });
     });
     // ───────────────────────────────────────────────────────────────────────
