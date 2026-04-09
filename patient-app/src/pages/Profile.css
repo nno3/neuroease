@@ -1,5 +1,14 @@
 /* Profile – card-based layout, toggles, dementia-friendly spacing */
 
+.pa-profile-a11y-toggle {
+  margin-top: 1rem;
+}
+
+.pa-profile-a11y-reset {
+  margin-top: 1.25rem;
+  width: 100%;
+}
+
 .pa-profile-card {
   margin-top: 1.25rem;
   padding: 1.25rem 1.25rem 1.5rem;

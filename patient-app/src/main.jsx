@@ -8,6 +8,9 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import "./index.css";
+import { applyAccessibilityToDocument } from "./utils/accessibilityPrefs";
+
+applyAccessibilityToDocument();
 
 // PWA: register SW only in production. In dev, unregister so we don't intercept Vite HMR,
 // Socket.IO (other origin), or fail closed when the API is down (FetchEvent / Failed to fetch).

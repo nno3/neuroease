@@ -9,6 +9,7 @@ import VoiceAssistListener from "./VoiceAssistListener";
 import CallOverlay from "./CallOverlay";
 import { CallProvider } from "../context/CallContext";
 import { useCall } from "../context/useCall";
+import { Gamepad2, Bell, MessageSquare, UserRound } from "lucide-react";
 import "./Layout.css";
 
 function LayoutInner() {
@@ -94,16 +95,20 @@ function LayoutInner() {
       {user && (
         <nav className="pa-bottom-nav" aria-label="Main navigation">
           <NavLink to="/games" className={({ isActive }) => `pa-bottom-nav-link ${isActive ? "is-active" : ""}`}>
-            Games
+            <Gamepad2 className="pa-bottom-nav-icon" size={22} strokeWidth={2} aria-hidden />
+            <span className="pa-bottom-nav-label">Games</span>
           </NavLink>
           <NavLink to="/reminders" className={({ isActive }) => `pa-bottom-nav-link ${isActive ? "is-active" : ""}`}>
-            Reminders
+            <Bell className="pa-bottom-nav-icon" size={22} strokeWidth={2} aria-hidden />
+            <span className="pa-bottom-nav-label">Reminders</span>
           </NavLink>
           <NavLink to="/messages" className={({ isActive }) => `pa-bottom-nav-link ${isActive ? "is-active" : ""}`}>
-            Messages
+            <MessageSquare className="pa-bottom-nav-icon" size={22} strokeWidth={2} aria-hidden />
+            <span className="pa-bottom-nav-label">Messages</span>
           </NavLink>
           <NavLink to="/profile" className={({ isActive }) => `pa-bottom-nav-link ${isActive ? "is-active" : ""}`}>
-            Profile
+            <UserRound className="pa-bottom-nav-icon" size={22} strokeWidth={2} aria-hidden />
+            <span className="pa-bottom-nav-label">Profile</span>
           </NavLink>
         </nav>
       )}

@@ -19,6 +19,11 @@ import {
   speakTest,
 } from "../utils/voiceAssist";
 import { getGameSoundsEnabled, setGameSoundsEnabled } from "../utils/gameSounds";
+import {
+  getAccessibilityPrefs,
+  setAccessibilityPrefs,
+  resetAccessibilityPrefs,
+} from "../utils/accessibilityPrefs";
 import { MapPin } from "lucide-react";
 import "./Profile.css";
 
@@ -63,9 +68,19 @@ export default function Profile() {
   const [gameSoundsEnabled, setGameSoundsEnabledState] = useState(true);
   const [locationRechecking, setLocationRechecking] = useState(false);
   const [locationSending, setLocationSending] = useState(false);
+  const [textScale, setTextScale] = useState("default");
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const [boldText, setBoldText] = useState(false);
 
   useEffect(() => {
     setGameSoundsEnabledState(getGameSoundsEnabled());
+  }, []);
+
+  useEffect(() => {
+    const p = getAccessibilityPrefs();
+    setTextScale(p.textScale);
+    setReduceMotion(!!p.reduceMotion);
+    setBoldText(!!p.boldText);
   }, []);
 
   useEffect(() => {
@@ -336,6 +351,96 @@ export default function Profile() {
   return (
     <div className="pa-page">
       <h2 className="pa-heading">Profile</h2>
+
+      <div className="pa-profile-card" role="region" aria-labelledby="pa-a11y-heading">
+        <h3 id="pa-a11y-heading" className="pa-profile-card-title">
+          Display options
+        </h3>
+        <hr className="pa-profile-card-divider" aria-hidden />
+        <p className="pa-profile-row-desc">
+          Saved on this device only (not on your account). You can still pinch-to-zoom in the browser.
+          Larger text sizes apply across the app.
+        </p>
+
+        <div className="pa-profile-channel-section">
+          <label htmlFor="pa-a11y-text-scale" className="pa-profile-row-label">Text size</label>
+          <p className="pa-profile-row-desc" id="pa-a11y-text-scale-desc">Makes menus and reminders easier to read.</p>
+          <select
+            id="pa-a11y-text-scale"
+            className="pa-profile-select"
+            value={textScale}
+            onChange={(e) => {
+              const v = e.target.value;
+              setTextScale(v);
+              setAccessibilityPrefs({ textScale: v });
+            }}
+            aria-describedby="pa-a11y-text-scale-desc"
+          >
+            <option value="default">Default</option>
+            <option value="large">Large</option>
+            <option value="larger">Larger</option>
+          </select>
+        </div>
+
+        <div className="pa-profile-toggle-row pa-profile-a11y-toggle">
+          <div className="pa-profile-toggle-text">
+            <span className="pa-profile-row-label" id="pa-a11y-motion-label">Reduce animations</span>
+            <span className="pa-profile-row-desc" id="pa-a11y-motion-desc">
+              Shortens on-screen movement. Your phone&apos;s &quot;Reduce Motion&quot; setting is respected too.
+            </span>
+          </div>
+          <label className="pa-profile-toggle">
+            <input
+              type="checkbox"
+              checked={reduceMotion}
+              onChange={(e) => {
+                const v = e.target.checked;
+                setReduceMotion(v);
+                setAccessibilityPrefs({ reduceMotion: v });
+              }}
+              aria-labelledby="pa-a11y-motion-label"
+              aria-describedby="pa-a11y-motion-desc"
+            />
+            <span className="pa-profile-toggle-slider" aria-hidden />
+          </label>
+        </div>
+
+        <div className="pa-profile-toggle-row pa-profile-a11y-toggle">
+          <div className="pa-profile-toggle-text">
+            <span className="pa-profile-row-label" id="pa-a11y-bold-label">Bolder text</span>
+            <span className="pa-profile-row-desc" id="pa-a11y-bold-desc">
+              Slightly heavier words across the app (headings stay extra bold).
+            </span>
+          </div>
+          <label className="pa-profile-toggle">
+            <input
+              type="checkbox"
+              checked={boldText}
+              onChange={(e) => {
+                const v = e.target.checked;
+                setBoldText(v);
+                setAccessibilityPrefs({ boldText: v });
+              }}
+              aria-labelledby="pa-a11y-bold-label"
+              aria-describedby="pa-a11y-bold-desc"
+            />
+            <span className="pa-profile-toggle-slider" aria-hidden />
+          </label>
+        </div>
+
+        <button
+          type="button"
+          className="pa-btn pa-btn--secondary pa-profile-a11y-reset"
+          onClick={() => {
+            resetAccessibilityPrefs();
+            setTextScale("default");
+            setReduceMotion(false);
+            setBoldText(false);
+          }}
+        >
+          Reset display options to defaults
+        </button>
+      </div>
 
       {/* Notifications card */}
       <div className="pa-profile-card" role="region" aria-labelledby="pa-notifications-heading">

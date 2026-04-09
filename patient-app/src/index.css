@@ -208,3 +208,48 @@ a.pa-btn:focus-visible,
   font-size: 1rem;
   margin: 0;
 }
+
+/* ── Profile-driven accessibility (see utils/accessibilityPrefs.js) ───────── */
+
+html[data-pa-text-scale="large"] {
+  font-size: 112.5%;
+}
+
+html[data-pa-text-scale="larger"] {
+  font-size: 125%;
+}
+
+html[data-pa-bold="1"] body {
+  font-weight: 550;
+}
+
+html[data-pa-bold="1"] .pa-heading,
+html[data-pa-bold="1"] .pa-title,
+html[data-pa-bold="1"] h1,
+html[data-pa-bold="1"] h2,
+html[data-pa-bold="1"] h3,
+html[data-pa-bold="1"] h4 {
+  font-weight: 800;
+}
+
+/* Reduced motion: in-app toggle */
+html[data-pa-reduce-motion="1"] *,
+html[data-pa-reduce-motion="1"] *::before,
+html[data-pa-reduce-motion="1"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Honour OS “Reduce motion” (Settings → Accessibility) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
