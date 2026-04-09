@@ -3,7 +3,7 @@
  * user from localStorage if token and user data exist. login() calls backend and
  * stores token + user; logout() clears them and redirects to /login.
  */
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { API_BASE } from '../services/apiClient';
 
 const AuthContext = createContext();
@@ -84,12 +84,18 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const logout = () => {
+    const logout = useCallback(() => {
         setUser(null);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         return { success: true };
-    };
+    }, []);
+
+    useEffect(() => {
+        const onSessionExpired = () => logout();
+        window.addEventListener('ne-caregiver-auth-expired', onSessionExpired);
+        return () => window.removeEventListener('ne-caregiver-auth-expired', onSessionExpired);
+    }, [logout]);
 
     const loginWithToken = (userData, token) => {
         if (!userData || !token) return { success: false, error: 'Invalid session' };

@@ -16,6 +16,9 @@ const VERIFICATION_EXPIRY_MS = 24 * 60 * 60 * 1000;   // 24 hours
 const INVITE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;    // 7 days
 const MAGIC_LINK_EXPIRY_MS = 15 * 60 * 1000;         // 15 minutes
 
+/** Patient session JWT (`exp`) after activate or magic-link / short-code login. Default 30d; override via `PATIENT_JWT_EXPIRES` (any `jsonwebtoken` `expiresIn` string, e.g. `45d`). Caregiver email+password JWT remains shorter (see `login`). */
+const PATIENT_JWT_EXPIRES = process.env.PATIENT_JWT_EXPIRES || '30d';
+
 const authController = {
     /** Caregiver sign-up: create user, set verification token, send email (or log link if no SMTP) */
     register: async (req, res) => {
@@ -435,7 +438,7 @@ const authController = {
             const jwtToken = jwt.sign(
                 { userId: user.id, userType: user.userType },
                 process.env.JWT_SECRET,
-                { expiresIn: '7d' }
+                { expiresIn: PATIENT_JWT_EXPIRES }
             );
             res.json({
                 success: true,
@@ -551,7 +554,7 @@ const authController = {
             const jwtToken = jwt.sign(
                 { userId: user.id, userType: user.userType },
                 process.env.JWT_SECRET,
-                { expiresIn: '7d' }
+                { expiresIn: PATIENT_JWT_EXPIRES }
             );
             res.json({
                 success: true,
@@ -611,7 +614,7 @@ const authController = {
             const jwtToken = jwt.sign(
                 { userId: user.id, userType: user.userType },
                 process.env.JWT_SECRET,
-                { expiresIn: '7d' }
+                { expiresIn: PATIENT_JWT_EXPIRES }
             );
             res.json({
                 success: true,

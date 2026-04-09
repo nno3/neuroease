@@ -76,6 +76,7 @@ Create a `.env` file in `backend/` (example):
 PORT=5001
 NODE_ENV=development
 JWT_SECRET=replace_this_in_production
+# PATIENT_JWT_EXPIRES=30d
 
 DB_HOST=localhost
 DB_PORT=5432
@@ -172,11 +173,15 @@ JWT payload includes:
 * `userId`
 * `userType` (`caregiver` or `patient`)
 
-JWT expiry is set to **7 days** in the authentication controller.
+JWT expiry is set in the authentication controller: **caregiver** email+password login uses **7 days**; **patient** sessions (after invite activation or magic-link / short-code login) use **`PATIENT_JWT_EXPIRES`**, defaulting to **30 days**.
 
-### 6.2 Why 7 days (usability + security)
+### 6.2 Session length: caregiver (7d) vs patient (30d default)
 
-A 7-day expiry was chosen to reduce repeated logins and improve continuity for caregiver workflows while still enforcing an upper bound on token reuse. OWASP guidance emphasises that session/timeout values should be selected to balance security and usability based on the nature of the application and sensitivity of the data [4]. In addition, OWASP’s JWT testing guidance expects tokens to have a “reasonable lifespan” for the application and requires that expired tokens are rejected [6]. At the protocol level, RFC 7519 states that tokens **must not** be accepted after their expiration time (`exp`) [5].
+**Caregiver (7 days).** A one-week access token reduces repeated logins for dashboard workflows while keeping an upper bound on reuse. Session timeout choices should balance security and usability for the data handled [4]; JWTs must be rejected after `exp` [5], [6].
+
+**Patient (30 days by default).** Patients authenticate **without a password** (email possession via time-limited magic link or invite). A longer **absolute** session reduces how often they must repeat that flow—important where extra authentication steps create **disproportionate burden** (older adults, cognitive impairment). WCAG 2.2 **3.3.8 Accessible Authentication (Minimum)** (Level AA) requires that cognitive function tests are not required for login [11]; while that criterion targets verification mechanics, the same **inclusive-design** principle supports avoiding unnecessarily short sessions that force frequent re-proof of email. General JWT operational guidance favours **short-lived access tokens** when paired with refresh or rotation [9]; here there is **no refresh token**: risk is partially offset by **HTTPS**, **bounded `exp`**, **client logout**, and the ability to **re-issue** a session only after a fresh magic link proves control of the mailbox. NIST’s digital-identity material discusses **session** behaviour in **authenticated** contexts and risk-appropriate controls [10].
+
+Override patient duration in `.env` with `PATIENT_JWT_EXPIRES` (any `jsonwebtoken` `expiresIn` string accepted by the library, e.g. `45d`, `60d`).
 
 ### 6.3 Role-based access control (RBAC)
 
@@ -402,4 +407,10 @@ This supports retention needs while reducing routine processing and operational 
 [7] “Building an email verification and notification feature in React + Node.js apps,” Medium. [Online]. Available: https://medium.com/@python-javascript-php-html-css/building-an-email-verification-and-notification-feature-in-react-node-js-apps-53f372006fc5. [Accessed: Feb. 12, 2026].
 
 [8] D. Ozokoye, “How to send emails with React using Nodemailer,” SendLayer Blog, Dec. 16, 2025. [Online]. Available: https://sendlayer.com/blog/how-to-send-emails-with-react/. [Accessed: Feb. 12, 2026].
+
+[9] M. Jones, J. Sakimura, and J. Bradley, “JSON Web Token Best Current Practices,” RFC 8725, IETF, Feb. 2020. [Online]. Available: [https://datatracker.ietf.org/doc/html/rfc8725](https://datatracker.ietf.org/doc/html/rfc8725). Accessed: Apr. 6, 2026.
+
+[10] NIST, *Digital Identity Guidelines*, SP 800-63B, NIST, Aug. 2022. [Online]. Available: [https://pages.nist.gov/800-63-3/sp800-63b.html](https://pages.nist.gov/800-63-3/sp800-63b.html). Accessed: Apr. 6, 2026.
+
+[11] W3C Web Accessibility Initiative, “Understanding Success Criterion 3.3.8: Accessible Authentication (Minimum),” *WCAG 2.2 Understanding Documents*, 2024. [Online]. Available: [https://www.w3.org/WAI/WCAG22/Understanding/accessible-authentication-minimum.html](https://www.w3.org/WAI/WCAG22/Understanding/accessible-authentication-minimum.html). Accessed: Apr. 6, 2026.
 

@@ -2,7 +2,7 @@
  * Patient auth context – no password; login() is called with (user, token) after
  * activate or magic-link verification. State is persisted in localStorage via apiClient.
  */
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { getStoredAuth, clearStoredAuth, setStoredAuth } from "../services/apiClient";
 
 const AuthContext = createContext(null);
@@ -26,10 +26,16 @@ export function AuthProvider({ children }) {
   };
 
   /** Clear stored auth and user state (e.g. before redirect to /login) */
-  const logout = () => {
+  const logout = useCallback(() => {
     clearStoredAuth();
     setUser(null);
-  };
+  }, []);
+
+  useEffect(() => {
+    const onSessionExpired = () => logout();
+    window.addEventListener("ne-patient-auth-expired", onSessionExpired);
+    return () => window.removeEventListener("ne-patient-auth-expired", onSessionExpired);
+  }, [logout]);
 
   const value = { user, loading, login, logout };
 

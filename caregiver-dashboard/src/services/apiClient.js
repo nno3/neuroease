@@ -45,6 +45,10 @@ export async function apiRequest(endpoint, options = {}) {
         clearTimeout(timeoutId);
 
         if (!response.ok) {
+            // Expired/invalid JWT: clear session so ProtectedRoute sends user to /login.
+            if (response.status === 401 && token) {
+                window.dispatchEvent(new CustomEvent('ne-caregiver-auth-expired'));
+            }
             const text = await response.text();
             let errorData = { message: text || "Request failed" };
             try {

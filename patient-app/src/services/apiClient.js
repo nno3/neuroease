@@ -47,6 +47,10 @@ export async function apiRequest(path, options = {}) {
   }
   const res = await fetch(url, { ...options, headers });
   const data = await res.json().catch(() => ({}));
+  // Patient JWT can expire (default 30d on server) while localStorage still has user — treat 401 with a sent Bearer as session end.
+  if (res.status === 401 && auth?.token) {
+    window.dispatchEvent(new CustomEvent("ne-patient-auth-expired"));
+  }
   if (!res.ok) {
     const err = new Error(data.message || "Request failed");
     err.status = res.status;
