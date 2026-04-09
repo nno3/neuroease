@@ -4,13 +4,17 @@
  * Right panel: conversation thread with plain messages and meeting requests.
  */
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { MessageSquare, Send, Calendar, Check, X, Clock, ChevronLeft, Phone, Video } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { apiRequest } from '../services/apiClient';
 import { useAuth } from '../context/AuthContext';
 import { useCall } from '../context/useCall';
+import { getPatientById, sendInvite } from '../services/patients';
+import PatientDetailsModal from '../components/PatientDetailsModal';
+import PatientActivityModal from '../components/PatientActivityModal';
+import './Patients.css';
 import './Messages.css';
 
 function isMissedCallContent(content) {
@@ -71,6 +75,7 @@ function MeetingBadge({ message, myId, onRespond, onCancel }) {
 export default function Messages() {
     const { user } = useAuth();
     const myId = user?.id;
+    const navigate = useNavigate();
 
     const { socket, callState, startCall } = useCall();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -87,6 +92,29 @@ export default function Messages() {
     const [mobileShowConversation, setMobileShowConversation] = useState(false);
     const [seenByContact, setSeenByContact] = useState(false);
     const bottomRef = useRef(null);
+
+    const [detailsPatient, setDetailsPatient] = useState(null);
+    const [detailsLoading, setDetailsLoading] = useState(false);
+    const [detailsLoadError, setDetailsLoadError] = useState('');
+    const [activityModalPatient, setActivityModalPatient] = useState(null);
+
+    const showPatientDetails = useCallback(async (patientUserId) => {
+        setDetailsLoadError('');
+        setDetailsLoading(true);
+        try {
+            const res = await getPatientById(patientUserId);
+            const patient = res?.data?.data?.patient ?? res?.data?.patient;
+            if (patient) {
+                setDetailsPatient(patient);
+            } else {
+                setDetailsLoadError('Could not load patient details.');
+            }
+        } catch {
+            setDetailsLoadError('Could not load patient details.');
+        } finally {
+            setDetailsLoading(false);
+        }
+    }, []);
 
     const fetchContacts = useCallback(async () => {
         try {
@@ -225,52 +253,77 @@ export default function Messages() {
 
     return (
         <div className="msg-page">
-            <div className={`msg-contacts ${mobileShowConversation ? 'msg-contacts--hidden-mobile' : ''}`}>
-                <div className="msg-contacts-header">
-                    <MessageSquare size={18} />
-                    <h2 className="msg-contacts-title">Messages</h2>
+            {detailsLoadError && (
+                <div className="msg-inline-alert" role="alert">
+                    {detailsLoadError}
+                    <button type="button" className="msg-inline-alert-dismiss" onClick={() => setDetailsLoadError('')} aria-label="Dismiss">
+                        ×
+                    </button>
                 </div>
-                {loadingContacts ? (
-                    <p className="msg-empty">Loading…</p>
-                ) : contacts.length === 0 ? (
-                    <p className="msg-empty">No patients assigned yet.</p>
-                ) : (
-                    <ul className="msg-contact-list">
-                        {contacts.map(({ user: contact, lastMessage, unreadCount }) => (
-                            <li key={contact.id}>
-                                <button
-                                    className={`msg-contact-item ${activeContact?.user.id === contact.id ? 'msg-contact-item--active' : ''}`}
-                                    onClick={() => openConversation({ user: contact, lastMessage, unreadCount })}
-                                >
-                                    <div className="msg-contact-avatar">
-                                        {contact.name?.[0]?.toUpperCase() ?? '?'}
+            )}
+            {detailsLoading && (
+                <div className="msg-details-loading" aria-live="polite">
+                    Loading patient…
+                </div>
+            )}
+            <div className="msg-panels">
+                <div className={`msg-contacts ${mobileShowConversation ? 'msg-contacts--hidden-mobile' : ''}`}>
+                    <div className="msg-contacts-header">
+                        <MessageSquare size={18} />
+                        <h2 className="msg-contacts-title">Messages</h2>
+                    </div>
+                    {loadingContacts ? (
+                        <p className="msg-empty">Loading…</p>
+                    ) : contacts.length === 0 ? (
+                        <p className="msg-empty">No patients assigned yet.</p>
+                    ) : (
+                        <ul className="msg-contact-list">
+                            {contacts.map(({ user: contact, lastMessage, unreadCount }) => (
+                                <li key={contact.id}>
+                                    <div
+                                        className={`msg-contact-item ${activeContact?.user.id === contact.id ? 'msg-contact-item--active' : ''}`}
+                                    >
+                                        <button
+                                            type="button"
+                                            className="msg-contact-avatar-btn"
+                                            onClick={() => showPatientDetails(contact.id)}
+                                            aria-label={`View ${contact.name || 'patient'} profile and details`}
+                                            title="Patient details"
+                                        >
+                                            {contact.name?.[0]?.toUpperCase() ?? '?'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="msg-contact-main"
+                                            onClick={() => openConversation({ user: contact, lastMessage, unreadCount })}
+                                        >
+                                            <div className="msg-contact-info">
+                                                <div className="msg-contact-name-row">
+                                                    <span className="msg-contact-name">{contact.name}</span>
+                                                    <span className="msg-contact-time">{formatTime(lastMessage?.createdAt)}</span>
+                                                </div>
+                                                <div className="msg-contact-preview-row">
+                                                    <span className="msg-contact-preview">
+                                                        {lastMessage
+                                                            ? lastMessage.type === 'meeting_request'
+                                                                ? '📅 Meeting request'
+                                                                : lastMessage.content?.slice(0, 40)
+                                                            : 'No messages yet'}
+                                                    </span>
+                                                    {unreadCount > 0 && (
+                                                        <span className="msg-unread-badge">{unreadCount}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </button>
                                     </div>
-                                    <div className="msg-contact-info">
-                                        <div className="msg-contact-name-row">
-                                            <span className="msg-contact-name">{contact.name}</span>
-                                            <span className="msg-contact-time">{formatTime(lastMessage?.createdAt)}</span>
-                                        </div>
-                                        <div className="msg-contact-preview-row">
-                                            <span className="msg-contact-preview">
-                                                {lastMessage
-                                                    ? lastMessage.type === 'meeting_request'
-                                                        ? '📅 Meeting request'
-                                                        : lastMessage.content?.slice(0, 40)
-                                                    : 'No messages yet'}
-                                            </span>
-                                            {unreadCount > 0 && (
-                                                <span className="msg-unread-badge">{unreadCount}</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
-                )}
-            </div>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
 
-            <div className={`msg-conversation ${!mobileShowConversation ? 'msg-conversation--hidden-mobile' : ''}`}>
+                <div className={`msg-conversation ${!mobileShowConversation ? 'msg-conversation--hidden-mobile' : ''}`}>
                 {!activeContact ? (
                     <div className="msg-no-conversation">
                         <MessageSquare size={40} className="msg-no-conversation-icon" />
@@ -286,9 +339,17 @@ export default function Messages() {
                             >
                                 <ChevronLeft size={20} />
                             </button>
-                            <div className="msg-conversation-avatar">
-                                {activeContact.user.name?.[0]?.toUpperCase()}
-                            </div>
+                            <button
+                                type="button"
+                                className="msg-conversation-avatar-btn"
+                                onClick={() => showPatientDetails(activeContact.user.id)}
+                                aria-label={`View ${activeContact.user.name || 'patient'} profile and details`}
+                                title="Patient details"
+                            >
+                                <span className="msg-conversation-avatar">
+                                    {activeContact.user.name?.[0]?.toUpperCase()}
+                                </span>
+                            </button>
                             <div className="msg-conversation-identity">
                                 <p className="msg-conversation-name">{activeContact.user.name}</p>
                                 <p className="msg-conversation-role">Patient</p>
@@ -419,6 +480,35 @@ export default function Messages() {
                     </>
                 )}
             </div>
+            </div>
+
+            {detailsPatient && (
+                <PatientDetailsModal
+                    patient={detailsPatient}
+                    onClose={() => setDetailsPatient(null)}
+                    onEdit={(p) => {
+                        setDetailsPatient(null);
+                        navigate(`/patients?edit=${p.id}`);
+                    }}
+                    onOpenActivity={() => {
+                        setActivityModalPatient(detailsPatient);
+                        setDetailsPatient(null);
+                    }}
+                    onResendInvite={async (id) => {
+                        await sendInvite(id);
+                    }}
+                />
+            )}
+            {activityModalPatient && (
+                <PatientActivityModal
+                    patient={activityModalPatient}
+                    onClose={() => setActivityModalPatient(null)}
+                    onViewDetails={() => {
+                        setActivityModalPatient(null);
+                        setDetailsPatient(activityModalPatient);
+                    }}
+                />
+            )}
         </div>
     );
 }
