@@ -174,10 +174,10 @@ async function sendPatientInviteEmail(email, name, token) {
     const text = `Hi ${name || 'there'},\n\nOpen this link to activate your account: ${activateUrl}\n\nThis link expires in 7 days.\n\n— NeuroEase`;
 
     const mailPayload = {
-        from: MAIL_FROM,
-        to: email,
-        subject: 'Activate your NeuroEase account',
-        html,
+                from: MAIL_FROM,
+                to: email,
+                subject: 'Activate your NeuroEase account',
+                html,
         text,
     };
 
@@ -256,10 +256,10 @@ async function sendPatientMagicLinkEmail(email, name, token, shortCode) {
     const textBody = `Hi ${name || 'there'},\n\nLog in here: ${loginUrl}${textCode}\n\nLink and code expire in 15 minutes.\n\n— NeuroEase`;
 
     const mailPayload = {
-        from: MAIL_FROM,
-        to: email,
-        subject: 'Log in to NeuroEase',
-        html,
+                from: MAIL_FROM,
+                to: email,
+                subject: 'Log in to NeuroEase',
+                html,
         text: textBody,
     };
 

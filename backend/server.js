@@ -9,14 +9,12 @@ require('dotenv').config();
 const dns = require('dns');
 dns.setDefaultResultOrder('ipv4first');
 
-const express = require('express');
-const cors = require('cors');
-const morgan = require('morgan');
 const http = require('http');
 const { Server: SocketIOServer } = require('socket.io');
 const jwt = require('jsonwebtoken');
 
-const { sequelize, User } = require('./src/models');
+const { createHttpApp, corsOriginCallback } = require('./src/httpApp');
+const { sequelize } = require('./src/models');
 const {
     storePendingOffer,
     getPendingOfferForCallee,
@@ -25,7 +23,7 @@ const {
 } = require('./src/utils/callIncoming');
 const { startReminderEmailJob } = require('./src/jobs/reminderEmailJob');
 
-const app = express();
+const app = createHttpApp();
 const httpServer = http.createServer(app);
 const PORT = process.env.PORT || 5001;
 
@@ -39,71 +37,11 @@ function logEmailDeliveryHint() {
         return;
     }
     if (onRender && hasSmtp) {
-        console.warn(
-            '[EMAIL] RESEND_API_KEY is not set but SMTP_* is.'
-        );
+        console.warn('[EMAIL] RESEND_API_KEY is not set but SMTP_* is.');
     } else if (hasSmtp) {
         console.log('[EMAIL] Using SMTP only (no RESEND_API_KEY).');
     }
 }
-
-// Log every API request (method, URL, status) for debugging and auditing
-app.use(morgan('combined'));
-
-// Allow frontend(s) on different origins. Socket.IO uses the browser's Origin header
-// (e.g. http://127.0.0.1:5173 vs http://localhost:5173) — both must be allowed or the
-// handshake fails silently while REST via Vite proxy still works.
-/** Compare browser Origin header to env URLs even when env has a trailing slash. */
-function normalizeWebOrigin(raw) {
-    if (!raw || typeof raw !== 'string') return null;
-    const s = raw.trim();
-    if (!s) return null;
-    try {
-        return new URL(s).origin;
-    } catch {
-        return null;
-    }
-}
-
-const allowedOriginSet = new Set(
-    [
-        process.env.FRONTEND_URL,
-        process.env.PATIENT_APP_URL,
-        'http://localhost:5173',
-        'http://localhost:5175',
-        'http://127.0.0.1:5173',
-        'http://127.0.0.1:5175',
-    ]
-        .map(normalizeWebOrigin)
-        .filter(Boolean)
-);
-
-const isDevLocalOrigin = (origin) =>
-    /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(origin || '');
-
-/** Phone/tablet on same Wi‑Fi hitting http://192.168.x.x:5173 — allow in dev only */
-const isPrivateLanOrigin = (origin) =>
-    /^https?:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$/.test(
-        origin || ''
-    );
-
-function corsOriginCallback(origin, callback) {
-    if (!origin) return callback(null, true);
-    const reqOrigin = normalizeWebOrigin(origin);
-    if (reqOrigin && allowedOriginSet.has(reqOrigin)) return callback(null, true);
-    if (
-        process.env.NODE_ENV !== 'production' &&
-        (isDevLocalOrigin(origin) || isPrivateLanOrigin(origin))
-    ) {
-        return callback(null, true);
-    }
-    callback(null, false);
-}
-
-app.use(cors({
-    origin: corsOriginCallback,
-    credentials: true,
-}));
 
 // Socket.io – attach to the http server, same CORS policy.
 // Longer pingTimeout helps mobile networks + Render’s edge (default 20s is aggressive).
@@ -118,7 +56,7 @@ const io = new SocketIOServer(httpServer, {
     transports: ['polling', 'websocket'],
 });
 
-// Authenticate socket connections with the same JWT used by the REST API
+// Authenticate socket connections with the same JWT used for the REST API
 io.use((socket, next) => {
     const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.replace('Bearer ', '');
     if (!token) return next(new Error('Authentication required'));
@@ -146,7 +84,6 @@ function userRoom(userId) {
 
 io.on('connection', async (socket) => {
     const myRoom = userRoom(socket.userId);
-    // Socket.IO v4+: join is async — await so io.to(room) can deliver immediately after.
     if (myRoom) await socket.join(myRoom);
 
     const replay = getPendingOfferForCallee(socket.userId);
@@ -164,14 +101,8 @@ io.on('connection', async (socket) => {
         console.log(`[socket] user ${socket.userId} joined ${myRoom} (room size ${n})`);
     }
 
-    // Keepalive ping/pong to prevent Render free tier from closing idle connections
     socket.on('ping', () => socket.emit('pong'));
 
-    // ── WebRTC call signalling ──────────────────────────────────────────────
-    // All events are forwarded to the target user's room; the server never
-    // inspects the SDP/ICE payloads — it is a pure relay.
-
-    // Caller initiates: { to, offer (RTCSessionDescription), callType ('video'|'audio') }
     socket.on('call:offer', ({ to, offer, callType }) => {
         const room = userRoom(to);
         if (!room || !offer) return;
@@ -190,8 +121,8 @@ io.on('connection', async (socket) => {
         });
         if (process.env.NODE_ENV !== 'production') {
             const adapter = io.sockets.adapter;
-            const n = adapter.rooms.get(room)?.size ?? 0;
-            console.log(`[call:offer] from=${socket.userId} to=${to} room=${room} recipientsInRoom=${n}`);
+            const roomN = adapter.rooms.get(room)?.size ?? 0;
+            console.log(`[call:offer] from=${socket.userId} to=${to} room=${room} recipientsInRoom=${roomN}`);
         }
     });
 
@@ -205,7 +136,6 @@ io.on('connection', async (socket) => {
         });
     });
 
-    // ICE candidate exchange: { to, candidate }
     socket.on('call:ice-candidate', ({ to, candidate }) => {
         const room = userRoom(to);
         if (!room) return;
@@ -215,7 +145,6 @@ io.on('connection', async (socket) => {
         });
     });
 
-    // Either party ends the call: { to }
     socket.on('call:end', ({ to }) => {
         const room = userRoom(to);
         if (!room) return;
@@ -224,7 +153,6 @@ io.on('connection', async (socket) => {
         io.to(room).emit('call:end', { from: socket.userId });
     });
 
-    // Callee rejects the incoming call: { to }
     socket.on('call:reject', ({ to }) => {
         const room = userRoom(to);
         if (!room) return;
@@ -232,7 +160,6 @@ io.on('connection', async (socket) => {
         io.to(room).emit('call:reject', { from: socket.userId });
     });
 
-    // Caller cancels before callee answers: { to }
     socket.on('call:cancel', ({ to }) => {
         const room = userRoom(to);
         if (!room) return;
@@ -240,77 +167,17 @@ io.on('connection', async (socket) => {
         io.to(room).emit('call:cancel', { from: socket.userId });
     });
 
-    // Caller notifies callee of a missed call (timeout with no answer): { to }
     socket.on('call:missed', ({ to }) => {
         const room = userRoom(to);
         if (!room) return;
         clearPendingForCallee(to);
         io.to(room).emit('call:missed', { from: socket.userId });
     });
-    // ───────────────────────────────────────────────────────────────────────
 
     socket.on('disconnect', () => {});
 });
 
-// Make io accessible in route handlers via req.app.get('io')
 app.set('io', io);
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Mount route modules under /api/* (all require valid DB and env)
-const authRoutes = require('./src/routes/authRoutes');
-app.use('/api/auth', authRoutes);
-
-const patientRoutes = require('./src/routes/patientRoutes');
-app.use('/api/patients', patientRoutes);
-
-const reminderRoutes = require('./src/routes/reminderRoutes');
-app.use('/api/reminders', reminderRoutes);
-
-const activityRoutes = require('./src/routes/activityRoutes');
-app.use('/api/activity', activityRoutes);
-
-const locationRoutes = require('./src/routes/locationRoutes');
-app.use('/api/location', locationRoutes);
-
-const pushRoutes = require('./src/routes/pushRoutes');
-app.use('/api/push', pushRoutes);
-
-const safeZoneRoutes = require('./src/routes/safeZoneRoutes');
-app.use('/api/safe-zones', safeZoneRoutes);
-
-const gameRoutes = require('./src/routes/gameRoutes');
-app.use('/api/games', gameRoutes);
-
-const messageRoutes = require('./src/routes/messageRoutes');
-app.use('/api/messages', messageRoutes);
-
-// Quick check for deployment and monitoring
-app.get('/api/health', (req, res) => {
-    res.json({
-        success: true,
-        message: 'NeuroEase Backend is running',
-        timestamp: new Date().toISOString(),
-        database: 'PostgreSQL',
-        environment: process.env.NODE_ENV
-    });
-});
-// No route matched – return consistent JSON so frontend can show a clear message
-app.use('*', (req, res) => {
-    res.status(404).json({
-        success: false,
-        message: 'API endpoint not found'
-    });
-});
-
-// Error handling middleware
-app.use((error, req, res, next) => {
-    console.error('Unhandled error:', error);
-    res.status(500).json({
-        success: false,
-        message: 'Internal server error'
-    });
-});
 
 // Connect to DB, sync models (create/alter tables), then listen
 const startServer = async () => {
@@ -319,7 +186,6 @@ const startServer = async () => {
         await sequelize.authenticate();
         console.log('PostgreSQL connection established successfully');
 
-        // One-time fix: if push_subscriptions exists without user_id, truncate so sync can add NOT NULL user_id
         try {
             const [rows] = await sequelize.query(
                 `SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'push_subscriptions' AND column_name = 'user_id'`
@@ -336,12 +202,10 @@ const startServer = async () => {
             // Ignore; sync may create table from scratch
         }
 
-        // alter: true updates columns if model changed; avoids dropping data
         console.log('Syncing database tables...');
         await sequelize.sync({ alter: true });
         console.log('Database tables synchronized');
 
-        // Backfill email_hash for existing users (when email is stored but emailHash is null)
         try {
             const { User } = require('./src/models');
             const { hashEmail } = require('./src/utils/encryption');
@@ -364,7 +228,6 @@ const startServer = async () => {
             // Ignore migration errors
         }
 
-        // Ensure push_subscriptions has created_at/updated_at (sync may have dropped them in a prior run)
         try {
             const [cols] = await sequelize.query(
                 `SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'push_subscriptions' AND column_name IN ('created_at', 'updated_at')`
@@ -380,7 +243,6 @@ const startServer = async () => {
             // Ignore
         }
 
-        // Start server (httpServer wraps app so socket.io works)
         httpServer.listen(PORT, () => {
             console.log(`NeuroEase Backend running on port ${PORT}`);
             console.log(`Health check: http://localhost:${PORT}/api/health`);

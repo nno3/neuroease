@@ -51,6 +51,16 @@ async function getLocationConsent(patientUserId) {
     return profile ? Boolean(profile.locationConsent) : false;
 }
 
+/** True if patient turned on consent but chose a temporary pause (no location writes until it ends). */
+async function isLocationPaused(patientUserId) {
+    const patientRow = await Patient.findOne({
+        where: { userId: patientUserId },
+        attributes: ['locationPausedUntil'],
+    });
+    const pausedUntil = patientRow?.locationPausedUntil ? new Date(patientRow.locationPausedUntil) : null;
+    return Boolean(pausedUntil && pausedUntil.getTime() > Date.now());
+}
+
 /**
  * In all location APIs, patientId is the patient's USER id (users.id), not the
  * Patient profile table id (patients.id). The dashboard patient list uses the
@@ -92,6 +102,14 @@ const locationController = {
                 return res.status(403).json({
                     success: false,
                     message: 'Location sharing is not enabled for this patient.',
+                });
+            }
+
+            if (await isLocationPaused(pid)) {
+                return res.status(403).json({
+                    success: false,
+                    message:
+                        'Location sharing is paused for this patient. They can resume from the Profile screen.',
                 });
             }
 
@@ -220,6 +238,14 @@ const locationController = {
                 return res.status(403).json({
                     success: false,
                     message: 'Location sharing is not enabled. Enable it in Profile to share your location.',
+                });
+            }
+
+            if (await isLocationPaused(pid)) {
+                return res.status(403).json({
+                    success: false,
+                    message:
+                        'Location sharing is paused. Resume from Profile when you are ready to share again.',
                 });
             }
 

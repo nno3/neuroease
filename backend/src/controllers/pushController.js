@@ -70,8 +70,36 @@ async function getPushStatus(req, res) {
   res.json({ success: true, data: { count } });
 }
 
+/**
+ * POST /api/push/unsubscribe
+ * Body: { endpoint } — removes this device's subscription for the logged-in user after client calls pushManager.unsubscribe().
+ */
+async function deleteSubscription(req, res) {
+  const userId = req.user.userId;
+  const { endpoint } = req.body || {};
+  if (!endpoint || typeof endpoint !== 'string') {
+    return res.status(400).json({
+      success: false,
+      message: 'Missing endpoint',
+    });
+  }
+  try {
+    const n = await PushSubscriptionModel.destroy({
+      where: { userId, endpoint },
+    });
+    res.json({ success: true, data: { removed: n } });
+  } catch (err) {
+    console.error('Delete push subscription error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to remove subscription',
+    });
+  }
+}
+
 module.exports = {
   getVapidPublicKey,
   saveSubscription,
   getPushStatus,
+  deleteSubscription,
 };

@@ -17,7 +17,7 @@ const gameController = {
                 return res.status(403).json({ success: false, message: 'Only patients can submit game sessions' });
             }
 
-            const { gameType, score, duration, accuracy, maxScore, difficulty } = req.body;
+            const { gameType, score, duration, accuracy, maxScore, difficulty, effectiveDifficulty } = req.body;
             const allowedTypes = ['memory', 'math', 'sequencing'];
 
             if (!gameType || !allowedTypes.includes(String(gameType))) {
@@ -44,9 +44,15 @@ const gameController = {
             }
 
             const maxScoreVal = maxScore != null ? parseInt(String(maxScore), 10) : null;
-            const difficultyVal = difficulty && ['easy', 'normal', 'hard'].includes(String(difficulty).toLowerCase())
-                ? String(difficulty).toLowerCase()
-                : null;
+            const tierOk = (v) => v && ['easy', 'normal', 'hard'].includes(String(v).toLowerCase());
+            const difficultyVal = tierOk(difficulty) ? String(difficulty).toLowerCase() : null;
+            const effectiveVal = tierOk(effectiveDifficulty)
+                ? String(effectiveDifficulty).toLowerCase()
+                : difficultyVal;
+            const difficultyForNotify =
+                difficultyVal && effectiveVal && difficultyVal !== effectiveVal
+                    ? `${difficultyVal}→${effectiveVal} (adaptive)`
+                    : (effectiveVal || difficultyVal);
 
             const session = await GameSession.create({
                 patientId: req.user.userId,
@@ -64,7 +70,7 @@ const gameController = {
                 scoreNum,
                 durationNum,
                 maxScoreVal,
-                difficultyVal
+                difficultyForNotify
             ).catch((err) => console.error('Caregiver game completion email error:', err));
 
             return res.status(201).json({

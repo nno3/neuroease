@@ -90,6 +90,12 @@ const Patient = sequelize.define('Patient', {
         allowNull: false,
         defaultValue: false
     },
+    /** When set and in the future, location points are not stored (consent stays true). Patient-only updates. */
+    locationPausedUntil: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: 'location_paused_until',
+    },
     reminderNotificationChannel: {
         type: DataTypes.STRING(20),
         allowNull: false,

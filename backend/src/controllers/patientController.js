@@ -138,6 +138,14 @@ const patientController = {
         });
       }
 
+      if (patient.Patient?.locationPausedUntil) {
+        const until = new Date(patient.Patient.locationPausedUntil);
+        if (!Number.isNaN(until.getTime()) && until.getTime() <= Date.now()) {
+          await patient.Patient.update({ locationPausedUntil: null });
+          patient.Patient.locationPausedUntil = null;
+        }
+      }
+
       res.json({
         success: true,
         data: { patient }
@@ -429,6 +437,7 @@ const patientController = {
         preferredCommunication, accessibilityNeeds, careNotes,
         emergencyContactName, emergencyContactRelationship, emergencyContactPhone,
         locationConsent,
+        locationPausedUntil,
         reminderNotificationChannel,
         messageNotifications,
       } = req.body;
@@ -515,6 +524,29 @@ const patientController = {
         // locationConsent is set only by the patient (via patient app); caregivers cannot change it
         if (locationConsent !== undefined && req.user.userType === 'patient' && req.user.userId === patientId) {
           updates.locationConsent = Boolean(locationConsent);
+        }
+        // Temporary pause: patient only; null clears. Max 7 days ahead to limit abuse / clock skew issues.
+        if (locationPausedUntil !== undefined && req.user.userType === 'patient' && req.user.userId === patientId) {
+          if (locationPausedUntil === null || locationPausedUntil === '') {
+            updates.locationPausedUntil = null;
+          } else {
+            const d = new Date(locationPausedUntil);
+            if (Number.isNaN(d.getTime())) {
+              return res.status(400).json({ success: false, message: 'locationPausedUntil must be a valid ISO date or null' });
+            }
+            const now = Date.now();
+            const maxUntil = now + 7 * 24 * 60 * 60 * 1000;
+            if (d.getTime() <= now) {
+              updates.locationPausedUntil = null;
+            } else if (d.getTime() > maxUntil) {
+              return res.status(400).json({
+                success: false,
+                message: 'Location pause cannot be longer than 7 days.',
+              });
+            } else {
+              updates.locationPausedUntil = d;
+            }
+          }
         }
         // Only the patient can set reminder notification channel (in the patient app Profile)
         if (reminderNotificationChannel !== undefined && req.user.userType === 'patient' && req.user.userId === patientId) {
