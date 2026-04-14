@@ -199,18 +199,37 @@
     font-size: 13px;
     color: #64748b;
     line-height: 1.5;
-    max-width: 480px;
+    max-width: 520px;
 }
 
-.stg-checkbox-group {
+.stg-call-push-help {
+    margin-bottom: 4px;
+}
+
+.stg-call-push-help .stg-call-push-help-p {
+    margin-bottom: 12px;
+}
+
+.stg-call-push-homescreen-note {
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    color: #475569;
+}
+
+/* Email notification rows — iOS-style pill toggle on the right */
+.stg-notify-group {
     display: flex;
     flex-direction: column;
     gap: 12px;
 }
 
-.stg-checkbox-row {
+.stg-notify-row {
+    position: relative;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 14px;
     padding: 14px 16px;
     background: #f8fafc;
@@ -220,20 +239,17 @@
     transition: background 0.2s, border-color 0.2s;
 }
 
-.stg-checkbox-row:hover {
+.stg-notify-row:hover {
     background: #f1f5f9;
     border-color: #cbd5e1;
 }
 
-.stg-checkbox {
-    width: 20px;
-    height: 20px;
-    margin-top: 2px;
-    accent-color: #4a90e2;
-    flex-shrink: 0;
+.stg-notify-row:has(.stg-switch-input:disabled) {
+    opacity: 0.65;
+    cursor: not-allowed;
 }
 
-.stg-checkbox-icon {
+.stg-notify-icon {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -243,29 +259,87 @@
     border-radius: 10px;
     color: #64748b;
     flex-shrink: 0;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
-.stg-checkbox-row:has(.stg-checkbox:checked) .stg-checkbox-icon {
+.stg-notify-row:has(.stg-switch-input:checked) .stg-notify-icon {
     background: #eff6ff;
     color: #4a90e2;
 }
 
-.stg-checkbox-content {
+.stg-notify-text {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    flex: 1;
+    min-width: 0;
 }
 
-.stg-checkbox-label {
+.stg-notify-label {
     font-size: 14px;
     font-weight: 600;
     color: #334155;
 }
 
-.stg-checkbox-desc {
+.stg-notify-desc {
     font-size: 13px;
     color: #64748b;
     line-height: 1.4;
+}
+
+/* Visually hidden; drives the custom switch */
+.stg-switch-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.stg-switch-track {
+    position: relative;
+    width: 50px;
+    height: 28px;
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: #dfe4ea;
+    box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
+    transition: background 0.22s ease;
+}
+
+.stg-switch-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow:
+        0 1px 2px rgba(15, 23, 42, 0.12),
+        0 2px 6px rgba(15, 23, 42, 0.08);
+    transition: transform 0.22s cubic-bezier(0.34, 1.1, 0.64, 1);
+}
+
+.stg-notify-row:has(.stg-switch-input:checked) .stg-switch-track {
+    background: #bfdbfe;
+    box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.2);
+}
+
+.stg-notify-row:has(.stg-switch-input:checked) .stg-switch-thumb {
+    transform: translateX(22px);
+    box-shadow:
+        0 1px 2px rgba(15, 23, 42, 0.14),
+        0 2px 6px rgba(15, 23, 42, 0.1);
+}
+
+.stg-switch-input:focus-visible + .stg-switch-track {
+    outline: 2px solid #4a90e2;
+    outline-offset: 3px;
 }
 
 .stg-danger-zone {

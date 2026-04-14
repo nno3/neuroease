@@ -368,7 +368,9 @@ export default function Activity() {
 
                 if (!logRes.ok) {
                     let msg = `Activity log error (${logRes.status})`;
-                    try { const j = await logRes.json(); msg = j?.message || msg; } catch {}
+                    try { const j = await logRes.json(); msg = j?.message || msg; } catch {
+                        /* body not JSON */
+                    }
                     throw new Error(msg);
                 }
 
@@ -498,7 +500,9 @@ export default function Activity() {
                 });
                 if (!res.ok) {
                     let msg = `Games summary error (${res.status})`;
-                    try { const j = await res.json(); msg = j?.message || msg; } catch {}
+                    try { const j = await res.json(); msg = j?.message || msg; } catch {
+                        /* body not JSON */
+                    }
                     throw new Error(msg);
                 }
                 const json = await res.json();
@@ -713,6 +717,8 @@ export default function Activity() {
             return finalizeBuckets(buckets);
         }
         return gamesRawSeries;
+        // newGameBucket / addDayToBucket / finalizeBuckets are local helpers; listing them would recompute every render
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [period, gamesRawSeries]);
 
     const gamesMax = useMemo(() => Math.max(1, ...gamesSeries.map((d) => d.count || 0)), [gamesSeries]);
@@ -1059,7 +1065,7 @@ export default function Activity() {
                 <div className={barMinWidth ? "hc-bars-scroll" : "hc-bars-fit"}>
                     <div className="hc-bars" role="img" aria-label="Adherence trend chart">
                         {seriesByDay.map((d, idx) => {
-                            const barKey = d.date ?? d.key ?? `h${d.hour}` ?? idx;
+                            const barKey = d.date ?? d.key ?? (d.hour != null ? `h${d.hour}` : idx);
                             const total = Number(d.total || 0);
                             const completed = Number(d.completed || 0);
                             const pending = Number(d.pending || 0);

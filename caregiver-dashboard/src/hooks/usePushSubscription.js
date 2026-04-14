@@ -44,6 +44,45 @@ export async function registerCaregiverPushSubscription() {
     return { ok: true };
 }
 
+/** Remove this browser's push subscription (call alerts, etc.) for the logged-in caregiver. */
+export async function unregisterCaregiverPushSubscription() {
+    if (!('serviceWorker' in navigator)) {
+        return { ok: true };
+    }
+    try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (!reg) return { ok: true };
+        const sub = await reg.pushManager.getSubscription();
+        if (!sub) return { ok: true };
+        const endpoint = sub.endpoint;
+        await sub.unsubscribe();
+        try {
+            await apiRequest('/push/unsubscribe', {
+                method: 'POST',
+                body: JSON.stringify({ endpoint }),
+            });
+        } catch {
+            /* server row may already be gone */
+        }
+        return { ok: true };
+    } catch (e) {
+        return { ok: false, error: e?.message || 'Could not turn off call alerts on this device.' };
+    }
+}
+
+/** True if this tab's service worker has an active push subscription and permission is granted. */
+export async function getThisDevicePushSubscribed() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+    try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (!reg) return false;
+        const sub = await reg.pushManager.getSubscription();
+        return !!(sub && Notification.permission === 'granted');
+    } catch {
+        return false;
+    }
+}
+
 export function usePushSubscription(user) {
     useEffect(() => {
         if (!user) return;

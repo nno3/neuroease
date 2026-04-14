@@ -16,6 +16,9 @@ import {
     CheckCircle2,
     Clock,
     XCircle,
+    Pill,
+    CalendarDays,
+    ClipboardList,
 } from "lucide-react";
 const isReturnAlert = (a) => (a.message || "").toLowerCase().includes("returned");
 
@@ -133,6 +136,25 @@ const GAME_TYPE_LABELS = {
     sequencing: "Sequencing",
 };
 
+const REMINDER_TYPE_LABELS = {
+    medication: "Medication",
+    appointment: "Appointment",
+    general: "Task",
+};
+
+function ReminderTypeIcon({ type, size = 12 }) {
+    if (type === "medication") return <Pill size={size} aria-hidden />;
+    if (type === "appointment") return <CalendarDays size={size} aria-hidden />;
+    return <ClipboardList size={size} aria-hidden />;
+}
+
+const REMINDER_STATUS_HELP = {
+    completed: "Marked done on or before the scheduled time.",
+    "completed-late": "Marked done after the scheduled time had passed.",
+    overdue: "Past the scheduled time and not yet marked done.",
+    pending: "Not yet due or still waiting to be marked done.",
+};
+
 const ALERT_FILTERS = [
     { value: "day", label: "Today" },
     { value: "week", label: "This week" },
@@ -218,7 +240,6 @@ function reminderOccursInRange(reminder, startDate, endDate) {
 function filterRemindersByRange(reminders, range) {
     if (!Array.isArray(reminders) || reminders.length === 0) return [];
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
     const weekStart = getWeekStart(now);
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 7);
@@ -505,9 +526,17 @@ export default function PatientActivityModal({ patient, onClose, onViewDetails }
                                             const r = occ.reminder;
                                             const effectiveTime = occ.effectiveScheduledTime;
                                             const status = reminderStatusForOccurrence(r, effectiveTime);
-                                            const statusLabel = status === "completed-late" ? "Completed late" : status;
+                                            const statusLabel =
+                                                status === "completed-late"
+                                                    ? "Completed late"
+                                                    : status === "completed"
+                                                        ? "Completed"
+                                                        : status === "overdue"
+                                                            ? "Overdue"
+                                                            : "Pending";
                                             const completedAtStr = status === "completed-late" && r.completedAt
                                                 ? formatCompletedAt(r.completedAt, effectiveTime) : null;
+                                            const rk = r.reminderType || "general";
                                             return (
                                                 <li key={`${r.id}-${effectiveTime}`} className={`pa-reminder-item pa-reminder-${status}`}>
                                                     <span className="pa-reminder-icon">
@@ -519,12 +548,23 @@ export default function PatientActivityModal({ patient, onClose, onViewDetails }
                                                         <span className="pa-reminder-title">{r.title}</span>
                                                         <span className="pa-reminder-meta">
                                                             {formatReminderTime(effectiveTime)}
-                                                            {r.reminderType && ` · ${r.reminderType}`}
+                                                            {r.reminderType && (
+                                                                <>
+                                                                    {" · "}
+                                                                    <span className={`pa-reminder-type-tag pa-reminder-type--${rk}`}>
+                                                                        <ReminderTypeIcon type={r.reminderType} size={12} />
+                                                                        {REMINDER_TYPE_LABELS[r.reminderType] || r.reminderType}
+                                                                    </span>
+                                                                </>
+                                                            )}
                                                             {r.recurrence && r.recurrence !== "once" && ` · ${r.recurrence}`}
                                                             {completedAtStr && ` · Completed at ${completedAtStr}`}
                                                         </span>
                                                     </div>
-                                                    <span className={`pa-reminder-badge pa-badge-${status}`}>
+                                                    <span
+                                                        className={`pa-reminder-badge pa-badge-${status}`}
+                                                        title={REMINDER_STATUS_HELP[status] || ""}
+                                                    >
                                                         {statusLabel}
                                                     </span>
                                                 </li>

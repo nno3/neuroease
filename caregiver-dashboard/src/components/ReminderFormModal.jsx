@@ -18,12 +18,6 @@ const RECURRENCE = [
     { label: "Weekly", value: "weekly" },
 ];
 
-function parseISODateTime(v) {
-    if (!v) return null;
-    const d = new Date(v);
-    return Number.isNaN(d.getTime()) ? null : d;
-}
-
 /** Custom input (typed input + calendar button) like Patient Management */
 const DateTimeInputWithButton = forwardRef(
     ({ value, onClick, placeholder, className, disabled }, ref) => (
@@ -66,7 +60,9 @@ function parseMedicationsFromPatient(patient) {
         if (legacy) {
             return legacy.split("\n").map((line) => ({ name: line.trim(), dosage: "", frequency: "" })).filter((m) => m.name);
         }
-    } catch {}
+    } catch {
+        /* invalid medicalHistory JSON */
+    }
     return [];
 }
 

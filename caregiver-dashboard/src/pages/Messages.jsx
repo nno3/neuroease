@@ -30,9 +30,8 @@ function formatTime(iso) {
     return d.toLocaleDateString([], { day: 'numeric', month: 'short' });
 }
 
-function MeetingBadge({ message, myId, onRespond, onCancel }) {
+function MeetingBadge({ message, myId, onRespond }) {
     const isReceiver = message.receiverId === myId;
-    const isSender = message.senderId === myId;
     const statusColor = { pending: '#f59e0b', accepted: '#22c55e', declined: '#ef4444' };
     const statusLabel = { pending: 'Pending', accepted: 'Accepted', declined: 'Declined' };
 
@@ -242,15 +241,6 @@ export default function Messages() {
         }
     };
 
-    const cancelMeeting = async (messageId) => {
-        try {
-            const res = await apiRequest(`/messages/${messageId}/meeting`, { method: 'DELETE' });
-            setMessages((prev) => prev.map((m) => m.id === messageId ? res.data : m));
-        } catch {
-            /* ignore */
-        }
-    };
-
     return (
         <div className="msg-page">
             {detailsLoadError && (
@@ -387,7 +377,7 @@ export default function Messages() {
                                     return (
                                         <div key={msg.id} className={`msg-bubble-row ${isMine ? 'msg-bubble-row--mine' : ''}`}>
                                             {msg.type === 'meeting_request' ? (
-                                                <MeetingBadge message={msg} myId={myId} onRespond={respondToMeeting} onCancel={cancelMeeting} />
+                                                <MeetingBadge message={msg} myId={myId} onRespond={respondToMeeting} />
                                             ) : (
                                                 <div className="msg-bubble-wrap">
                                                     <div className={`msg-bubble ${isMine ? 'msg-bubble--mine' : 'msg-bubble--theirs'}`}>

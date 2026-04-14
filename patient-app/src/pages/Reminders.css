@@ -95,34 +95,132 @@
   min-width: 0;
 }
 
-.pa-reminders-card__icon {
-  flex-shrink: 0;
-  width: 2.25rem;
-  height: 2.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.06);
-}
-
-.pa-reminders-card__icon-svg {
-  width: 1.25rem;
-  height: 1.25rem;
-  color: var(--pa-text);
-}
-
-.pa-reminders-card--medication .pa-reminders-card__icon-svg { color: var(--pa-reminder-medication-accent); }
-.pa-reminders-card--appointment .pa-reminders-card__icon-svg { color: var(--pa-reminder-appointment-accent); }
-.pa-reminders-card--general .pa-reminders-card__icon-svg { color: var(--pa-reminder-task-accent); }
-.pa-reminders-card--completed .pa-reminders-card__icon-svg { color: var(--pa-reminder-completed-accent); }
-
 .pa-reminders-card__time {
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
   font-size: 1rem;
   font-weight: 600;
   color: var(--pa-primary);
-  min-width: 3.5rem;
+  min-width: 4.5rem;
+  max-width: 42%;
+}
+
+.pa-reminders-card__time-value {
+  display: block;
+  font-size: 1rem;
+  font-weight: 600;
+  color: inherit;
+  line-height: 1.2;
+}
+
+/* Custom tooltip: hover, keyboard focus, tap-to-pin (not browser title) */
+.pa-rtooltip {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: top;
+}
+
+.pa-rtooltip__hit {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 100%;
+}
+
+.pa-rtooltip--below .pa-rtooltip__hit {
+  padding-bottom: 0.35rem;
+}
+
+.pa-rtooltip--above .pa-rtooltip__hit {
+  padding-top: 0.35rem;
+}
+
+.pa-rtooltip__trigger {
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pa-rtooltip__trigger:focus {
+  outline: none;
+}
+
+.pa-rtooltip__trigger:focus-visible {
+  outline: var(--pa-focus-ring);
+  outline-offset: 2px;
+}
+
+.pa-rtooltip__bubble {
+  position: absolute;
+  z-index: 50;
+  left: 0;
+  max-width: min(280px, 85vw);
+  padding: 0.5rem 0.65rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--pa-text);
+  background: var(--pa-surface);
+  border: 1px solid var(--pa-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.12s ease, visibility 0.12s ease;
+}
+
+.pa-rtooltip--below .pa-rtooltip__bubble {
+  top: 100%;
+  margin-top: 0;
+}
+
+.pa-rtooltip--above .pa-rtooltip__bubble {
+  bottom: 100%;
+  margin-bottom: 0;
+}
+
+.pa-rtooltip:hover .pa-rtooltip__bubble,
+.pa-rtooltip:focus-within .pa-rtooltip__bubble,
+.pa-rtooltip--pinned .pa-rtooltip__bubble {
+  opacity: 1;
+  visibility: visible;
+}
+
+.pa-reminders-card__done-tooltip {
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+}
+
+.pa-reminders-card__done-tooltip .pa-rtooltip__hit {
+  width: 100%;
+}
+
+.pa-reminders-card__done-tooltip .pa-rtooltip__trigger {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pa-rtooltip__bubble {
+    transition: none;
+  }
 }
 
 /* Category colors: support information presentation (not meaning alone) per accessibility guidance */
@@ -153,12 +251,16 @@
   border-width: 2px;
 }
 
-.pa-reminders-card__overdue-label {
+.pa-reminders-card__overdue-inline {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.2rem;
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+  font-weight: 700;
   color: var(--pa-reminder-overdue-accent);
-  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .pa-reminders-card__overdue-icon {
@@ -184,14 +286,24 @@
   min-width: 0;
 }
 
-.pa-reminders-card__type {
-  display: inline-block;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  color: var(--pa-text-muted);
-  margin-bottom: 0.25rem;
+/* Reminder type: text above time (tooltip explains the type) */
+.pa-reminders-card__type-label-text {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.pa-reminders-card__type-label--medication {
+  color: var(--pa-reminder-medication-accent);
+}
+
+.pa-reminders-card__type-label--appointment {
+  color: var(--pa-reminder-appointment-accent);
+}
+
+.pa-reminders-card__type-label--general {
+  color: var(--pa-reminder-task-accent);
 }
 
 .pa-reminders-card__title {
@@ -224,7 +336,7 @@
   border-top: 1px solid var(--pa-border);
   min-height: var(--pa-touch-min);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .pa-reminders-card__action {
@@ -243,7 +355,7 @@
 }
 
 .pa-reminders-card--completed .pa-reminders-card__time,
-.pa-reminders-card--completed .pa-reminders-card__type,
+.pa-reminders-card--completed .pa-reminders-card__type-label-text,
 .pa-reminders-card--completed .pa-reminders-card__message {
   color: var(--pa-text-muted);
   opacity: 0.9;
@@ -319,7 +431,6 @@
   margin-bottom: 0;
 }
 
-/* Completed state: checkmark + label in footer */
 .pa-reminders-card__done {
   display: inline-flex;
   align-items: center;

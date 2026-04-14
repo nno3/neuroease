@@ -1,4 +1,4 @@
-This is my current css, the white block at the end is now gone but I want the reminder cards to be as big as they were earlier and for it to be scrollable if there is so many appointments rather than adjusting the size of the cards. and I also want rm-schedule-section to always match the length of rm-calendar-section.
+/* Reminders page + schedule/calendar layout */
 
 .rm-page {
     padding: 24px;
@@ -258,8 +258,14 @@ This is my current css, the white block at the end is now gone but I want the re
 }
 
 .rm-status.is-completed { color: #1f7a33; }
+.rm-status.is-completed-late { color: #b45309; }
 .rm-status.is-pending { color: #b45309; }
 .rm-status.is-overdue { color: #dc2626; font-weight: 700; }
+
+.rm-status[title] {
+    cursor: help;
+    border-bottom: 1px dotted currentColor;
+}
 
 .rm-card-msg {
     margin-top: 10px;
@@ -389,9 +395,15 @@ This is my current css, the white block at the end is now gone but I want the re
     padding: 12px;
     margin-bottom: 7px;
     border: 1px solid #eef2f7;
+    border-left-width: 4px;
+    border-left-color: #cbd5e1;
     align-items: start;
     max-height: 440px;
 }
+
+.rm-schedule-card--medication { border-left-color: #2563eb; }
+.rm-schedule-card--appointment { border-left-color: #b45309; }
+.rm-schedule-card--general { border-left-color: #0f766e; }
 
 .rm-schedule-card:hover {
     background: #fbfdff;
@@ -403,8 +415,37 @@ This is my current css, the white block at the end is now gone but I want the re
 }
 
 .rm-schedule-main {
-    padding-top: 35px;
+    padding-top: 4px;
     min-width: 0;
+}
+
+.rm-type-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 6px;
+    width: fit-content;
+}
+
+.rm-type-chip--medication {
+    background: #e6f2ff;
+    color: #1d4ed8;
+}
+
+.rm-type-chip--appointment {
+    background: #fff3e6;
+    color: #b45309;
+}
+
+.rm-type-chip--general {
+    background: #eaf7ee;
+    color: #0f766e;
 }
 
 .rm-schedule-card-title {

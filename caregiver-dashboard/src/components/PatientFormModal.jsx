@@ -1,5 +1,6 @@
 /**
  * Add/Edit Patient modal – four tabs: Personal, Medical, Medical History, Care & Emergency.
+ * Tabs switch panels (only one visible); no single long scroll through all sections.
  * Medical history is stored as a structured object: diagnosis, chronicConditions (array of
  * { diagnosis, dateDiagnosed }), pastConditions, etc. Emergency contacts are "Name - Phone"
  * per line. Create sends to POST /api/patients; update to PUT /api/patients/:id. Validation
@@ -14,6 +15,31 @@ import "react-datepicker/dist/react-datepicker.css";
 import { Calendar, Plus, Trash2 } from "lucide-react";
 
 const TABS = ["Personal", "Medical", "Medical History", "Care & Emergency"];
+
+/** Map validation field keys to tab (for focus after failed save). */
+const FIELD_ERROR_TAB = {
+    name: "Personal",
+    email: "Personal",
+    dateOfBirth: "Personal",
+    address: "Personal",
+    diagnosis: "Medical",
+    diagnosisDate: "Medical",
+    chronicConditions: "Medical History",
+    emergencyContactName: "Care & Emergency",
+    emergencyContactPhone: "Care & Emergency",
+};
+
+function firstTabWithErrors(errs) {
+    for (const tab of TABS) {
+        if (Object.keys(errs).some((k) => FIELD_ERROR_TAB[k] === tab)) return tab;
+    }
+    return TABS[0];
+}
+
+/** Stable id slug for tab / tabpanel (a11y). */
+function pfmTabSlug(tab) {
+    return String(tab).toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+}
 
 const DateInputWithButton = forwardRef(
     ({ value, onClick, onChange, placeholder, className, disabled }, ref) => (
@@ -52,57 +78,6 @@ function isValidName(name) {
     if (trimmedName.length < 2) return false;
     if (/\d/.test(trimmedName)) return false;
     return /^[A-Za-zÀ-ÿ\s\-'.]+$/.test(trimmedName);
-}
-
-function emergencyContactError(value) {
-    const text = String(value || "").trim();
-    if (!text) return "Emergency contact is required.";
-
-    const lines = text
-        .split("\n")
-        .map((l) => l.trim())
-        .filter(Boolean);
-
-    if (lines.length === 0) return "Emergency contact is required.";
-    if (text.length > 400) return "Emergency contact is too long (max 400 characters).";
-
-    const parseLine = (line) => {
-        const parts = line.split(/[:\-–—]/);
-        if (parts.length >= 2) {
-            const name = parts[0].trim();
-            const phone = parts.slice(1).join("-").trim();
-            return { name, phone };
-        }
-
-        const idx = line.search(/\d/);
-        if (idx === -1) return { name: "", phone: "" };
-        const name = line.slice(0, idx).trim();
-        const phone = line.slice(idx).trim();
-        return { name, phone };
-    };
-
-    for (const line of lines) {
-        const { name, phone } = parseLine(line);
-
-        if (!name || name.length < 2) {
-            return "Each emergency contact must include a name (min 2 characters).";
-        }
-
-        if (!phone) {
-            return "Each emergency contact must include a phone number.";
-        }
-
-        if (!/^[0-9+\-\s()]+$/.test(phone)) {
-            return "Phone number can only contain digits, spaces, +, -, and parentheses.";
-        }
-
-        const digits = phone.replace(/\D/g, "");
-        if (digits.length < 7) {
-            return "Each phone number must contain at least 7 digits.";
-        }
-    }
-
-    return "";
 }
 
 function parseISODate(iso) {
@@ -173,7 +148,7 @@ const GENDER_OPTIONS = [
 
 const COMMUNICATION_OPTIONS = [
     { value: "Phone", label: "Phone" },
-    { value: "SMS", label: "SMS" },
+    { value: "In-app messages", label: "In-app messages" },
     { value: "Email", label: "Email" },
 ];
 
@@ -308,13 +283,14 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
 
     const bodyRef = useRef(null);
 
-    const scrollToSection = (tab) => {
+    /** One panel per tab (not one long scroll); avoids seeing Personal fields while on Medical. */
+    const selectTab = (tab) => {
         setActiveTab(tab);
-        setTimeout(() => {
-            const el = bodyRef.current?.querySelector(`[data-section="${tab}"]`);
-            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-        }, 0);
     };
+
+    useEffect(() => {
+        if (bodyRef.current) bodyRef.current.scrollTop = 0;
+    }, [activeTab]);
 
     useEffect(() => {
         if (open) {
@@ -468,6 +444,7 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
 
         if (Object.keys(errs).length) {
             setError("Please fix the highlighted fields.");
+            setActiveTab(firstTabWithErrors(errs));
             return;
         }
 
@@ -583,9 +560,11 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                             key={tab}
                             type="button"
                             role="tab"
+                            id={`pfm-tab-${pfmTabSlug(tab)}`}
                             aria-selected={activeTab === tab}
+                            aria-controls={`pfm-panel-${pfmTabSlug(tab)}`}
                             className={`pfm-tab ${activeTab === tab ? "is-active" : ""}`}
-                            onClick={() => scrollToSection(tab)}
+                            onClick={() => selectTab(tab)}
                         >
                             {tab}
                         </button>
@@ -595,7 +574,14 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                 <div className="pfm-body" ref={bodyRef}>
                     {error && <div className="pfm-error">{error}</div>}
 
-                    <div data-section="Personal" className="pfm-section-wrap">
+                    {activeTab === "Personal" && (
+                    <div
+                        role="tabpanel"
+                        id={`pfm-panel-${pfmTabSlug("Personal")}`}
+                        aria-labelledby={`pfm-tab-${pfmTabSlug("Personal")}`}
+                        data-section="Personal"
+                        className="pfm-section-wrap pfm-section-wrap--tab-panel"
+                    >
                         <div className="pfm-section-header pfm-span2">
                             <h3>Personal Information</h3>
                         </div>
@@ -685,9 +671,17 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                                 {fieldErrors.address && <div className="pfm-help">{fieldErrors.address}</div>}
                             </div>
                         </div>
-                        </div>
+                    </div>
+                    )}
 
-                    <div data-section="Medical" className="pfm-section-wrap">
+                    {activeTab === "Medical" && (
+                    <div
+                        role="tabpanel"
+                        id={`pfm-panel-${pfmTabSlug("Medical")}`}
+                        aria-labelledby={`pfm-tab-${pfmTabSlug("Medical")}`}
+                        data-section="Medical"
+                        className="pfm-section-wrap pfm-section-wrap--tab-panel"
+                    >
                         <div className="pfm-grid">
                         <div className="pfm-section-header pfm-span2">
                                 <h3>Medical Information</h3>
@@ -825,8 +819,16 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                             </div>
                         </div>
                     </div>
+                    )}
 
-                    <div data-section="Medical History" className="pfm-section-wrap">
+                    {activeTab === "Medical History" && (
+                    <div
+                        role="tabpanel"
+                        id={`pfm-panel-${pfmTabSlug("Medical History")}`}
+                        aria-labelledby={`pfm-tab-${pfmTabSlug("Medical History")}`}
+                        data-section="Medical History"
+                        className="pfm-section-wrap pfm-section-wrap--tab-panel"
+                    >
                         <div className="pfm-grid">
                             <div className="pfm-section-header pfm-span2">
                                 <h3>Medical History</h3>
@@ -962,8 +964,16 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                             </div>
                         </div>
                     </div>
+                    )}
 
-                    <div data-section="Care & Emergency" className="pfm-section-wrap">
+                    {activeTab === "Care & Emergency" && (
+                    <div
+                        role="tabpanel"
+                        id={`pfm-panel-${pfmTabSlug("Care & Emergency")}`}
+                        aria-labelledby={`pfm-tab-${pfmTabSlug("Care & Emergency")}`}
+                        data-section="Care & Emergency"
+                        className="pfm-section-wrap pfm-section-wrap--tab-panel"
+                    >
                         <div className="pfm-grid">
                             <div className="pfm-section-header pfm-span2">
                                 <h3>Care preferences & emergency contact</h3>
@@ -1054,69 +1064,70 @@ export default function PatientFormModal({ open, mode, patient, onClose, onSaved
                                     placeholder="Name — Phone (one per line)"
                                 />
                             </div>
+
+                            {isEdit && onArchivePatient && (
+                                <div className="pfm-section-header pfm-span2" style={{ marginTop: "20px", paddingTop: "20px", borderTop: "2px solid #e9ecef" }}>
+                                    <h3>Archive patient</h3>
+                                    <div className="pfm-grid" style={{ marginTop: "12px" }}>
+                                        <div className="pfm-field">
+                                            <label className="pfm-label">Reason</label>
+                                            <select
+                                                className="pfm-input pfm-select"
+                                                value={archiveReason}
+                                                onChange={(e) => setArchiveReason(e.target.value)}
+                                                disabled={archiveLoading}
+                                            >
+                                                <option value="discharged">Discharged</option>
+                                                <option value="transferred">Transferred</option>
+                                                <option value="deceased">Deceased</option>
+                                                <option value="inactive">Inactive</option>
+                                                <option value="other">Other</option>
+                                            </select>
+                                        </div>
+                                        <div className="pfm-field pfm-span2">
+                                            <label className="pfm-label">Notes {archiveReason === "other" ? "*" : "(optional)"}</label>
+                                            <textarea
+                                                className="pfm-textarea pfm-textarea-sm"
+                                                rows={2}
+                                                value={archiveNotes}
+                                                onChange={(e) => { setArchiveNotes(e.target.value); setArchiveError(""); }}
+                                                placeholder={archiveReason === "other" ? "Please specify the reason..." : "e.g. Completed care programme"}
+                                                disabled={archiveLoading}
+                                            />
+                                            {archiveReason === "other" && archiveError && <div className="pfm-help">{archiveError}</div>}
+                                        </div>
+                                        <div className="pfm-field pfm-span2">
+                                            <button
+                                                type="button"
+                                                className="pfm-btn pfm-btn-danger"
+                                                disabled={archiveLoading}
+                                                onClick={async () => {
+                                                    if (archiveReason === "other" && !archiveNotes.trim()) {
+                                                        setArchiveError("Please add notes when selecting Other.");
+                                                        return;
+                                                    }
+                                                    if (!window.confirm(`Archive ${patient?.name ?? "this patient"}? You can restore them later.`)) return;
+                                                    setArchiveLoading(true);
+                                                    setArchiveError("");
+                                                    try {
+                                                        await onArchivePatient(patient.id, { archiveReason, notes: archiveNotes.trim() || null });
+                                                        onArchived?.();
+                                                        onClose?.();
+                                                    } catch (err) {
+                                                        setArchiveError(err?.message || "Unable to archive patient.");
+                                                    } finally {
+                                                        setArchiveLoading(false);
+                                                    }
+                                                }}
+                                            >
+                                                {archiveLoading ? "Archiving…" : "Archive patient"}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
-
-                    {isEdit && onArchivePatient && (
-                        <div className="pfm-section-header pfm-span2" style={{ marginTop: "20px", paddingTop: "20px", borderTop: "2px solid #e9ecef" }}>
-                            <h3>Archive patient</h3>
-                            <div className="pfm-grid" style={{ marginTop: "12px" }}>
-                                <div className="pfm-field">
-                                    <label className="pfm-label">Reason</label>
-                                    <select
-                                        className="pfm-input pfm-select"
-                                        value={archiveReason}
-                                        onChange={(e) => setArchiveReason(e.target.value)}
-                                        disabled={archiveLoading}
-                                    >
-                                        <option value="discharged">Discharged</option>
-                                        <option value="transferred">Transferred</option>
-                                        <option value="deceased">Deceased</option>
-                                        <option value="inactive">Inactive</option>
-                                        <option value="other">Other</option>
-                                    </select>
-                                </div>
-                                <div className="pfm-field pfm-span2">
-                                    <label className="pfm-label">Notes {archiveReason === "other" ? "*" : "(optional)"}</label>
-                                    <textarea
-                                        className="pfm-textarea pfm-textarea-sm"
-                                        rows={2}
-                                        value={archiveNotes}
-                                        onChange={(e) => { setArchiveNotes(e.target.value); setArchiveError(""); }}
-                                        placeholder={archiveReason === "other" ? "Please specify the reason..." : "e.g. Completed care programme"}
-                                        disabled={archiveLoading}
-                                    />
-                                    {archiveReason === "other" && archiveError && <div className="pfm-help">{archiveError}</div>}
-                                </div>
-                                <div className="pfm-field pfm-span2">
-                                    <button
-                                        type="button"
-                                        className="pfm-btn pfm-btn-danger"
-                                        disabled={archiveLoading}
-                                        onClick={async () => {
-                                            if (archiveReason === "other" && !archiveNotes.trim()) {
-                                                setArchiveError("Please add notes when selecting Other.");
-                                                return;
-                                            }
-                                            if (!window.confirm(`Archive ${patient?.name ?? "this patient"}? You can restore them later.`)) return;
-                                            setArchiveLoading(true);
-                                            setArchiveError("");
-                                            try {
-                                                await onArchivePatient(patient.id, { archiveReason, notes: archiveNotes.trim() || null });
-                                                onArchived?.();
-                                                onClose?.();
-                                            } catch (err) {
-                                                setArchiveError(err?.message || "Unable to archive patient.");
-                                            } finally {
-                                                setArchiveLoading(false);
-                                            }
-                                        }}
-                                    >
-                                        {archiveLoading ? "Archiving…" : "Archive patient"}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
                     )}
                 </div>
 

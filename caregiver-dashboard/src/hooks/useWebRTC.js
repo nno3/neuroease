@@ -245,7 +245,6 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
     const [callState, setCallState] = useState('idle');
     const [remoteUserId, setRemoteUserId] = useState(null);
     const [callType, setCallType] = useState('video');
-    const [incomingOffer, setIncomingOffer] = useState(null);
     const [incomingCallType, setIncomingCallType] = useState('video');
     const [incomingFrom, setIncomingFrom] = useState(null);
     const [callDuration, setCallDuration] = useState(0);
@@ -254,8 +253,11 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
     /** Shown in Layout after failed calls / disconnect (cleared on dismiss or new call). */
     const [callBanner, setCallBanner] = useState(null);
     const setCallBannerRef = useRef(setCallBanner);
-    setCallBannerRef.current = setCallBanner;
     const [speakerOutputOn, setSpeakerOutputOn] = useState(false);
+
+    useEffect(() => {
+        setCallBannerRef.current = setCallBanner;
+    }, [setCallBanner]);
 
     useEffect(() => {
         speakerOutputOnRef.current = speakerOutputOn;
@@ -438,7 +440,6 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
         incomingOfferRef.current = null;
         incomingFromRef.current = null;
         setRemoteUserId(null);
-        setIncomingOffer(null);
         setIncomingFrom(null);
     }, [clearCallTimeout, stopTimer, stopLocalStream, closePeer, setCallStateSynced]);
 
@@ -494,7 +495,7 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
                 cleanups.forEach((c) => c());
             };
         },
-        [reset]
+        [reset, socketRef]
     );
 
     const routeRemoteAudio = useCallback((stream) => {
@@ -511,7 +512,7 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
         } else {
             pendingRemoteAudioRef.current = stream;
         }
-    }, []);
+    }, [wireMediaElementPlayback]);
 
     const attachRemoteVideo = useCallback(
         (stream, _playAudioThroughVideo = false) => {
@@ -830,7 +831,6 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
             incomingOfferRef.current = normalizedOffer;
             incomingCallTypeRef.current = ct === 'audio' ? 'audio' : 'video';
             setIncomingFrom(fromId);
-            setIncomingOffer(normalizedOffer);
             setIncomingCallType(incomingCallTypeRef.current);
             setCallStateSynced('incoming');
         };
@@ -938,7 +938,7 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
         remoteAudioWireCleanupRef.current?.();
         remoteAudioWireCleanupRef.current = wireMediaElementPlayback(remoteAudioRef.current, pending);
         pendingRemoteAudioRef.current = null;
-    }, [callState]);
+    }, [callState, wireMediaElementPlayback]);
 
     /** Local preview must attach whenever the <video> exists; getUserMedia often runs before refs mount (calling/incoming). */
     useLayoutEffect(() => {

@@ -455,3 +455,131 @@
 .pa-profile-permission-box .pa-profile-test-btn {
   margin-top: 1rem;
 }
+
+/* Calls card: label + pill switch (matches location row layout) */
+.pa-profile-calls-push-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--pa-border);
+  min-height: var(--pa-touch-min);
+}
+
+.pa-profile-toggle--calls {
+  margin-top: 2px;
+}
+
+.pa-profile-calls-push-status {
+  margin: 0.5rem 0 0;
+  font-size: 0.875rem;
+}
+
+/* Segmented pill control (location pause) — plain labels for cognitive accessibility */
+.pa-profile-location-pause-legend {
+  margin: 0.75rem 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--pa-text);
+  line-height: 1.45;
+}
+
+.pa-profile-location-pause-intro {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+
+.pa-profile-location-pause-choose {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--pa-text);
+}
+
+.pa-pill-segment {
+  display: flex;
+  width: 100%;
+  padding: 4px;
+  box-sizing: border-box;
+  background: color-mix(in srgb, var(--pa-border) 45%, var(--pa-bg, #f1f5f9));
+  border-radius: 999px;
+  gap: 4px;
+  border: 1px solid var(--pa-border);
+}
+
+.pa-pill-segment__btn {
+  flex: 1;
+  min-width: 0;
+  min-height: 52px;
+  padding: 8px 6px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--pa-text);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.pa-pill-segment__main {
+  display: block;
+}
+
+.pa-pill-segment__hint {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--pa-text);
+  opacity: 0.72;
+  line-height: 1.25;
+  max-width: 100%;
+}
+
+.pa-pill-segment__btn.is-active .pa-pill-segment__hint {
+  color: var(--pa-primary);
+  opacity: 0.9;
+}
+
+.pa-pill-segment__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pa-pill-segment__btn.is-active {
+  background: var(--pa-surface);
+  color: var(--pa-primary);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+.pa-pill-segment__btn:focus-visible {
+  outline: 2px solid var(--pa-primary);
+  outline-offset: 2px;
+}
+
+@supports not (background: color-mix(in srgb, white 50%, black)) {
+  .pa-pill-segment {
+    background: #e2e8f0;
+  }
+}
+
+@media (min-width: 380px) {
+  .pa-pill-segment__btn {
+    font-size: 0.875rem;
+    padding: 10px 8px;
+  }
+  .pa-pill-segment__hint {
+    font-size: 0.75rem;
+  }
+}

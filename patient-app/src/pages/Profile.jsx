@@ -4,7 +4,7 @@
  * "Speak reminders automatically" only gates push/open-app speech (see VoiceAssistListener).
  */
 import React from 'react';
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useLocationSharing } from "../context/LocationSharingContext";
 import { apiRequest } from "../services/apiClient";
@@ -36,11 +36,38 @@ function urlBase64ToUint8Array(base64String) {
   return output;
 }
 
+function getTonightPauseEndIso() {
+  const end = new Date();
+  end.setHours(23, 59, 59, 999);
+  if (end.getTime() <= Date.now()) {
+    end.setDate(end.getDate() + 1);
+    end.setHours(23, 59, 59, 999);
+  }
+  return end.toISOString();
+}
+
+function getTonightEndTimestamp() {
+  return new Date(getTonightPauseEndIso()).getTime();
+}
+
+/** Which segment to highlight when paused (hour vs tonight); otherwise live. */
+function getLocationPauseSegment(pauseActive, pausedUntilIso) {
+  if (!pauseActive || !pausedUntilIso) return "live";
+  const until = new Date(pausedUntilIso).getTime();
+  if (Number.isNaN(until)) return "live";
+  const tonightEnd = getTonightEndTimestamp();
+  if (Math.abs(until - tonightEnd) <= 120000) return "tonight";
+  return "hour";
+}
+
 export default function Profile() {
   const { user } = useAuth();
   const {
     locationConsent,
     setLocationConsent,
+    locationPausedUntil,
+    setLocationPausedUntil,
+    locationPauseActive,
     geoPermissionStatus,
     locationError,
     isGeolocationSupported,
@@ -60,6 +87,8 @@ export default function Profile() {
   const [pushSubscriptionCount, setPushSubscriptionCount] = useState(null); // null = unknown, number = count from API
   const [callPushDeviceCount, setCallPushDeviceCount] = useState(null);
   const [callPushBusy, setCallPushBusy] = useState(false);
+  /** This browser tab has a stored web push subscription (call + reminder pushes share the same registration). */
+  const [callPushSubscribedLocal, setCallPushSubscribedLocal] = useState(false);
   const [voiceAssistOnOpen, setVoiceAssistOnOpen] = useState(false);
   const [voices, setVoices] = useState([]);
   const [selectedVoice, setSelectedVoice] = useState("");
@@ -68,9 +97,11 @@ export default function Profile() {
   const [gameSoundsEnabled, setGameSoundsEnabledState] = useState(true);
   const [locationRechecking, setLocationRechecking] = useState(false);
   const [locationSending, setLocationSending] = useState(false);
+  const [locationPauseBusy, setLocationPauseBusy] = useState(false);
   const [textScale, setTextScale] = useState("default");
   const [reduceMotion, setReduceMotion] = useState(false);
   const [boldText, setBoldText] = useState(false);
+  const [highContrast, setHighContrast] = useState(false);
 
   useEffect(() => {
     setGameSoundsEnabledState(getGameSoundsEnabled());
@@ -81,6 +112,7 @@ export default function Profile() {
     setTextScale(p.textScale);
     setReduceMotion(!!p.reduceMotion);
     setBoldText(!!p.boldText);
+    setHighContrast(!!p.highContrast);
   }, []);
 
   useEffect(() => {
@@ -101,6 +133,30 @@ export default function Profile() {
       });
     return () => { cancelled = true; };
   }, [user?.id, saveSuccess]);
+
+  const refreshCallPushLocalState = useCallback(async () => {
+    if (!("serviceWorker" in navigator)) {
+      setCallPushSubscribedLocal(false);
+      return;
+    }
+    try {
+      let reg = await navigator.serviceWorker.getRegistration();
+      if (!reg) reg = await navigator.serviceWorker.register("/sw.js");
+      await reg.ready;
+      const sub = await reg.pushManager.getSubscription();
+      setCallPushSubscribedLocal(!!sub);
+    } catch {
+      setCallPushSubscribedLocal(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setCallPushSubscribedLocal(false);
+      return;
+    }
+    refreshCallPushLocalState();
+  }, [user?.id, saveSuccess, refreshCallPushLocalState]);
 
   useEffect(() => {
     const load = () => setVoices(getAvailableVoices());
@@ -129,6 +185,9 @@ export default function Profile() {
         setNotifyReminders(ch === "email" || ch === "push");
         setNotifyMessages(!!profile?.messageNotifications);
         if (profile?.locationConsent !== undefined) setLocationConsent(profile.locationConsent);
+        if (profile?.locationPausedUntil !== undefined) {
+          setLocationPausedUntil(profile.locationPausedUntil ?? null);
+        }
         if ("Notification" in window) setPermissionStatus(Notification.permission);
       })
       .catch((err) => {
@@ -138,7 +197,7 @@ export default function Profile() {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [user?.id, setLocationConsent]);
+  }, [user?.id, setLocationConsent, setLocationPausedUntil]);
 
   // Keep permission status in sync (e.g. user changed it in Settings)
   useEffect(() => {
@@ -231,15 +290,40 @@ export default function Profile() {
     try {
       await apiRequest(`/api/patients/${user.id}`, {
         method: "PUT",
-        body: JSON.stringify({ locationConsent: enabled }),
+        body: JSON.stringify({
+          locationConsent: enabled,
+          ...(enabled ? {} : { locationPausedUntil: null }),
+        }),
       });
       setLocationConsent(enabled);
+      if (!enabled) setLocationPausedUntil(null);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
       setError(err?.message || "Could not save. Try again.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleLocationPauseUntil = async (isoDateOrNull) => {
+    if (!user?.id) return;
+    setError(null);
+    setLocationPauseBusy(true);
+    try {
+      await apiRequest(`/api/patients/${user.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          locationPausedUntil: isoDateOrNull,
+        }),
+      });
+      setLocationPausedUntil(isoDateOrNull);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      setError(err?.message || "Could not update pause. Try again.");
+    } finally {
+      setLocationPauseBusy(false);
     }
   };
 
@@ -275,14 +359,58 @@ export default function Profile() {
       });
       const st = await apiRequest("/api/push/status");
       setCallPushDeviceCount(st?.data?.count ?? 0);
+      setCallPushSubscribedLocal(true);
       setPermissionStatus("granted");
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
       setError(err?.message || "Could not enable call notifications.");
+      await refreshCallPushLocalState();
     } finally {
       setCallPushBusy(false);
     }
+  };
+
+  const handleDisableCallPush = async () => {
+    if (!user?.id) return;
+    setError(null);
+    setCallPushBusy(true);
+    try {
+      if (!("serviceWorker" in navigator)) return;
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (!reg) {
+        setCallPushSubscribedLocal(false);
+        return;
+      }
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        const endpoint = sub.endpoint;
+        await sub.unsubscribe();
+        await apiRequest("/api/push/unsubscribe", {
+          method: "POST",
+          body: JSON.stringify({ endpoint }),
+        });
+      }
+      setCallPushSubscribedLocal(false);
+      const st = await apiRequest("/api/push/status");
+      setCallPushDeviceCount(st?.data?.count ?? 0);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      setError(err?.message || "Could not turn off call notifications on this device.");
+      await refreshCallPushLocalState();
+    } finally {
+      setCallPushBusy(false);
+    }
+  };
+
+  const handleCallPushToggle = async (wantOn) => {
+    if (wantOn) {
+      await handleEnableCallPush();
+    } else {
+      await handleDisableCallPush();
+    }
+    await refreshCallPushLocalState();
   };
 
   const handleRequestPermission = async () => {
@@ -347,6 +475,8 @@ export default function Profile() {
       </div>
     );
   }
+
+  const locationPauseSegment = getLocationPauseSegment(locationPauseActive, locationPausedUntil);
 
   return (
     <div className="pa-page">
@@ -428,6 +558,29 @@ export default function Profile() {
           </label>
         </div>
 
+        <div className="pa-profile-toggle-row pa-profile-a11y-toggle">
+          <div className="pa-profile-toggle-text">
+            <span className="pa-profile-row-label" id="pa-a11y-contrast-label">Higher contrast</span>
+            <span className="pa-profile-row-desc" id="pa-a11y-contrast-desc">
+              Darker text, stronger borders, and clearer buttons and cards so content stands out from the background.
+            </span>
+          </div>
+          <label className="pa-profile-toggle">
+            <input
+              type="checkbox"
+              checked={highContrast}
+              onChange={(e) => {
+                const v = e.target.checked;
+                setHighContrast(v);
+                setAccessibilityPrefs({ highContrast: v });
+              }}
+              aria-labelledby="pa-a11y-contrast-label"
+              aria-describedby="pa-a11y-contrast-desc"
+            />
+            <span className="pa-profile-toggle-slider" aria-hidden />
+          </label>
+        </div>
+
         <button
           type="button"
           className="pa-btn pa-btn--secondary pa-profile-a11y-reset"
@@ -436,6 +589,7 @@ export default function Profile() {
             setTextScale("default");
             setReduceMotion(false);
             setBoldText(false);
+            setHighContrast(false);
           }}
         >
           Reset display options to defaults
@@ -564,7 +718,7 @@ export default function Profile() {
         <hr className="pa-profile-card-divider" aria-hidden />
         <p className="pa-profile-row-desc">
           When your caregiver calls and NeuroEase is in the background, we use the same web push service as reminders.
-          Allow notifications and register this device—you can still use Email for reminders if you prefer.
+          You can still use Email for reminders if you prefer.
         </p>
         <p className="pa-profile-row-desc">
           {callPushDeviceCount === null && <span className="pa-muted">Checking devices…</span>}
@@ -574,14 +728,34 @@ export default function Profile() {
             </>
           )}
         </p>
-        <button
-          type="button"
-          className="pa-btn pa-btn--secondary"
-          onClick={handleEnableCallPush}
-          disabled={callPushBusy || saving}
-        >
-          {callPushBusy ? "Working…" : "Allow incoming call notifications on this device"}
-        </button>
+        <div className="pa-profile-calls-push-row">
+          <div className="pa-profile-toggle-text">
+            <span className="pa-profile-row-label">Incoming call alerts</span>
+            <span className="pa-profile-row-desc" id="pa-call-push-desc">
+              {callPushSubscribedLocal
+                ? "This device can ring for calls when the app is in the background."
+                : "Turn on to allow notifications and register this device for incoming calls."}
+            </span>
+          </div>
+          <label className="pa-profile-toggle pa-profile-toggle--calls">
+            <input
+              type="checkbox"
+              checked={callPushSubscribedLocal}
+              onChange={(e) => handleCallPushToggle(e.target.checked)}
+              disabled={
+                callPushBusy
+                || saving
+                || !("Notification" in window)
+                || !("serviceWorker" in navigator)
+              }
+              aria-describedby="pa-call-push-desc"
+            />
+            <span className="pa-profile-toggle-slider" />
+          </label>
+        </div>
+        {callPushBusy && (
+          <p className="pa-muted pa-profile-calls-push-status" aria-live="polite">Updating…</p>
+        )}
       </div>
 
       {/* Voice & speech — separate from notification channel; applies to Read aloud + speech synthesis */}
@@ -732,9 +906,11 @@ export default function Profile() {
               <span className="pa-profile-row-label">Location sharing</span>
               <span className="pa-profile-row-desc" id="pa-location-desc">
                 {locationConsent
-                  ? geoPermissionStatus === "denied" || locationError
-                    ? "On – enable location in Settings to share"
-                    : "On – sending location automatically"
+                  ? locationPauseActive
+                    ? `Paused until ${new Date(locationPausedUntil).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}`
+                    : geoPermissionStatus === "denied" || locationError
+                      ? "On – enable location in Settings to share"
+                      : "On – sending location automatically"
                   : "Off"}
               </span>
             </div>
@@ -749,7 +925,7 @@ export default function Profile() {
               <span className="pa-profile-toggle-slider" />
             </label>
           </div>
-          {locationConsent && !(geoPermissionStatus === "denied" || locationError) && (
+          {locationConsent && !locationPauseActive && !(geoPermissionStatus === "denied" || locationError) && (
             <button
               type="button"
               className="pa-btn pa-profile-location-send-now"
@@ -763,6 +939,69 @@ export default function Profile() {
             >
               {locationSending ? "Sending…" : "Send location now"}
             </button>
+          )}
+          {locationConsent && (
+            <div
+              className="pa-profile-location-pause"
+              role="group"
+              aria-labelledby="pa-location-pause-legend"
+            >
+              <p id="pa-location-pause-legend" className="pa-profile-location-pause-legend">
+                Take a break from sending your location (for example at an appointment). This is <strong>not</strong> the same as turning sharing off at the top.
+              </p>
+              <p className="pa-profile-row-desc pa-profile-location-pause-intro">
+                While it is paused, your caregiver <strong>will not</strong> get new locations. Tap <strong>Sharing on</strong> below to send again, or wait until the pause time ends.
+              </p>
+              <p className="pa-profile-location-pause-choose" id="pa-location-pause-choose">
+                Choose one — tap a button:
+              </p>
+              <div
+                className="pa-pill-segment"
+                role="tablist"
+                aria-labelledby="pa-location-pause-choose"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  className={`pa-pill-segment__btn ${locationPauseSegment === "live" ? "is-active" : ""}`}
+                  aria-selected={locationPauseSegment === "live"}
+                  disabled={locationPauseBusy || saving}
+                  aria-label="Sharing on. Your caregiver receives your location. Tap if you were paused and want to share again."
+                  onClick={() => {
+                    if (locationPauseActive) handleLocationPauseUntil(null);
+                  }}
+                >
+                  <span className="pa-pill-segment__main">Sharing on</span>
+                  <span className="pa-pill-segment__hint">caregiver sees location</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  className={`pa-pill-segment__btn ${locationPauseSegment === "hour" ? "is-active" : ""}`}
+                  aria-selected={locationPauseSegment === "hour"}
+                  disabled={locationPauseBusy || saving}
+                  aria-label="Pause sharing for one hour. Your caregiver will not receive your location during this time."
+                  onClick={() =>
+                    handleLocationPauseUntil(new Date(Date.now() + 60 * 60 * 1000).toISOString())
+                  }
+                >
+                  <span className="pa-pill-segment__main">Pause 1 hour</span>
+                  <span className="pa-pill-segment__hint">no location for 1 hour</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  className={`pa-pill-segment__btn ${locationPauseSegment === "tonight" ? "is-active" : ""}`}
+                  aria-selected={locationPauseSegment === "tonight"}
+                  disabled={locationPauseBusy || saving}
+                  aria-label="Pause sharing until the end of today. Your caregiver will not receive your location until then."
+                  onClick={() => handleLocationPauseUntil(getTonightPauseEndIso())}
+                >
+                  <span className="pa-pill-segment__main">Pause until tonight</span>
+                  <span className="pa-pill-segment__hint">stops for the rest of today</span>
+                </button>
+              </div>
+            </div>
           )}
           {locationConsent && (geoPermissionStatus === "denied" || locationError) && (
             <div className="pa-profile-location-warning" role="alert">

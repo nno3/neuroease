@@ -45,8 +45,10 @@ function generateDummy(answer, other, minVal = 0) {
  * Difficulty levels control the number range for each operation.
  * Rationale: Learning therapy (Nouchi et al., Front. Hum. Neurosci. 2016) uses
  * single-digit addition (e.g. 1+3) as lowest difficulty; we scaffold Easy → Normal → Hard.
- * See docs/CognitiveGames_Dementia.md §5 for full rationale and references.
+ * See docs/CognitiveGames_Dementia.md section 5 for full rationale and references.
  */
+const DIFFICULTY_TIERS = ["easy", "normal", "hard"];
+
 function generateEquation(op, difficulty = "normal") {
   const config = {
     easy: { add: 5, subtract: 6, multiply: 4, divide: 4 },
@@ -89,7 +91,13 @@ function generateEquation(op, difficulty = "normal") {
 export default function MathGame() {
   const navigate = useNavigate();
   const [operation, setOperation] = useState(null);
-  const [difficulty, setDifficulty] = useState("normal"); // "easy" | "normal" | "hard"
+  /** Starting tier from the menu; adaptive adjusts effective tier during play when adaptiveOn is true */
+  const [difficulty, setDifficulty] = useState("normal"); // baseline: easy | normal | hard
+  const [adaptiveOn, setAdaptiveOn] = useState(true);
+  const [effectiveTier, setEffectiveTier] = useState("normal");
+  const effectiveTierRef = useRef("normal");
+  const correctStreakRef = useRef(0);
+  const wrongStreakRef = useRef(0);
   const [gameStarted, setGameStarted] = useState(false);
   const [equation, setEquation] = useState(null);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -108,6 +116,10 @@ export default function MathGame() {
   const correctSoundRef = useRef(null);
   const wrongSoundRef = useRef(null);
 
+  useEffect(() => {
+    effectiveTierRef.current = effectiveTier;
+  }, [effectiveTier]);
+
   const nextQuestion = useCallback((op, diff) => {
     setEquation(generateEquation(op, diff));
     setShowFeedback(false);
@@ -123,6 +135,10 @@ export default function MathGame() {
     setQuestionsCorrect(0);
     setTotalAttempts(0);
     setShowSessionSummary(false);
+    correctStreakRef.current = 0;
+    wrongStreakRef.current = 0;
+    effectiveTierRef.current = difficulty;
+    setEffectiveTier(difficulty);
     nextQuestion(op, difficulty);
     setTimerId(setInterval(() => setSeconds((s) => s + 1), 1000));
   };
@@ -152,6 +168,9 @@ export default function MathGame() {
           accuracy: accuracy,
           maxScore: finalAttempts,
           difficulty,
+          ...(adaptiveOn && effectiveTierRef.current !== difficulty
+            ? { effectiveDifficulty: effectiveTierRef.current }
+            : {}),
         }),
       });
     } catch (_) {
@@ -178,6 +197,10 @@ export default function MathGame() {
     setSeconds(0);
     setQuestionsCorrect(0);
     setTotalAttempts(0);
+    correctStreakRef.current = 0;
+    wrongStreakRef.current = 0;
+    effectiveTierRef.current = difficulty;
+    setEffectiveTier(difficulty);
     nextQuestion(operation, difficulty);
     setTimerId(setInterval(() => setSeconds((s) => s + 1), 1000));
   };
@@ -214,7 +237,22 @@ export default function MathGame() {
       else if (op === "subtract") hint = `Hint: Start with ${num1} and count backwards ${num2} times.`;
       else if (op === "multiply") hint = `Hint: ${num1} times ${num2} is the same as adding ${num1} together ${num2} times.`;
       else if (op === "divide") hint = `Hint: How many ${num2}s are in ${num1}?`;
-      setFeedbackMessage("Not quite. Try again!");
+      let msg = "Not quite. Try again!";
+      if (adaptiveOn && op) {
+        wrongStreakRef.current += 1;
+        correctStreakRef.current = 0;
+        if (wrongStreakRef.current >= 2) {
+          wrongStreakRef.current = 0;
+          const idx = DIFFICULTY_TIERS.indexOf(effectiveTierRef.current);
+          const nextTier = DIFFICULTY_TIERS[Math.max(0, idx - 1)];
+          effectiveTierRef.current = nextTier;
+          setEffectiveTier(nextTier);
+          setEquation(generateEquation(op, nextTier));
+          msg = "Let's try smaller numbers.";
+          hint = "The sums are a little easier now. Take your time!";
+        }
+      }
+      setFeedbackMessage(msg);
       setFeedbackHint(hint);
     }
     setShowFeedback(true);
@@ -223,7 +261,19 @@ export default function MathGame() {
   const continueGame = () => {
     if (isCorrect) {
       setQuestionsCorrect((c) => c + 1);
-      nextQuestion(operation, difficulty);
+      let tierForNext = effectiveTierRef.current;
+      if (adaptiveOn && operation) {
+        correctStreakRef.current += 1;
+        wrongStreakRef.current = 0;
+        if (correctStreakRef.current >= 3) {
+          correctStreakRef.current = 0;
+          const idx = DIFFICULTY_TIERS.indexOf(effectiveTierRef.current);
+          tierForNext = DIFFICULTY_TIERS[Math.min(DIFFICULTY_TIERS.length - 1, idx + 1)];
+          effectiveTierRef.current = tierForNext;
+          setEffectiveTier(tierForNext);
+        }
+      }
+      nextQuestion(operation, tierForNext);
       setTimerId(setInterval(() => setSeconds((s) => s + 1), 1000));
     } else {
       setTotalQuestionTime((t) => t + lastAttemptSecondsRef.current);
@@ -256,7 +306,7 @@ export default function MathGame() {
           <h3>Choose a game</h3>
           <p className="pa-math-start-desc">Pick an operation to practice.</p>
           <div className="pa-math-difficulty">
-            <span className="pa-math-difficulty-label">Difficulty:</span>
+            <span className="pa-math-difficulty-label">Starting level:</span>
             <div className="pa-math-diff-btns">
             <button
               type="button"
@@ -283,6 +333,20 @@ export default function MathGame() {
               Hard
             </button>
             </div>
+          </div>
+          <div className="pa-math-adaptive-toggle">
+            <label className="pa-math-adaptive-label">
+              <input
+                type="checkbox"
+                checked={adaptiveOn}
+                onChange={(e) => setAdaptiveOn(e.target.checked)}
+                aria-describedby="pa-math-adaptive-desc"
+              />
+              <span>Adjust difficulty while I play</span>
+            </label>
+            <p id="pa-math-adaptive-desc" className="pa-math-start-desc" style={{ marginTop: "0.35rem" }}>
+              After three correct answers in a row, problems get a bit harder; after two mistakes, they get easier. You can turn this off to keep one level for the whole session.
+            </p>
           </div>
           <div className="pa-math-ops">
             {OPERATIONS.map((op) => (

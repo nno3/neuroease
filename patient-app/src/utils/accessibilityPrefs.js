@@ -8,6 +8,8 @@ export const defaultAccessibilityPrefs = {
   textScale: "default", // default | large | larger
   reduceMotion: false,
   boldText: false,
+  /** Stronger text/background separation and borders (see index.css data-pa-contrast). */
+  highContrast: false,
 };
 
 export function getAccessibilityPrefs() {
@@ -15,9 +17,12 @@ export function getAccessibilityPrefs() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...defaultAccessibilityPrefs };
     const parsed = JSON.parse(raw);
-    const { contrast: _omit, ...rest } = parsed;
+    const { contrast: legacyContrast, ...rest } = parsed;
     const merged = { ...defaultAccessibilityPrefs, ...rest };
-    if ("contrast" in parsed) {
+    if (legacyContrast === true || legacyContrast === "high") {
+      merged.highContrast = true;
+    }
+    if (legacyContrast !== undefined) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
     }
     return merged;
@@ -38,7 +43,9 @@ export function applyAccessibilityToDocument(prefs = getAccessibilityPrefs()) {
   const root = document.documentElement;
   const ts = prefs.textScale === "large" || prefs.textScale === "larger" ? prefs.textScale : "default";
   root.dataset.paTextScale = ts;
-  delete root.dataset.paContrast;
+
+  if (prefs.highContrast) root.dataset.paContrast = "high";
+  else delete root.dataset.paContrast;
 
   if (prefs.reduceMotion) root.dataset.paReduceMotion = "1";
   else delete root.dataset.paReduceMotion;

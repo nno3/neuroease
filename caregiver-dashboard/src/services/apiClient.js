@@ -24,7 +24,7 @@ const REQUEST_TIMEOUT_MS = 90000; // 90s – Render free tier cold starts can ta
 export async function apiRequest(endpoint, options = {}) {
     const token = localStorage.getItem('token');
     let authToken = token;
-    if (!authToken && process.env.NODE_ENV === 'development') {
+    if (!authToken && import.meta.env.DEV) {
         console.warn('No token found, using mock token for development');
     }
 
@@ -53,7 +53,9 @@ export async function apiRequest(endpoint, options = {}) {
             let errorData = { message: text || "Request failed" };
             try {
                 errorData = JSON.parse(text);
-            } catch (_) {}
+            } catch {
+                /* body is not JSON */
+            }
             const err = new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
             err.status = response.status;
             err.errors = errorData.errors || [];

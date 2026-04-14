@@ -2,8 +2,11 @@ import React from 'react';
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { getProfile, updateProfile, deleteAccount } from "../services/authService";
-import { apiRequest } from "../services/apiClient";
-import { registerCaregiverPushSubscription } from "../hooks/usePushSubscription";
+import {
+    registerCaregiverPushSubscription,
+    unregisterCaregiverPushSubscription,
+    getThisDevicePushSubscribed,
+} from "../hooks/usePushSubscription";
 import { LogOut, User, Save, Trash2, KeyRound, LogOut as SessionIcon, AlertTriangle, Camera, Mail, MapPin, Bell, Gamepad2, MessageSquare } from "lucide-react";
 import "./Settings.css";
 
@@ -72,7 +75,8 @@ const Settings = () => {
     const [message, setMessage] = useState({ type: "", text: "" });
     const [passwordForm, setPasswordForm] = useState({ current: "", new: "", confirm: "" });
     const [passwordErrors, setPasswordErrors] = useState({});
-    const [pushCallDeviceCount, setPushCallDeviceCount] = useState(null);
+    const [callPushOnDevice, setCallPushOnDevice] = useState(false);
+    const [callPushStateLoading, setCallPushStateLoading] = useState(true);
     const [pushCallBusy, setPushCallBusy] = useState(false);
     const fileInputRef = useRef(null);
 
@@ -104,33 +108,49 @@ const Settings = () => {
     useEffect(() => {
         if (!contextUser?.id) return;
         let cancelled = false;
-        apiRequest("/push/status")
-            .then((r) => {
-                if (!cancelled && r?.data?.count !== undefined) setPushCallDeviceCount(r.data.count);
-            })
-            .catch(() => {
-                if (!cancelled) setPushCallDeviceCount(0);
-            });
+        setCallPushStateLoading(true);
+        void getThisDevicePushSubscribed().then((on) => {
+            if (!cancelled) {
+                setCallPushOnDevice(on);
+                setCallPushStateLoading(false);
+            }
+        });
         return () => { cancelled = true; };
     }, [contextUser?.id]);
 
-    const handleRegisterCallPush = async () => {
+    const handleCallPushToggle = async (e) => {
+        const wantOn = e.target.checked;
+        if (callPushStateLoading || pushCallBusy) return;
+        setCallPushOnDevice(wantOn);
         setPushCallBusy(true);
         setMessage({ type: "", text: "" });
-        try {
-            const result = await registerCaregiverPushSubscription();
-            if (!result.ok) {
-                setMessage({ type: "error", text: result.error || "Could not enable call alerts." });
-                return;
+        if (wantOn) {
+            try {
+                const result = await registerCaregiverPushSubscription();
+                if (!result.ok) {
+                    setMessage({ type: "error", text: result.error || "Could not enable call alerts." });
+                    setCallPushOnDevice(false);
+                } else {
+                    setMessage({ type: "success", text: "Call alerts are on for this device." });
+                    setTimeout(() => setMessage({ type: "", text: "" }), 2500);
+                }
+            } catch (err) {
+                setMessage({ type: "error", text: err?.message || "Could not enable call alerts." });
+                setCallPushOnDevice(false);
             }
-            const st = await apiRequest("/push/status");
-            setPushCallDeviceCount(st?.data?.count ?? 0);
-            setMessage({ type: "success", text: "This device can now receive incoming call notifications." });
-        } catch (err) {
-            setMessage({ type: "error", text: err?.message || "Could not register for call alerts." });
-        } finally {
-            setPushCallBusy(false);
+        } else {
+            try {
+                const result = await unregisterCaregiverPushSubscription();
+                if (!result.ok) {
+                    setMessage({ type: "error", text: result.error || "Could not turn off call alerts." });
+                    setCallPushOnDevice(await getThisDevicePushSubscribed());
+                }
+            } catch (err) {
+                setMessage({ type: "error", text: err?.message || "Could not turn off call alerts." });
+                setCallPushOnDevice(await getThisDevicePushSubscribed());
+            }
         }
+        setPushCallBusy(false);
     };
 
     const handleProfileChange = (field, value) => {
@@ -384,26 +404,34 @@ const Settings = () => {
                     <p className="stg-section-text">
                         Choose which updates you want to receive by email. You can select more than one.
                     </p>
-                    <div className="stg-checkbox-group">
+                    <div className="stg-notify-group">
                         {NOTIFICATION_OPTIONS.map((opt) => {
                             const Icon = opt.icon;
                             const checked = !!profile.emailNotificationPreferences?.[opt.key];
+                            const id = `stg-notify-${opt.key}`;
                             return (
-                                <label key={opt.key} className="stg-checkbox-row">
+                                <label key={opt.key} className="stg-notify-row" htmlFor={id}>
+                                    <span className="stg-notify-icon" aria-hidden>
+                                        <Icon size={20} />
+                                    </span>
+                                    <div className="stg-notify-text">
+                                        <span className="stg-notify-label">{opt.label}</span>
+                                        <span id={`${id}-desc`} className="stg-notify-desc">
+                                            {opt.desc}
+                                        </span>
+                                    </div>
                                     <input
+                                        id={id}
                                         type="checkbox"
                                         checked={checked}
                                         onChange={(e) => handleNotificationPrefChange(opt.key, e.target.checked)}
                                         disabled={saving}
-                                        className="stg-checkbox"
+                                        className="stg-switch-input"
+                                        aria-describedby={`${id}-desc`}
                                     />
-                                    <span className="stg-checkbox-icon">
-                                        <Icon size={20} aria-hidden />
+                                    <span className="stg-switch-track" aria-hidden>
+                                        <span className="stg-switch-thumb" />
                                     </span>
-                                    <div className="stg-checkbox-content">
-                                        <span className="stg-checkbox-label">{opt.label}</span>
-                                        <span className="stg-checkbox-desc">{opt.desc}</span>
-                                    </div>
                                 </label>
                             );
                         })}
@@ -412,28 +440,41 @@ const Settings = () => {
 
                 <section className="stg-section" aria-labelledby="stg-call-push-heading">
                     <h3 id="stg-call-push-heading" className="stg-section-title">
-                        <Bell size={18} aria-hidden /> Calls (browser push)
+                        <Bell size={18} aria-hidden /> Incoming call alerts
                     </h3>
-                    <p className="stg-section-text">
-                        When a patient calls you and this dashboard is closed or in the background, we send a push if you allow notifications.
-                        Requires VAPID keys on the server (same as reminders). iOS: install the site to the Home Screen for best results.
-                    </p>
-                    <p className="stg-section-text">
-                        {pushCallDeviceCount === null && <span className="stg-muted">Checking devices…</span>}
-                        {pushCallDeviceCount !== null && (
-                            <>
-                                Registered devices for your account: <strong>{pushCallDeviceCount}</strong>
-                            </>
-                        )}
-                    </p>
-                    <button
-                        type="button"
-                        className="stg-btn stg-btn-secondary"
-                        onClick={handleRegisterCallPush}
-                        disabled={pushCallBusy || saving}
-                    >
-                        {pushCallBusy ? "Working…" : "Allow incoming call notifications on this device"}
-                    </button>
+                    <div id="stg-call-push-help" className="stg-call-push-help">
+                        <p className="stg-section-text stg-call-push-help-p">
+                            These are <strong>in-app push notifications</strong> from your browser when a patient tries to reach you—not
+                            email. While NeuroEase is open in a tab, you can still get incoming calls as usual; this setting mainly helps
+                            when the dashboard is closed or in the background.
+                        </p>
+                        <p className="stg-section-text stg-call-push-homescreen-note">
+                            On a <strong>computer</strong> or <strong>most Android phones</strong>, a normal browser tab is usually enough
+                            for background alerts. On <strong>iPhone or iPad</strong>, add NeuroEase to your <strong>Home Screen</strong> (Share
+                            → Add to Home Screen) so Safari can deliver this type of alert when the site is not open.
+                        </p>
+                    </div>
+                    <label className="stg-notify-row" htmlFor="stg-call-push-switch">
+                        <span className="stg-notify-icon" aria-hidden>
+                            <Bell size={20} />
+                        </span>
+                        <div className="stg-notify-text">
+                            <span className="stg-notify-label">Call alerts on this device</span>
+                        </div>
+                        <input
+                            id="stg-call-push-switch"
+                            type="checkbox"
+                            checked={callPushOnDevice}
+                            onChange={handleCallPushToggle}
+                            disabled={saving || callPushStateLoading || pushCallBusy}
+                            className="stg-switch-input"
+                            aria-describedby="stg-call-push-help"
+                            aria-busy={pushCallBusy || callPushStateLoading}
+                        />
+                        <span className="stg-switch-track" aria-hidden>
+                            <span className="stg-switch-thumb" />
+                        </span>
+                    </label>
                 </section>
 
                 <section className="stg-section" aria-labelledby="stg-password-heading">

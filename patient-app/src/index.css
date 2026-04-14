@@ -253,3 +253,50 @@ html[data-pa-reduce-motion="1"] *::after {
     scroll-behavior: auto !important;
   }
 }
+
+/* Higher contrast (Profile → Display options); improves readability for low vision */
+html[data-pa-contrast="high"] {
+  --pa-bg: #ffffff;
+  --pa-surface: #ffffff;
+  --pa-text: #0a0a0a;
+  --pa-text-muted: #292524;
+  --pa-primary: #0c1929;
+  --pa-primary-light: #1e3a5f;
+  --pa-border: #57534e;
+  --pa-focus-ring: 2px solid #0a0a0a;
+}
+
+html[data-pa-contrast="high"] .pa-btn--secondary {
+  background: #e7e5e4;
+  color: var(--pa-text);
+  border: 2px solid var(--pa-border);
+}
+
+html[data-pa-contrast="high"] .pa-btn--secondary:hover {
+  background: #d6d3d1;
+}
+
+html[data-pa-contrast="high"] .pa-pill-segment {
+  background: #e7e5e4;
+  border: 2px solid var(--pa-border);
+}
+
+html[data-pa-contrast="high"] .pa-pill-segment__btn:not(.is-active) .pa-pill-segment__hint {
+  opacity: 1;
+  color: var(--pa-text-muted);
+}
+
+html[data-pa-contrast="high"] .pa-pill-segment__btn.is-active {
+  box-shadow: none;
+  border: 2px solid var(--pa-primary);
+}
+
+html[data-pa-contrast="high"] .pa-profile-card {
+  border-width: 2px;
+  border-color: var(--pa-border);
+  box-shadow: none;
+}
+
+html[data-pa-contrast="high"] .pa-profile-toggle-slider {
+  border: 1px solid var(--pa-border);
+}

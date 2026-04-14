@@ -65,7 +65,7 @@ export const getDashboardStats = async () => {
             remindersPendingToday,
             remindersOverdueToday,
         };
-    } catch (e) {
+    } catch {
         return {
             activePatients: 0,
             archivedPatients: 0,

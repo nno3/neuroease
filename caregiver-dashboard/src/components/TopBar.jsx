@@ -11,7 +11,7 @@ function getInitials(name) {
     return (name[0] || '?').toUpperCase();
 }
 
-const TopBar = ({ title = 'Dashboard Overview', onPrimaryAction, onMenuClick }) => {
+const TopBar = ({ title = 'Dashboard Overview', onMenuClick }) => {
     const { user } = useAuth();
     const navigate = useNavigate();
 

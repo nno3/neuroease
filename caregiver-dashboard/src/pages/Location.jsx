@@ -145,7 +145,7 @@ function MapClickHandler({ onMapClick, enabled }) {
 }
 
 export default function Location() {
-    const [searchParams, setSearchParams] = useSearchParams();
+    const [searchParams] = useSearchParams();
     const urlPatientId = searchParams.get("patientId");
     const [patients, setPatients] = useState([]);
     const [patientId, setPatientId] = useState(() => {
@@ -405,6 +405,7 @@ export default function Location() {
             });
 
         return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch when id set or list size changes, not full patient objects
     }, [idsToFetch.join(","), patientList.length, refreshKey]);
 
     // Auto-refresh location every 30 seconds when page is visible
@@ -415,15 +416,6 @@ export default function Location() {
         }, 30000);
         return () => clearInterval(interval);
     }, [idsToFetch.length]);
-
-    const hasRecentAlert = (pid) => {
-        const list = alertsByPatient[pid] ?? [];
-        if (list.length === 0) return false;
-        const latest = list[0];
-        const t = latest?.timestamp ? new Date(latest.timestamp).getTime() : 0;
-        const oneDay = 24 * 60 * 60 * 1000;
-        return Date.now() - t < oneDay;
-    };
 
     const liveLocations = useMemo(
         () => locations.filter((loc) => loc.locationConsent !== false),
@@ -472,8 +464,6 @@ export default function Location() {
                 isCurrentlyOutside: true,
             }));
     }, [liveLocations, zones]);
-
-    const hasAnyAlertsOrOutside = recentAlertsList.length > 0 || currentlyOutsideList.length > 0;
 
     /** Format coordinates for "last seen at" display */
     const formatCoords = (lat, lng) =>

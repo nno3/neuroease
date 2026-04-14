@@ -14,7 +14,7 @@ self.addEventListener("push", (event) => {
             body = data.body || "";
             kind = data.kind || null;
             openUrl = typeof data.openUrl === "string" ? data.openUrl : null;
-        } catch (_) {
+        } catch {
             body = event.data.text() || "";
         }
     }
@@ -52,12 +52,16 @@ self.addEventListener("notificationclick", (event) => {
             let path = "/messages";
             try {
                 if (rawUrl) path = new URL(rawUrl).pathname + new URL(rawUrl).search;
-            } catch (_) {}
+            } catch {
+                /* invalid URL from notification payload */
+            }
             if (list.length) {
                 const c = list[0];
                 try {
                     c.postMessage({ type: "sw-navigate", url: path });
-                } catch (_) {}
+                } catch {
+                    /* client may not accept postMessage */
+                }
                 return c.focus();
             }
             if (rawUrl && self.clients.openWindow) return self.clients.openWindow(rawUrl);

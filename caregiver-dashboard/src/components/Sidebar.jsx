@@ -36,7 +36,8 @@ const Sidebar = ({ isOpen = false, onClose, badges = {} }) => {
                 )}
             </div>
             <nav className="sidebar-nav">
-                {navItems.map(({ to, label, icon: Icon, badgeKey }) => {
+                {navItems.map((item) => {
+                    const { to, label, icon: NavIcon, badgeKey } = item;
                     const badgeCount = badgeKey ? (badges[badgeKey] ?? 0) : 0;
                     return (
                         <NavLink
@@ -47,7 +48,7 @@ const Sidebar = ({ isOpen = false, onClose, badges = {} }) => {
                             className={({ isActive }) => `sidebar-link ${isActive ? "is-active" : ""}`}
                         >
                             <span className="sidebar-link-icon-wrap">
-                                <Icon size={20} className="sidebar-link-icon" aria-hidden />
+                                <NavIcon size={20} className="sidebar-link-icon" aria-hidden />
                                 {badgeCount > 0 && (
                                     <span className="sidebar-badge">{badgeCount > 99 ? '99+' : badgeCount}</span>
                                 )}

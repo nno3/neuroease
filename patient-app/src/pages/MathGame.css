@@ -50,6 +50,27 @@
   color: var(--pa-text);
 }
 
+.pa-math-adaptive-toggle {
+  margin-bottom: 1rem;
+}
+
+.pa-math-adaptive-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--pa-text);
+  cursor: pointer;
+}
+
+.pa-math-adaptive-label input[type="checkbox"] {
+  margin-top: 4px;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
 .pa-math-stats-bar {
   display: flex;
   align-items: center;

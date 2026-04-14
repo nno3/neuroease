@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "test": "node -e \"console.log('No frontend unit tests in this package. API integration tests: cd ../backend && npm test');\"",
     "dev": "vite",
     "dev:https": "VITE_DEV_HTTPS=1 vite",
     "generate-icons": "node scripts/generate-pwa-icons.js",

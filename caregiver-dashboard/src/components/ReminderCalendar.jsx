@@ -181,7 +181,7 @@ export default function ReminderCalendar({
         const rangeEnd = grid.days[grid.days.length - 1];
 
         const all = [];
-        reminders.forEach((r, index) => {
+        reminders.forEach((r) => {
             const occurrences = expandOccurrences(r, rangeStart, rangeEnd);
             all.push(...occurrences);
         });

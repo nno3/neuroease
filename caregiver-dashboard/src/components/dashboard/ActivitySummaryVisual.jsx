@@ -123,7 +123,7 @@ export default function ActivitySummaryVisual({ stats, activeAlerts = 0 }) {
             <div className="dp-summary-insight">
                 {allDone && (
                     <span className="dp-summary-insight__positive">
-                        <Sparkles size={16} /> You're on track — all reminders completed today.
+                        <Sparkles size={16} /> All scheduled reminders for today are complete.
                     </span>
                 )}
                 {hasIssues && !allDone && overdue > 0 && (

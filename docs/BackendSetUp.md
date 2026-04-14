@@ -10,6 +10,10 @@ The NeuroEase backend is a RESTful API for the NeuroEase system. It provides:
 
 The backend is implemented using **Node.js (Express)** and **PostgreSQL** via **Sequelize ORM**.
 
+**Automated tests:** Jest + Supertest integration tests for selected APIs (`npm test`); documented in **section 11**.
+
+**Security testing:** dependency audits, checklist, OWASP mapping, and a sample dissertation paragraph — **`docs/SecurityTesting.md`**.
+
 ---
 
 ## 2. Technology Stack
@@ -17,7 +21,7 @@ The backend is implemented using **Node.js (Express)** and **PostgreSQL** via **
 - PostgreSQL (database)
 - Sequelize (ORM + associations)
 - JWT (stateless authentication)
-- bcrypt (password hashing via model hooks)
+- bcrypt v6+ (password hashing via model hooks; avoids legacy native install chain flagged by earlier `npm audit`)
 - Yup (request validation)
 - morgan (HTTP request logging)
 - cors + Express JSON body parsing
@@ -31,6 +35,12 @@ npm install yup
 
 backend/
 server.js
+src/httpApp.js
+tests/
+setup.js
+helpers.js
+api.integration.test.js
+jest.config.js
 .env
 package.json
 src/
@@ -140,6 +150,24 @@ Server starts on:
 Health check:
 
 * `GET /api/health`
+
+### 4.4 Run automated API tests
+
+```bash
+npm test
+```
+
+See **section 11** for scope, prerequisites, and file layout.
+
+### 4.5 Dependency audit (all packages)
+
+From monorepo root:
+
+```bash
+npm run audit:all
+```
+
+Runs `npm audit` on `backend`, `patient-app`, `caregiver-dashboard`, and the root package. Interpretation and security-testing narrative: **`docs/SecurityTesting.md`**.
 
 ---
 
@@ -387,6 +415,53 @@ This supports retention needs while reducing routine processing and operational 
 ```
 
 * A global error handler returns HTTP 500 for unhandled exceptions.
+
+---
+
+## 11. Automated API testing (Jest + Supertest)
+
+Integration tests exercise the **real Express app** and **real PostgreSQL** (same database as your `.env` connection). They create temporary users, call HTTP endpoints, then **delete** those users and related rows (reminders, game sessions, location logs/alerts, caregiver links).
+
+### 11.1 Prerequisites
+
+- Dependencies installed: `cd backend && npm install`
+- `.env` configured, including a working DB and **`JWT_SECRET`**
+- PostgreSQL reachable when you run tests
+
+### 11.2 How to run
+
+```bash
+cd backend
+npm test
+```
+
+This sets `NODE_ENV=test`, runs **Jest** in band (`--runInBand`) to avoid parallel clashes on one database, and loads `.env` via `tests/setup.js`.
+
+### 11.3 What is covered
+
+The suite in `backend/tests/api.integration.test.js` currently checks:
+
+| Area | Behaviour verified |
+|------|-------------------|
+| **POST `/api/auth/login`** | `401` wrong password; `200` + JWT for verified caregiver |
+| **GET `/api/patients/:patientId`** | `401` without token; `200` own profile; `403` other patient’s profile |
+| **GET `/api/reminders/patient/:patientId`** | `200` patient can list own reminders |
+| **POST `/api/games`** | `401` no token; `403` caregiver; `400` invalid `gameType`; `201` patient saves session (incl. adaptive difficulty fields) |
+| **POST `/api/location/patient/update`** | `201` when consent on and not paused; `403` when **`locationPausedUntil`** is in the future |
+| **GET `/api/health`** | `200` |
+
+Helper factories and teardown live in `backend/tests/helpers.js`.
+
+### 11.4 Code layout (tests vs server)
+
+- **`backend/src/httpApp.js`** – builds the Express app (middleware + all `/api/*` routes + 404/error handlers). Used by Jest so tests do **not** open a TCP port or Socket.IO.
+- **`backend/server.js`** – calls `createHttpApp()`, attaches **Socket.IO** to the HTTP server, runs Sequelize sync, then `listen()`.
+
+### 11.5 What is not automated here
+
+Messages, push (VAPID), email, WebRTC signalling, and full CRUD on every caregiver route are **not** part of this suite. They would need extra fixtures/mocks or E2E/browser tests. For the thesis you can describe this file as **targeted API regression tests** for auth, access control, reminders list, games persistence, and location pause behaviour.
+
+**Security testing in detail** (`npm audit`, residual findings, manual/design controls, OWASP mapping, suggested dissertation paragraph): **`docs/SecurityTesting.md`**.
 
 ---
 

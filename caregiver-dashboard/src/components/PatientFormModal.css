@@ -110,6 +110,11 @@
     margin-top: 0;
 }
 
+/* Single tab panel shown at a time — no extra gap vs previous long-scroll layout */
+.pfm-section-wrap--tab-panel {
+    margin-top: 0;
+}
+
 .pfm-error {
     background: #fef2f2;
     border: 1px solid #fecaca;

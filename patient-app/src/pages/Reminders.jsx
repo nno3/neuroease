@@ -3,8 +3,8 @@
  * Shows loading state, empty state, and a readable list (time, title, type, recurrence).
  */
 import React from 'react';
-import { useState, useEffect, useRef } from "react";
-import { CheckCircle2, Pill, CalendarDays, ClipboardList, AlertCircle, Volume2, Square } from "lucide-react";
+import { useState, useEffect, useRef, useId } from "react";
+import { CheckCircle2, AlertCircle, Volume2, Square } from "lucide-react";
 import "./Reminders.css";
 import { useAuth } from "../context/AuthContext";
 import { getRemindersForPatient, markReminderComplete } from "../services/reminders";
@@ -16,17 +16,57 @@ const REMINDER_TYPE_LABELS = {
   general: "Task",
 };
 
-const REMINDER_TYPE_ICONS = {
-  medication: Pill,
-  appointment: CalendarDays,
-  general: ClipboardList,
-};
-
 const RECURRENCE_LABELS = {
   once: null,
   daily: "Daily",
   weekly: "Weekly",
 };
+
+/** Text for the completion-status tooltip (not browser `title`). */
+const COMPLETION_TOOLTIP = {
+  onTime: "Marked done on or before the scheduled time.",
+  late: "Marked done after the scheduled time had already passed.",
+};
+
+const REMINDER_TYPE_TOOLTIPS = {
+  medication: "Medicine or treatment to take as your caregiver asked.",
+  appointment: "A visit, check-up, or meeting to go to.",
+  general: "Something else to do or remember.",
+};
+
+/**
+ * Accessible floating tooltip: hover + keyboard focus show bubble; tap toggles on touch.
+ * Uses role="tooltip" and aria-describedby per WAI-ARIA APG guidance.
+ */
+function ReminderTooltip({ tip, placement = "above", className = "", children }) {
+  const bubbleId = useId();
+  const [pinned, setPinned] = useState(false);
+  if (!tip) return <span className={className}>{children}</span>;
+
+  return (
+    <span
+      className={`pa-rtooltip pa-rtooltip--${placement} ${pinned ? "pa-rtooltip--pinned" : ""} ${className}`.trim()}
+      onMouseLeave={() => setPinned(false)}
+    >
+      <span className="pa-rtooltip__hit">
+        <button
+          type="button"
+          className="pa-rtooltip__trigger"
+          aria-describedby={bubbleId}
+          onClick={() => setPinned((p) => !p)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setPinned(false);
+          }}
+        >
+          {children}
+        </button>
+        <span id={bubbleId} role="tooltip" className="pa-rtooltip__bubble">
+          {tip}
+        </span>
+      </span>
+    </span>
+  );
+}
 
 /** Today's date in format "Wednesday, March 4, 2026" */
 function getTodayFormatted() {
@@ -325,7 +365,6 @@ export default function Reminders() {
     const completedForThisOccurrence = isCompletedForOccurrence(r, effectiveTime);
     const isOverdue = section === "overdue";
     const typeClass = r.reminderType ? `pa-reminders-card--${r.reminderType}` : "";
-    const IconComponent = REMINDER_TYPE_ICONS[r.reminderType] || ClipboardList;
     const canMarkDone = (section === "today" || section === "overdue") && !completedForThisOccurrence;
     const isUpcoming = section === "upcoming";
     const key = `${r.id}-${effectiveTime}`;
@@ -337,28 +376,27 @@ export default function Reminders() {
         className={`pa-reminders-card ${typeClass} ${completedForThisOccurrence ? "pa-reminders-card--completed" : ""} ${completedLate ? "pa-reminders-card--completed-late" : ""} ${isOverdue ? "pa-reminders-card--overdue" : ""}`}
       >
         <div className="pa-reminders-card__main">
-          <div className="pa-reminders-card__icon" aria-hidden>
-            <IconComponent className="pa-reminders-card__icon-svg" />
-          </div>
           <div className="pa-reminders-card__time">
-            {formatTime(effectiveTime)}
+            <ReminderTooltip
+              tip={REMINDER_TYPE_TOOLTIPS[r.reminderType] || REMINDER_TYPE_TOOLTIPS.general}
+              placement="below"
+            >
+              <span className={`pa-reminders-card__type-label-text pa-reminders-card__type-label--${r.reminderType || "general"}`}>
+                {REMINDER_TYPE_LABELS[r.reminderType] || r.reminderType}
+              </span>
+            </ReminderTooltip>
+            <span className="pa-reminders-card__time-value">{formatTime(effectiveTime)}</span>
             {formatDate(effectiveTime) && (
               <span className="pa-reminders-card__date">{formatDate(effectiveTime)}</span>
             )}
+            {isOverdue && (
+              <span className="pa-reminders-card__overdue-inline" aria-label="Overdue">
+                <AlertCircle className="pa-reminders-card__overdue-icon" aria-hidden />
+                Overdue
+              </span>
+            )}
           </div>
           <div className="pa-reminders-card__body">
-            <span className="pa-reminders-card__type">
-              {REMINDER_TYPE_LABELS[r.reminderType] || r.reminderType}
-              {isOverdue && (
-                <>
-                  {" · "}
-                  <span className="pa-reminders-card__overdue-label" aria-label="Overdue">
-                    <AlertCircle className="pa-reminders-card__overdue-icon" aria-hidden />
-                    Overdue
-                  </span>
-                </>
-              )}
-            </span>
             <h3 className="pa-reminders-card__title">{r.title}</h3>
             {r.message && (
               <p className="pa-reminders-card__message">{r.message}</p>
@@ -372,10 +410,16 @@ export default function Reminders() {
         </div>
         <div className="pa-reminders-card__footer">
           {completedForThisOccurrence ? (
-            <span className="pa-reminders-card__done" aria-label={completedLate ? "Completed late" : "Completed"}>
-              <CheckCircle2 className="pa-reminders-card__done-icon" aria-hidden />
-              {completedLate ? "Completed late" : "Completed"}
-            </span>
+            <ReminderTooltip
+              tip={completedLate ? COMPLETION_TOOLTIP.late : COMPLETION_TOOLTIP.onTime}
+              placement="above"
+              className="pa-reminders-card__done-tooltip"
+            >
+              <span className="pa-reminders-card__done">
+                <CheckCircle2 className="pa-reminders-card__done-icon" aria-hidden />
+                {completedLate ? "Completed late" : "Completed"}
+              </span>
+            </ReminderTooltip>
           ) : (
             <button
               type="button"

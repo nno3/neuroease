@@ -19,9 +19,16 @@ import {
 
 const LocationSharingContext = createContext(null);
 
+function isLocationPauseActive(iso) {
+  if (iso == null || iso === "") return false;
+  const t = new Date(iso).getTime();
+  return !Number.isNaN(t) && t > Date.now();
+}
+
 export function LocationSharingProvider({ children }) {
   const { user } = useAuth();
   const [locationConsent, setLocationConsentState] = useState(null);
+  const [locationPausedUntil, setLocationPausedUntilState] = useState(null);
   const [geoPermissionStatus, setGeoPermissionStatus] = useState("unknown");
   const [locationError, setLocationError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -30,10 +37,19 @@ export function LocationSharingProvider({ children }) {
     setLocationConsentState(value === true);
   }, []);
 
+  const setLocationPausedUntil = useCallback((value) => {
+    if (value === null || value === undefined || value === "") {
+      setLocationPausedUntilState(null);
+      return;
+    }
+    setLocationPausedUntilState(typeof value === "string" ? value : new Date(value).toISOString());
+  }, []);
+
   // Fetch profile to get locationConsent when user is set
   useEffect(() => {
     if (!user?.id) {
       setLocationConsentState(null);
+      setLocationPausedUntilState(null);
       return;
     }
     let cancelled = false;
@@ -44,15 +60,30 @@ export function LocationSharingProvider({ children }) {
         const profile = res?.data?.patient?.Patient ?? res?.data?.patient?.profile ?? null;
         const consent = profile?.locationConsent === true;
         setLocationConsentState(consent);
+        const until = profile?.locationPausedUntil ?? null;
+        setLocationPausedUntilState(
+          until ? (typeof until === "string" ? until : new Date(until).toISOString()) : null
+        );
       })
       .catch(() => {
-        if (!cancelled) setLocationConsentState(false);
+        if (!cancelled) {
+          setLocationConsentState(false);
+          setLocationPausedUntilState(null);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
   }, [user?.id]);
+
+  // When pause end time passes, clear local state so sharing can resume without a full refetch
+  useEffect(() => {
+    if (!locationPausedUntil || !isLocationPauseActive(locationPausedUntil)) return;
+    const ms = Math.max(0, new Date(locationPausedUntil).getTime() - Date.now() + 500);
+    const tid = setTimeout(() => setLocationPausedUntilState(null), Math.min(ms, 8.64e7));
+    return () => clearTimeout(tid);
+  }, [locationPausedUntil]);
 
   // Check geolocation permission (Permissions API or fallback)
   useEffect(() => {
@@ -69,6 +100,8 @@ export function LocationSharingProvider({ children }) {
     });
   }, [locationConsent, locationError]);
 
+  const pauseActive = isLocationPauseActive(locationPausedUntil);
+
   // Re-check permission and send location when app becomes visible (user may have changed in Settings or moved)
   useEffect(() => {
     if (!isGeolocationSupported()) return;
@@ -77,12 +110,14 @@ export function LocationSharingProvider({ children }) {
         getGeolocationPermissionState().then((state) => {
           setGeoPermissionStatus(state === "granted" || state === "denied" || state === "prompt" ? state : "unknown");
         });
-        if (user?.id && locationConsent === true) sendLocationNow();
+        if (user?.id && locationConsent === true && !isLocationPauseActive(locationPausedUntil)) {
+          sendLocationNow();
+        }
       }
     };
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
-  }, [user?.id, locationConsent]);
+  }, [user?.id, locationConsent, locationPausedUntil]);
 
   // Start/stop location service based on user and consent
   useEffect(() => {
@@ -92,7 +127,7 @@ export function LocationSharingProvider({ children }) {
       setLocationError(null);
       return;
     }
-    if (locationConsent !== true) {
+    if (locationConsent !== true || pauseActive) {
       stopLocationSharing();
       stopSimulatedLocationSharing();
       setLocationError(null);
@@ -113,7 +148,7 @@ export function LocationSharingProvider({ children }) {
       onError: (msg) => setLocationError(msg),
     });
     return () => stopLocationSharing();
-  }, [user?.id, locationConsent, geoPermissionStatus]);
+  }, [user?.id, locationConsent, pauseActive, geoPermissionStatus]);
 
   // Clear error when consent is turned off
   useEffect(() => {
@@ -146,6 +181,9 @@ export function LocationSharingProvider({ children }) {
   const value = {
     locationConsent,
     setLocationConsent,
+    locationPausedUntil,
+    setLocationPausedUntil,
+    locationPauseActive: pauseActive,
     geoPermissionStatus,
     locationError,
     loading,

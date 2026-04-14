@@ -1,5 +1,11 @@
 import React from 'react';
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
+
+const DETAIL_TABS = ['Personal', 'Medical', 'Medical History', 'Care & Emergency'];
+
+function detailsTabSlug(tab) {
+    return String(tab).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+}
 import {
     calcAge,
     formatDate,
@@ -7,7 +13,6 @@ import {
     getInitials,
     getAvatarColor,
     format3,
-    parseMedicalHistory,
 } from "../utils/patientHelpers";
 
 /**
@@ -20,6 +25,11 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarch
     const [actionError, setActionError] = useState("");
     const [inviteLoading, setInviteLoading] = useState(false);
     const [inviteError, setInviteError] = useState("");
+    const [activeTab, setActiveTab] = useState(DETAIL_TABS[0]);
+
+    useEffect(() => {
+        setActiveTab(DETAIL_TABS[0]);
+    }, [patient?.id]);
 
     if (!patient) return null;
 
@@ -128,8 +138,8 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarch
                     </div>
                 </div>
 
+                {patient.isArchived ? (
                 <div className="pm-modal-body pm-details-body">
-                    {patient.isArchived ? (
                         <>
                             <div className="pm-details-grid">
                                 <div className="pm-details-section-header">
@@ -184,8 +194,26 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarch
                                 </div>
                             </div>
                         </>
+                </div>
                     ) : (
                         <>
+                            <nav className="pm-details-tabs" role="tablist" aria-label="Patient record sections">
+                                {DETAIL_TABS.map((tab) => (
+                                    <button
+                                        key={tab}
+                                        type="button"
+                                        role="tab"
+                                        id={`pm-detail-tab-${detailsTabSlug(tab)}`}
+                                        aria-selected={activeTab === tab}
+                                        aria-controls={`pm-detail-panel-${detailsTabSlug(tab)}`}
+                                        className={`pm-details-tab ${activeTab === tab ? 'is-active' : ''}`}
+                                        onClick={() => setActiveTab(tab)}
+                                    >
+                                        {tab}
+                                    </button>
+                                ))}
+                            </nav>
+                            <div className="pm-modal-body pm-details-body">
                             {inviteError && (
                                 <div className="pm-details-grid">
                                     <div className="pm-detail-field pm-detail-span2">
@@ -193,6 +221,12 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarch
                                     </div>
                                 </div>
                             )}
+                            {activeTab === "Personal" && (
+                            <div
+                                role="tabpanel"
+                                id={`pm-detail-panel-${detailsTabSlug('Personal')}`}
+                                aria-labelledby={`pm-detail-tab-${detailsTabSlug('Personal')}`}
+                            >
                             <div className="pm-details-grid">
                                 <div className="pm-details-section-header">
                                     <h3>Personal Information</h3>
@@ -266,7 +300,15 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarch
                                     </div>
                                 </div>
                             </div>
+                            </div>
+                            )}
 
+                            {activeTab === "Medical" && (
+                            <div
+                                role="tabpanel"
+                                id={`pm-detail-panel-${detailsTabSlug("Medical")}`}
+                                aria-labelledby={`pm-detail-tab-${detailsTabSlug("Medical")}`}
+                            >
                             {(() => {
                                 const mh = parseMh(profile);
                                 const diagnosis = (profile?.diagnosis ?? mh?.diagnosis ?? "").trim();
@@ -310,7 +352,15 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarch
                                     </div>
                                 );
                             })()}
+                            </div>
+                            )}
 
+                            {activeTab === "Medical History" && (
+                            <div
+                                role="tabpanel"
+                                id={`pm-detail-panel-${detailsTabSlug("Medical History")}`}
+                                aria-labelledby={`pm-detail-tab-${detailsTabSlug("Medical History")}`}
+                            >
                             {(() => {
                                 let medicalHistory = parseMh(profile);
                                 if (!medicalHistory || typeof medicalHistory !== "object") medicalHistory = {};
@@ -379,7 +429,15 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarch
                                     </div>
                                 );
                             })()}
+                            </div>
+                            )}
 
+                            {activeTab === "Care & Emergency" && (
+                            <div
+                                role="tabpanel"
+                                id={`pm-detail-panel-${detailsTabSlug("Care & Emergency")}`}
+                                aria-labelledby={`pm-detail-tab-${detailsTabSlug("Care & Emergency")}`}
+                            >
                             {(() => {
                                 const preferred = (profile?.preferredCommunication ?? "").trim();
                                 const careNotes = (profile?.careNotes ?? "").trim();
@@ -417,9 +475,11 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onUnarch
                                     </div>
                                 );
                             })()}
+                            </div>
+                            )}
+                            </div>
                         </>
                     )}
-                </div>
             </div>
         </div>
     );

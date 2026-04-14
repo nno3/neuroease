@@ -72,10 +72,6 @@ function LayoutInner() {
         return () => socket.off('new_message', handler);
     }, [socket, pathname]);
 
-    const handleAddPatient = () => {
-        alert("Add Patient clicked (wire this later)");
-    };
-
     return (
         <div className="layout">
             <CallOverlay
@@ -103,7 +99,6 @@ function LayoutInner() {
             <div className="layout-main">
                 <TopBar
                     title={title}
-                    onPrimaryAction={handleAddPatient}
                     onMenuClick={() => setSidebarOpen((o) => !o)}
                 />
                 {callBanner && (

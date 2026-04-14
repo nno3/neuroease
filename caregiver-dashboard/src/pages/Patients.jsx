@@ -76,8 +76,6 @@ export default function Patients() {
                     const p = res?.data?.data?.patient ?? res?.data?.patient;
                     if (p) {
                         setSelectedPatient(p);
-                        setRestoreNotes("");
-                        setActionError("");
                         setDetailsOpen(true);
                     }
                 })

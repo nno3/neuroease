@@ -71,13 +71,17 @@ export function CallProvider({ children }) {
         const peerId = webRTC.incomingFrom ?? webRTC.remoteUserId;
         if (!peerId) return;
         const id = Number(peerId);
-        const cached = nameByPeerIdRef.current.get(id);
-        if (cached) setCallerName(cached);
 
         const fromContacts = contacts.find((c) => samePeerId(c.user?.id, peerId))?.user?.name;
         if (fromContacts) {
             nameByPeerIdRef.current.set(id, fromContacts);
             setCallerName(fromContacts);
+            return;
+        }
+
+        const cached = nameByPeerIdRef.current.get(id);
+        if (cached) {
+            setCallerName(cached);
             return;
         }
 
@@ -95,7 +99,9 @@ export function CallProvider({ children }) {
             })
             .catch(() => {
                 if (cancelled) return;
-                setCallerName(nameByPeerIdRef.current.get(id) ?? 'Unknown');
+                const fallback = nameByPeerIdRef.current.get(id);
+                if (fallback) setCallerName(fallback);
+                else setCallerName('Unknown');
             });
         return () => {
             cancelled = true;

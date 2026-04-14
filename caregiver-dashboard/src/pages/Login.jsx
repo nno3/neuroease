@@ -29,7 +29,7 @@ const Login = () => {
                 setError(result?.error || 'Login failed. Please make sure your Email and Password are correct.');
                 if (result?.code === 'EMAIL_NOT_VERIFIED') setEmailNotVerified(true);
             }
-        } catch (err) {
+        } catch {
             setError('Login failed. Please make sure your Email and Password are correct.');
         } finally {
             setLoading(false);

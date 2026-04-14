@@ -5,7 +5,8 @@
   "scripts": {
     "build": "cd backend && npm ci",
     "start": "cd backend && npm start",
-    "dev:all": "concurrently -k -n api,dash,patient -c blue,magenta,green \"npm run dev --prefix backend\" \"npm run dev --prefix caregiver-dashboard\" \"npm run dev --prefix patient-app\""
+    "dev:all": "concurrently -k -n api,dash,patient -c blue,magenta,green \"npm run dev --prefix backend\" \"npm run dev --prefix caregiver-dashboard\" \"npm run dev --prefix patient-app\"",
+    "audit:all": "npm audit --prefix backend && npm audit --prefix patient-app && npm audit --prefix caregiver-dashboard && npm audit"
   },
   "engines": {
     "node": ">=18"

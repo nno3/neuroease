@@ -1,5 +1,5 @@
 import React from 'react';
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getPatients } from "../services/patients";
 import {createReminder, deleteReminder, getRemindersForPatient, updateReminder } from "../services/reminders";
 import ReminderFormModal from "../components/ReminderFormModal";
@@ -9,14 +9,6 @@ import "./Reminders.css";
 
 import { Pill, CalendarDays, ClipboardList, Plus, Trash2, UserRound, Repeat, CheckCircle2, Clock3, AlertTriangle } from "lucide-react";
 import ReminderCalendar from "../components/ReminderCalendar";
-
-function sameDate(a, b) {
-    return (
-        a.getFullYear() === b.getFullYear() &&
-        a.getMonth() === b.getMonth() &&
-        a.getDate() === b.getDate()
-    );
-}
 
 const TABS = [
     { label: "All", value: "all" },
@@ -130,21 +122,32 @@ function getOccurrenceTime(reminder, targetDate) {
     );
 }
 
-/** completed | overdue | pending for this occurrence */
-function getOccurrenceStatus(reminder, occurrenceTime) {
-    if (!occurrenceTime) return "pending";
+/** completed | overdue | pending for this occurrence; completedLate when done after scheduled moment */
+function getOccurrenceStatusDetail(reminder, occurrenceTime) {
+    if (!occurrenceTime) return { status: "pending", completedLate: false };
     const now = new Date();
     const completed = reminder.recurrence === "once"
         ? !!reminder.isCompleted
-        : reminder.completedAt && (() => {
+        : !!(reminder.completedAt && (() => {
             const c = new Date(reminder.completedAt);
             const o = new Date(occurrenceTime);
             return c.getDate() === o.getDate() && c.getMonth() === o.getMonth() && c.getFullYear() === o.getFullYear();
-        })();
-    if (completed) return "completed";
-    if (occurrenceTime.getTime() < now.getTime()) return "overdue";
-    return "pending";
+        })());
+    if (completed) {
+        const at = reminder.completedAt ? new Date(reminder.completedAt) : null;
+        const completedLate = !!(at && at.getTime() > occurrenceTime.getTime());
+        return { status: "completed", completedLate };
+    }
+    if (occurrenceTime.getTime() < now.getTime()) return { status: "overdue", completedLate: false };
+    return { status: "pending", completedLate: false };
 }
+
+const STATUS_TOOLTIP = {
+    completed: "Marked done on or before the scheduled time.",
+    completedLate: "Marked done after the scheduled time had already passed.",
+    overdue: "Past the scheduled time and not yet marked done.",
+    pending: "Not yet due or still waiting to be marked done.",
+};
 
 export default function Reminders() {
     const [patients, setPatients] = useState([]);
@@ -176,63 +179,68 @@ export default function Reminders() {
         };
     }, []);
 
-    const normalizeReminders = (res) => {
+    const normalizeReminders = useCallback((res) => {
         const list = res?.data?.data ?? res?.data ?? [];
         return Array.isArray(list) ? list : [];
-    };
+    }, []);
 
-    const loadForPatient = async (pid, patientName) => {
-        if (!pid) return;
-        setLoading(true);
-        setError("");
-        try {
-            const res = await getRemindersForPatient(pid);
-            const list = normalizeReminders(res).map((r) => ({
-                ...r,
-                patientId: Number(pid),
-                patientName: patientName ?? "",
-            }));
-            list.sort((a, b) => new Date(a.scheduledTime) - new Date(b.scheduledTime));
-            setReminders(list);
-        } catch (e) {
-            setError(e?.message || "Unable to load reminders.");
-            setReminders([]);
-        } finally {
-            setLoading(false);
-        }
-    };
-    const loadAllPatients = async (patientsList) => {
-        if (!patientsList?.length) {
-            setReminders([]);
-            setLoading(false);
-            return;
-        }
-        setLoading(true);
-        setError("");
-        try {
-            const results = await Promise.allSettled(
-                patientsList.map(async (p) => {
-                    const res = await getRemindersForPatient(p.id);
-                    return normalizeReminders(res).map((r) => ({
-                        ...r,
-                        patientId: p.id,
-                        patientName: p.name,
-                    }));
-                })
-            );
+    const loadForPatient = useCallback(
+        async (pid, patientName) => {
+            if (!pid) return;
+            setLoading(true);
+            setError("");
+            try {
+                const res = await getRemindersForPatient(pid);
+                const list = normalizeReminders(res).map((r) => ({
+                    ...r,
+                    patientId: Number(pid),
+                    patientName: patientName ?? "",
+                }));
+                list.sort((a, b) => new Date(a.scheduledTime) - new Date(b.scheduledTime));
+                setReminders(list);
+            } catch (e) {
+                setError(e?.message || "Unable to load reminders.");
+                setReminders([]);
+            } finally {
+                setLoading(false);
+            }
+        },
+        [normalizeReminders]
+    );
 
-            const merged = results
-                .filter((x) => x.status === "fulfilled")
-                .flatMap((x) => x.value);
-            merged.sort((a, b) => new Date(a.scheduledTime) - new Date(b.scheduledTime));
-            setReminders(merged);
-        } catch (e) {
-            setError(e?.message || "Unable to load reminders.");
-            setReminders([]);
-        } finally {
-            setLoading(false);
-        }
-    };
+    const loadAllPatients = useCallback(
+        async (patientsList) => {
+            if (!patientsList?.length) {
+                setReminders([]);
+                setLoading(false);
+                return;
+            }
+            setLoading(true);
+            setError("");
+            try {
+                const results = await Promise.allSettled(
+                    patientsList.map(async (p) => {
+                        const res = await getRemindersForPatient(p.id);
+                        return normalizeReminders(res).map((r) => ({
+                            ...r,
+                            patientId: p.id,
+                            patientName: p.name,
+                        }));
+                    })
+                );
+
+                const merged = results.filter((x) => x.status === "fulfilled").flatMap((x) => x.value);
+                merged.sort((a, b) => new Date(a.scheduledTime) - new Date(b.scheduledTime));
+                setReminders(merged);
+            } catch (e) {
+                setError(e?.message || "Unable to load reminders.");
+                setReminders([]);
+            } finally {
+                setLoading(false);
+            }
+        },
+        [normalizeReminders]
+    );
 
     // Initial load
     useEffect(() => {
@@ -249,7 +257,7 @@ export default function Reminders() {
                 setLoading(false);
             }
         })();
-    }, []);
+    }, [loadAllPatients]);
 
     useEffect(() => {
         if (!patients.length) return;
@@ -260,7 +268,7 @@ export default function Reminders() {
             const p = patients.find((x) => String(x.id) === String(patientId));
             loadForPatient(patientId, p?.name);
         }
-    }, [patientId, patients]);
+    }, [patientId, patients, loadAllPatients, loadForPatient]);
 
     const openCreate = (date = null) => {
         setModalMode("create");
@@ -457,18 +465,34 @@ export default function Reminders() {
                                     {visibleReminders.map((r) => {
                                         const refDate = selectedDate || new Date();
                                         const occurrenceTime = getOccurrenceTime(r, refDate);
-                                        const status = getOccurrenceStatus(r, occurrenceTime);
-                                        const statusLabel = status === "completed" ? "Completed" : status === "overdue" ? "Overdue" : "Pending";
+                                        const { status, completedLate } = getOccurrenceStatusDetail(r, occurrenceTime);
+                                        const statusLabel =
+                                            status === "completed"
+                                                ? (completedLate ? "Completed late" : "Completed")
+                                                : status === "overdue"
+                                                    ? "Overdue"
+                                                    : "Pending";
+                                        const statusTitle =
+                                            status === "completed"
+                                                ? (completedLate ? STATUS_TOOLTIP.completedLate : STATUS_TOOLTIP.completed)
+                                                : status === "overdue"
+                                                    ? STATUS_TOOLTIP.overdue
+                                                    : STATUS_TOOLTIP.pending;
+                                        const typeKey = r.reminderType || "general";
 
                                         return (
-                                            <div className="rm-schedule-card" key={r.id}>
+                                            <div className={`rm-schedule-card rm-schedule-card--${typeKey}`} key={r.id}>
                                                 <div className="rm-schedule-left">
-                                                    <div className={`rm-iconbox rm-iconbox--${r.reminderType}`}>
+                                                    <div className={`rm-iconbox rm-iconbox--${typeKey}`}>
                                                         <TypeIcon reminderType={r.reminderType}/>
                                                     </div>
                                                 </div>
 
                                                 <div className="rm-schedule-main">
+                                                    <div className={`rm-type-chip rm-type-chip--${typeKey}`}>
+                                                        <TypeIcon reminderType={r.reminderType} size={14} />
+                                                        <span>{typeLabel(r.reminderType)}</span>
+                                                    </div>
                                                     <div className="rm-schedule-card-title">{r.title}</div>
 
                                                     <div className="rm-lines">
@@ -497,8 +521,6 @@ export default function Reminders() {
                                                             <span className="rm-line-label">Recurrence:</span>
                                                             <span
                                                                 className="rm-pill">{recurrenceLabel(r.recurrence)}</span>
-                                                            <span
-                                                                className="rm-muted">({typeLabel(r.reminderType)})</span>
                                                         </div>
                                                         <div className="rm-line">
                                                             <CalendarDays size={14}/>
@@ -511,7 +533,10 @@ export default function Reminders() {
                                                             {status === "overdue" && <AlertTriangle size={14} />}
                                                             {status === "pending" && <Clock3 size={14} />}
                                                             <span className="rm-line-label">Status:</span>
-                                                            <span className={`rm-status is-${status}`}>
+                                                            <span
+                                                                className={`rm-status is-${status}${completedLate ? " is-completed-late" : ""}`}
+                                                                title={statusTitle}
+                                                            >
                                                                 {statusLabel}
                                                             </span>
                                                         </div>
