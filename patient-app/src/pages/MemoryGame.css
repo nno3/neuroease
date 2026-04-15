@@ -1,0 +1,299 @@
+/* Memory Match – dementia-friendly: large cards for visibility, no scroll */
+/* Break out of pa-main padding so grid uses full viewport width */
+.pa-memory-game {
+  margin: 0 -20px;
+  padding: 0 0 8px;
+  width: calc(100% + 40px);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  height: calc(100dvh - 165px);
+  max-height: calc(100vh - 165px);
+}
+
+.pa-memory-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin-bottom: 4px;
+  padding: 0 20px;
+  flex-shrink: 0;
+}
+
+.pa-memory-back {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--pa-primary);
+  text-decoration: none;
+  padding: 8px 12px;
+  min-height: var(--pa-touch-min);
+  display: inline-flex;
+  align-items: center;
+  border-radius: 8px;
+}
+
+.pa-memory-back:hover {
+  text-decoration: underline;
+}
+
+.pa-memory-back:focus-visible {
+  outline: 2px solid var(--pa-primary);
+  outline-offset: 2px;
+}
+
+.pa-memory-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--pa-text);
+}
+
+.pa-memory-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+
+.pa-memory-overlay-content {
+  background: var(--pa-surface);
+  padding: 28px 24px;
+  border-radius: 16px;
+  max-width: 340px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--pa-border);
+}
+
+/* Victory modal – consistent with Math Game feedback (green success style) */
+.pa-memory-overlay-content.pa-memory-victory {
+  border: 4px solid #16a34a;
+}
+
+.pa-memory-victory-icon {
+  font-size: 3rem;
+  font-weight: 700;
+  color: #16a34a;
+  margin-bottom: 12px;
+}
+
+.pa-memory-overlay-content.pa-memory-victory h3 {
+  color: #16a34a;
+}
+
+.pa-memory-overlay-content h3 {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--pa-primary);
+  margin: 0 0 12px;
+}
+
+.pa-memory-overlay-content p {
+  font-size: 1rem;
+  color: var(--pa-text-muted);
+  margin: 0 0 20px;
+  line-height: 1.5;
+}
+
+.pa-memory-start-content .pa-memory-btn-start {
+  width: 100%;
+}
+
+.pa-memory-stats {
+  font-weight: 600;
+  color: var(--pa-text) !important;
+  font-size: 1.125rem !important;
+}
+
+.pa-memory-victory-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.pa-memory-btn-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--pa-surface);
+  color: var(--pa-primary);
+  border: 2px solid var(--pa-primary);
+  text-decoration: none;
+}
+
+.pa-memory-btn-secondary:hover,
+.pa-memory-btn-secondary:focus-visible {
+  background: var(--pa-bg);
+}
+
+.pa-memory-btn {
+  min-height: var(--pa-touch-min);
+  padding: 14px 24px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  background: var(--pa-border);
+  color: var(--pa-text);
+}
+
+.pa-memory-btn:hover,
+.pa-memory-btn:focus-visible {
+  background: var(--pa-primary);
+  color: white;
+  outline: none;
+}
+
+.pa-memory-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pa-memory-btn-primary {
+  background: var(--pa-primary);
+  color: white;
+}
+
+.pa-memory-btn-primary:hover {
+  background: var(--pa-primary-light);
+}
+
+.pa-memory-btn-start {
+  font-size: 1.25rem;
+  padding: 18px 36px;
+  background: var(--pa-primary);
+  color: white;
+}
+
+.pa-memory-btn-start:hover,
+.pa-memory-btn-start:focus-visible {
+  background: var(--pa-primary-light);
+}
+
+.pa-memory-btn-sm {
+  padding: 8px 16px;
+  font-size: 1rem;
+}
+
+.pa-memory-play {
+  transition: filter 0.3s ease;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pa-memory-play.is-blurred {
+  filter: blur(6px);
+  pointer-events: none;
+}
+
+.pa-memory-stats-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  padding: 0 20px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--pa-text);
+  flex-shrink: 0;
+}
+
+/* 4x4 grid – full width, no gaps = maximally large cards for dementia-friendly visibility */
+.pa-memory-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 0;
+  padding: 0;
+  width: 100%;
+}
+
+.pa-memory-card {
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.pa-memory-card:disabled {
+  cursor: default;
+}
+
+.pa-memory-card:focus-visible {
+  outline: 3px solid var(--pa-primary);
+  outline-offset: 2px;
+}
+
+.pa-memory-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  transform-style: preserve-3d;
+}
+
+.pa-memory-card.is-flipped .pa-memory-card-inner {
+  transform: rotateY(180deg);
+}
+
+.pa-memory-card-inner {
+  transition: transform 0.5s ease;
+}
+
+.pa-memory-card-front,
+.pa-memory-card-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 12px;
+}
+
+.pa-memory-card-front {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--pa-surface);
+  border: 2px solid var(--pa-border);
+  transform: rotateY(180deg);
+}
+
+.pa-memory-card-front img {
+  width: 98%;
+  height: 98%;
+  object-fit: contain;
+}
+
+.pa-memory-card-back {
+  background: linear-gradient(135deg, #f5a623 0%, #f7931e 100%);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Simple pattern for card back (dementia-friendly: not too busy) */
+.pa-memory-card-back::after {
+  content: "?";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(2rem, 8vw, 3rem);
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.8);
+}

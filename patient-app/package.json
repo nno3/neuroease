@@ -1,0 +1,36 @@
+{
+  "name": "neuroease-patient-app",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "test": "node -e \"console.log('No frontend unit tests in this package. API integration tests: cd ../backend && npm test');\"",
+    "dev": "vite",
+    "dev:https": "VITE_DEV_HTTPS=1 vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "generate-icons": "node scripts/generate-pwa-icons.js",
+    "cap:sync": "npm run build && npx cap sync",
+    "cap:ios": "npm run cap:sync && npx cap open ios",
+    "cap:android": "npm run cap:sync && npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor-community/background-geolocation": "^1.2.26",
+    "@capacitor/android": "^8.2.0",
+    "@capacitor/cli": "^7.6.0",
+    "@capacitor/core": "^8.2.0",
+    "@capacitor/ios": "^8.2.0",
+    "lucide-react": "^0.562.0",
+    "react": "^19.2.0",
+    "react-datepicker": "^9.1.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.11.0",
+    "socket.io-client": "^4.8.3"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
+    "@vitejs/plugin-react": "^5.1.1",
+    "sharp": "^0.33.5",
+    "vite": "^7.2.4"
+  }
+}

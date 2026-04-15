@@ -1,0 +1,36 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: #f1f5f9;
+  overflow-x: hidden;
+}
+
+/* Touch-friendly tap targets (min 44px) on mobile */
+@media (max-width: 767px) {
+  .pm-btn,
+  .dp-card-btn,
+  .topbar-menu-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Prevent iOS zoom on input focus (requires font-size >= 16px) */
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select,
+  .pfm-input,
+  .pfm-textarea,
+  .pm-search,
+  .pfm-select {
+    font-size: 16px !important;
+  }
+}

@@ -1,0 +1,126 @@
+import React from 'react';
+import { useState, useEffect, useCallback } from "react";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import Sidebar from "./Sidebar";
+import TopBar from "./TopBar";
+import CallOverlay from "./CallOverlay";
+import { useAuth } from "../context/AuthContext";
+import { usePushSubscription } from "../hooks/usePushSubscription";
+import { CallProvider } from "../context/CallContext";
+import { useCall } from "../context/useCall";
+import { apiRequest } from "../services/apiClient";
+import "./Layout.css";
+
+const routeTitles = {
+    "/": "Dashboard Overview",
+    "/patients": "Patients",
+    "/reminders": "Reminders",
+    "/activity": "Activity",
+    "/location": "Location",
+    "/messages": "Messages",
+    "/settings": "Settings",
+};
+
+function LayoutInner() {
+    const { pathname } = useLocation();
+    const navigate = useNavigate();
+    const { user } = useAuth();
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [unreadMessages, setUnreadMessages] = useState(0);
+    const title = routeTitles[pathname] || "NeuroEase";
+    usePushSubscription(user);
+
+    const {
+        socket,
+        callState, callType, incomingCallType, callerName, callDuration,
+        localVideoRef, remoteVideoRef, remoteAudioRef,
+        needsAudioUnlock, unlockRemoteAudio,
+        callBanner, clearCallBanner,
+        acceptCall, rejectCall, endCall, cancelCall,
+        toggleMute, toggleVideo,
+        speakerOutputOn, toggleSpeakerOutput, speakerOutputAvailable,
+    } = useCall();
+
+    useEffect(() => {
+        const onMsg = (e) => {
+            if (e.data?.type === "sw-navigate" && typeof e.data.url === "string") {
+                navigate(e.data.url);
+            }
+        };
+        navigator.serviceWorker?.addEventListener("message", onMsg);
+        return () => navigator.serviceWorker?.removeEventListener("message", onMsg);
+    }, [navigate]);
+
+    const fetchUnread = useCallback(async () => {
+        try {
+            const res = await apiRequest('/messages/unread-count');
+            setUnreadMessages(res.data?.count ?? 0);
+        } catch { /* ignore */ }
+    }, []);
+
+    useEffect(() => { fetchUnread(); }, [fetchUnread]);
+    useEffect(() => {
+        if (pathname === '/messages') setUnreadMessages(0);
+    }, [pathname]);
+
+    useEffect(() => {
+        if (!socket) return;
+        const handler = () => {
+            if (pathname !== '/messages') setUnreadMessages((n) => n + 1);
+        };
+        socket.on('new_message', handler);
+        return () => socket.off('new_message', handler);
+    }, [socket, pathname]);
+
+    return (
+        <div className="layout">
+            <CallOverlay
+                callState={callState}
+                callType={callType}
+                incomingCallType={incomingCallType}
+                contactName={callerName}
+                callDuration={callDuration}
+                localVideoRef={localVideoRef}
+                remoteVideoRef={remoteVideoRef}
+                remoteAudioRef={remoteAudioRef}
+                needsAudioUnlock={needsAudioUnlock}
+                onUnlockAudio={unlockRemoteAudio}
+                onAccept={acceptCall}
+                onReject={rejectCall}
+                onEnd={endCall}
+                onCancel={cancelCall}
+                onToggleMute={toggleMute}
+                onToggleVideo={toggleVideo}
+                speakerOutputOn={speakerOutputOn}
+                onToggleSpeakerOutput={toggleSpeakerOutput}
+                speakerOutputAvailable={speakerOutputAvailable}
+            />
+            <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} badges={{ messages: unreadMessages }} />
+            <div className="layout-main">
+                <TopBar
+                    title={title}
+                    onMenuClick={() => setSidebarOpen((o) => !o)}
+                />
+                {callBanner && (
+                    <div className="layout-call-banner" role="alert">
+                        <p className="layout-call-banner-text">{callBanner}</p>
+                        <button type="button" className="layout-call-banner-dismiss" onClick={clearCallBanner}>
+                            Dismiss
+                        </button>
+                    </div>
+                )}
+                <main className="layout-content">
+                    <Outlet />
+                </main>
+            </div>
+        </div>
+    );
+}
+
+const Layout = () => (
+    <CallProvider>
+        <LayoutInner />
+    </CallProvider>
+);
+
+export default Layout;

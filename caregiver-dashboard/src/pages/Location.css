@@ -1,0 +1,824 @@
+.loc-page {
+    padding: 24px;
+}
+
+.loc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.loc-title {
+    margin: 0;
+    font-size: 30px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.loc-subtitle {
+    margin: 6px 0 0 0;
+    color: #64748b;
+    font-size: 14px;
+}
+
+.loc-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.loc-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #334155;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.loc-btn:not(.loc-btn-primary):hover:not(:disabled) {
+    background: #f8fafc;
+}
+
+.loc-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.loc-btn-primary {
+    background: #4a90e2;
+    color: #fff;
+    border: 1px solid #4a90e2;
+    padding: 10px 16px;
+    font-weight: 600;
+}
+
+.loc-btn-primary:hover:not(:disabled) {
+    background: #3b7bc9;
+    border-color: #3b7bc9;
+    color: #fff;
+}
+
+.loc-hint {
+    margin-bottom: 12px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    color: #475569;
+}
+
+.loc-hint-warning {
+    background: #fef9c3;
+    border: 1px solid #fde047;
+    color: #713f12;
+}
+
+.loc-panel {
+    background: rgba(255, 255, 255, 0.58);
+    border-radius: 14px;
+    padding: 14px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid #eef2f7;
+}
+
+.loc-controls {
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+    margin-bottom: 14px;
+}
+
+.loc-control {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.loc-label {
+    font-size: 12px;
+    font-weight: 800;
+    color: #64748b;
+}
+
+.loc-select {
+    min-width: 220px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    font-size: 14px;
+    outline: none;
+}
+
+.loc-select:focus {
+    border-color: #4a90e2;
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.15);
+}
+
+.loc-control-checkbox {
+    margin-top: 4px;
+}
+
+.loc-checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #334155;
+    cursor: pointer;
+}
+
+.loc-checkbox-label input {
+    width: 18px;
+    height: 18px;
+    accent-color: #4a90e2;
+}
+
+.loc-help-muted {
+    margin: 4px 0 0 0;
+    font-size: 12px;
+    color: #64748b;
+}
+
+/* Location sharing off – warning cards */
+.loc-last-seen-section {
+    margin-bottom: 18px;
+    padding: 14px;
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-radius: 10px;
+}
+
+.loc-last-seen-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 8px 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: #92400e;
+}
+
+.loc-last-seen-icon {
+    color: #d97706;
+    flex-shrink: 0;
+}
+
+.loc-last-seen-intro {
+    margin: 0 0 12px 0;
+    font-size: 13px;
+    color: #78350f;
+    line-height: 1.4;
+}
+
+.loc-last-seen-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.loc-last-seen-card {
+    padding: 12px 14px;
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-radius: 8px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 16px;
+    align-items: baseline;
+}
+
+.loc-last-seen-patient {
+    grid-column: 1;
+    font-weight: 700;
+    font-size: 14px;
+    color: #78350f;
+}
+
+.loc-last-seen-label {
+    grid-column: 2;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #b45309;
+}
+
+.loc-last-seen-datetime {
+    grid-column: 1 / -1;
+    font-size: 14px;
+    font-weight: 600;
+    color: #92400e;
+}
+
+.loc-last-seen-location {
+    grid-column: 1 / -1;
+    font-size: 13px;
+    color: #78350f;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.loc-last-seen-map-link {
+    color: #b45309;
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.loc-last-seen-map-link:hover {
+    color: #92400e;
+}
+
+.loc-error {
+    margin-bottom: 12px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid #fecaca;
+    background: #fef2f2;
+    color: #991b1b;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+/* Location alerts — same colourful card style as Patient Activity */
+.loc-alerts-section {
+    margin-bottom: 18px;
+}
+
+.loc-alerts-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 6px 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #334155;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.loc-alerts-section-title svg {
+    flex-shrink: 0;
+    color: #64748b;
+}
+
+.loc-alert-filter-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.loc-alert-filter-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #475569;
+}
+
+.loc-alert-filters {
+    display: flex;
+    gap: 8px;
+}
+
+.loc-alert-filter-btn {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid #e2e8f0;
+    background: #e2e8f0;
+    color: #475569;
+    cursor: pointer;
+}
+
+.loc-alert-filter-btn:hover {
+    background: #cbd5e1;
+    border-color: #cbd5e1;
+    color: #334155;
+}
+
+.loc-alert-filter-btn-active {
+    background: #4a90e2;
+    color: #fff;
+    border-color: #4a90e2;
+}
+
+.loc-alert-filter-btn-active:hover {
+    background: #3a7bc8;
+    border-color: #3a7bc8;
+    color: #fff;
+}
+
+.loc-alerts-intro {
+    margin: 0 0 12px 0;
+    font-size: 12px;
+    color: #64748b;
+    line-height: 1.45;
+}
+
+.loc-alerts-empty {
+    margin: 0;
+    padding: 12px;
+    font-size: 13px;
+    color: #64748b;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.loc-alert-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.loc-alert-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #fef3c7;
+    background: #fffbeb;
+}
+
+.loc-alert-card:last-child {
+    border-bottom: none;
+}
+
+.loc-alert-card-icon {
+    flex-shrink: 0;
+    color: #d97706;
+    margin-top: 2px;
+}
+
+.loc-alert-card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.loc-alert-card-patient {
+    font-size: 12px;
+    font-weight: 600;
+    color: #92400e;
+}
+
+.loc-alert-card-message {
+    font-size: 13px;
+    font-weight: 600;
+    color: #92400e;
+}
+
+.loc-alert-card-time {
+    font-size: 12px;
+    color: #b45309;
+}
+
+.loc-alert-card-duration {
+    font-size: 12px;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+/* Returned to safe zone — green card */
+.loc-alert-card-returned {
+    background: #f0fdf4;
+    border-bottom-color: #dcfce7;
+}
+
+.loc-alert-card-returned .loc-alert-card-patient,
+.loc-alert-card-returned .loc-alert-card-message {
+    color: #166534;
+}
+
+.loc-alert-card-returned .loc-alert-card-time {
+    color: #15803d;
+}
+
+.loc-alert-card-returned .loc-alert-card-duration {
+    color: #166534;
+}
+
+.loc-alert-card-icon-returned {
+    color: #16a34a;
+}
+
+.loc-map-wrap {
+    position: relative;
+    min-height: 420px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    background: #f1f5f9;
+}
+
+.loc-map {
+    width: 100%;
+    height: 520px;
+    z-index: 0;
+}
+
+.loc-loading,
+.loc-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: #f8fafc;
+    color: #64748b;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.loc-spin {
+    animation: loc-spin 1s linear infinite;
+}
+
+@keyframes loc-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loc-empty-hint {
+    font-size: 12px;
+    font-weight: 600;
+    color: #94a3b8;
+}
+
+.loc-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid #eef2f7;
+    font-size: 12px;
+    font-weight: 700;
+    color: #475569;
+}
+
+.loc-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.loc-legend-marker {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.loc-legend-inside {
+    background: #22c55e;
+}
+
+.loc-legend-outside {
+    background: #ef4444;
+}
+
+.loc-legend-circle {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #2563eb;
+    background: rgba(59, 130, 246, 0.3);
+}
+
+.loc-popup-alert {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #dc2626;
+    font-weight: 800;
+    margin-top: 4px;
+}
+
+.loc-popup-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: #2563eb;
+    color: #ffffff !important;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background 0.2s;
+    border: none;
+}
+
+.loc-popup-nav-btn:hover,
+.loc-popup-nav-btn:focus,
+.loc-popup-nav-btn:visited {
+    color: #ffffff !important;
+    background: #1d4ed8;
+}
+
+.loc-popup-nav-btn svg {
+    color: #ffffff;
+    stroke: #ffffff;
+}
+
+/* Leaflet custom marker: hide default icon styling */
+.loc-custom-marker {
+    background: none !important;
+    border: none !important;
+}
+
+.loc-map-hint {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #e2e8f0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.loc-add-zone {
+    margin-top: 16px;
+    border-radius: 14px;
+    background: #fff;
+    border: 1px solid #eef2f7;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+}
+
+.loc-add-zone-visible {
+    animation: loc-add-zone-in 0.4s ease-out;
+}
+
+@keyframes loc-add-zone-in {
+    0% {
+        box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.4);
+    }
+    100% {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+}
+
+.loc-modal-style .loc-modal-header {
+    padding: 18px;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+    background: #fff;
+}
+
+.loc-modal-style .loc-modal-title {
+    font-size: 18px;
+    font-weight: 900;
+    color: #1a1a1a;
+    margin: 0;
+}
+
+.loc-modal-style .loc-modal-subtitle {
+    margin-top: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #6c757d;
+}
+
+.loc-modal-style .loc-modal-close {
+    background: #f8f9fa;
+    border: none;
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 20px;
+    font-weight: 900;
+    color: #495057;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.loc-modal-style .loc-modal-close:hover {
+    background-color: #e9ecef;
+    color: #1a1a1a;
+}
+
+.loc-modal-style .loc-modal-body {
+    padding: 18px;
+}
+
+.loc-btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #64748b;
+    cursor: pointer;
+}
+
+.loc-btn-icon:hover {
+    background: #f1f5f9;
+    color: #334155;
+}
+
+.loc-btn-icon-danger:hover {
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
+.loc-add-zone-step {
+    margin: 0 0 4px 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #334155;
+}
+
+.loc-add-zone-hint {
+    margin: 0 0 12px 0;
+    font-size: 13px;
+    color: #64748b;
+}
+
+.loc-search-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.loc-input {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    font-size: 14px;
+    outline: none;
+}
+
+.loc-input:focus {
+    border-color: #4a90e2;
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.15);
+}
+
+.loc-search-result {
+    padding: 12px;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 12px;
+}
+
+.loc-search-result-label {
+    margin: 0 0 4px 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.loc-search-result-name {
+    margin: 0 0 10px 0;
+    font-size: 13px;
+    color: #334155;
+}
+
+.loc-add-zone-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-end;
+}
+
+.loc-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.loc-field .loc-label {
+    margin: 0;
+}
+
+.loc-field-hint {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+
+.loc-add-zone-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.loc-zones-list {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #eef2f7;
+}
+
+.loc-zones-list-title {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #334155;
+}
+
+.loc-zones-ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.loc-zone-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    font-size: 13px;
+}
+
+.loc-zone-name {
+    font-weight: 700;
+    color: #334155;
+}
+
+.loc-zone-size {
+    color: #64748b;
+}
+
+.loc-zone-actions {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.loc-zone-edit {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.loc-input-sm,
+.loc-select-sm {
+    padding: 6px 10px;
+    font-size: 13px;
+}
+
+.loc-btn-sm {
+    padding: 6px 12px;
+    font-size: 13px;
+}

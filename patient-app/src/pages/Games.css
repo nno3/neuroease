@@ -1,0 +1,78 @@
+/* Games list – dementia-friendly: large cards, high contrast, simple layout */
+.pa-games {
+  padding: 0 0 24px;
+}
+
+.pa-games-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--pa-text);
+  margin: 0 0 8px;
+}
+
+.pa-games-intro {
+  color: var(--pa-text-muted);
+  margin: 0 0 24px;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.pa-games-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pa-game-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: var(--pa-surface);
+  border: 2px solid var(--pa-border);
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--pa-text);
+  min-height: var(--pa-touch-min);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.pa-game-card:hover,
+.pa-game-card:focus-visible {
+  border-color: var(--pa-primary);
+  box-shadow: 0 2px 8px rgba(30, 58, 95, 0.15);
+  outline: none;
+}
+
+.pa-game-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.pa-game-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.pa-game-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.pa-game-desc {
+  font-size: 0.9375rem;
+  color: var(--pa-text-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.pa-game-arrow {
+  font-size: 1.5rem;
+  color: var(--pa-primary);
+  flex-shrink: 0;
+}

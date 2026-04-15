@@ -1,0 +1,585 @@
+/* Profile – card-based layout, toggles, dementia-friendly spacing */
+
+.pa-profile-a11y-toggle {
+  margin-top: 1rem;
+}
+
+.pa-profile-a11y-reset {
+  margin-top: 1.25rem;
+  width: 100%;
+}
+
+.pa-profile-card {
+  margin-top: 1.25rem;
+  padding: 1.25rem 1.25rem 1.5rem;
+  background: var(--pa-surface);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--pa-border);
+}
+
+.pa-profile-card-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--pa-text);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pa-profile-card-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  color: var(--pa-primary);
+}
+
+.pa-profile-location-desc {
+  margin-bottom: 0.5rem;
+}
+
+.pa-profile-location-note {
+  font-size: 0.8125rem;
+  color: var(--pa-text-muted);
+  line-height: 1.4;
+  margin: 0.75rem 0 0;
+  padding: 0.75rem;
+  background: var(--pa-bg, #f8fafc);
+  border-radius: 8px;
+  border-left: 3px solid var(--pa-primary);
+}
+
+.pa-profile-simulated-banner {
+  background: #eff6ff;
+  border-left-color: #2563eb;
+}
+
+.pa-profile-simulated-row {
+  margin: 1rem 0 0.75rem;
+}
+
+.pa-profile-simulated-row .pa-profile-select {
+  margin-top: 0.25rem;
+  width: 100%;
+}
+
+.pa-profile-location-warning {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--pa-bg-subtle, #fef3c7);
+  border: 1px solid var(--pa-border);
+  border-radius: 8px;
+}
+
+.pa-profile-location-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.pa-profile-location-btn {
+  flex: 1;
+  min-width: 120px;
+}
+
+.pa-profile-location-btn--secondary {
+  background: var(--pa-surface);
+  color: var(--pa-primary);
+  border: 2px solid var(--pa-primary);
+}
+
+.pa-profile-location-btn--secondary:hover:not(:disabled) {
+  background: var(--pa-primary-light, #2d4a6f);
+  color: white;
+}
+
+.pa-profile-location-send-now {
+  margin-top: 0.75rem;
+  width: 100%;
+  font-size: 0.9375rem;
+}
+
+.pa-profile-card-divider {
+  border: none;
+  border-top: 1px solid var(--pa-border);
+  margin: 0.75rem 0 1.25rem;
+}
+
+/* Toggle row: label + description on left, toggle on right */
+.pa-profile-toggle-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 0;
+  min-height: var(--pa-touch-min);
+}
+
+.pa-profile-toggle-row {
+  border-top: 1px solid var(--pa-border);
+}
+
+/* No extra border when toggle is right after divider (e.g. Games card with single setting) */
+.pa-profile-card > hr + .pa-profile-toggle-row {
+  border-top: none;
+}
+
+.pa-profile-toggle-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.pa-profile-row-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--pa-text);
+}
+
+.pa-profile-row-desc {
+  font-size: 0.875rem;
+  color: var(--pa-text-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Toggle switch */
+.pa-profile-toggle {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  min-height: var(--pa-touch-min);
+  min-width: 52px;
+}
+
+.pa-profile-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.pa-profile-toggle-slider {
+  position: relative;
+  display: block;
+  width: 48px;
+  height: 28px;
+  background: var(--pa-border);
+  border-radius: 14px;
+  transition: background 0.2s;
+}
+
+.pa-profile-toggle-slider::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s;
+}
+
+.pa-profile-toggle input:checked + .pa-profile-toggle-slider {
+  background: var(--pa-primary);
+}
+
+.pa-profile-toggle input:checked + .pa-profile-toggle-slider::after {
+  transform: translateX(20px);
+}
+
+.pa-profile-toggle input:focus-visible + .pa-profile-toggle-slider {
+  outline: 2px solid var(--pa-primary);
+  outline-offset: 2px;
+}
+
+/* Test Voice Reminder button */
+.pa-profile-test-btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.pa-profile-test-btn-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+/* Reminder channel section */
+.pa-profile-channel-section {
+  margin-bottom: 0.5rem;
+}
+
+.pa-profile-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: var(--pa-touch-min);
+  padding: 0.5rem 0;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.pa-profile-toggle-checkbox {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  accent-color: var(--pa-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Notification type checkboxes */
+.pa-profile-notif-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.pa-profile-notif-check {
+  display: grid;
+  grid-template-columns: 1.25rem 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 0.875rem;
+  row-gap: 0.1rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pa-profile-notif-check:has(input:checked) {
+  border-color: var(--pa-primary);
+  background: #eff6ff;
+}
+
+.pa-profile-notif-checkbox {
+  grid-row: 1 / 3;
+  width: 1.125rem;
+  height: 1.125rem;
+  accent-color: var(--pa-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.pa-profile-notif-check-label {
+  grid-column: 2;
+  grid-row: 1;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.3;
+}
+
+.pa-profile-notif-check-desc {
+  grid-column: 2;
+  grid-row: 2;
+  font-size: 0.8125rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.pa-profile-channel-section--how {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.pa-profile-channel-section .pa-profile-row-desc {
+  margin-bottom: 1rem;
+}
+
+.pa-profile-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.pa-profile-radio {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: var(--pa-touch-min);
+  padding: 0.5rem 0;
+  cursor: pointer;
+}
+
+.pa-profile-radio input[type="radio"] {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  accent-color: var(--pa-primary);
+  cursor: pointer;
+}
+
+.pa-profile-radio span {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.pa-profile-radio-desc {
+  margin: 0 0 0 1.75rem;
+  font-size: 0.875rem;
+  color: var(--pa-text-muted);
+  padding-bottom: 0.25rem;
+}
+
+.pa-profile-saving {
+  margin-top: 0.75rem;
+  font-size: 0.9375rem;
+}
+
+.pa-profile-success {
+  margin-top: 0.75rem;
+  color: var(--pa-reminder-completed-accent);
+  font-weight: 500;
+}
+
+.pa-profile-error {
+  margin-top: 0.75rem;
+}
+
+.pa-profile-voice-intro {
+  margin-bottom: 1rem;
+  line-height: 1.45;
+}
+
+.pa-profile-voice-test-row {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pa-profile-test-speech-btn {
+  align-self: flex-start;
+}
+
+/* Voice options (Voice + Speed selects) */
+.pa-profile-voice-options {
+  margin-top: 0.75rem;
+  padding: 1rem;
+  background: var(--pa-bg, #f8fafc);
+  border-radius: 8px;
+  border: 1px solid var(--pa-border);
+}
+
+.pa-profile-voice-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 480px) {
+  .pa-profile-voice-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pa-profile-voice-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.pa-profile-voice-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--pa-text);
+}
+
+.pa-profile-select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  min-height: var(--pa-touch-min);
+  font-size: 0.9375rem;
+  border: 1px solid var(--pa-border);
+  border-radius: 8px;
+  background: var(--pa-surface);
+  color: var(--pa-text);
+  accent-color: var(--pa-primary);
+  cursor: pointer;
+}
+
+.pa-profile-test-status {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.pa-profile-push-status {
+  margin-top: 0.75rem;
+}
+
+/* Permission box (separate card when push needs permission) */
+.pa-profile-permission-box {
+  margin-top: 1.25rem;
+}
+
+.pa-profile-permission-box.pa-profile-card {
+  background: var(--pa-bg-subtle, #f1f5f9);
+  border: 1px solid var(--pa-border);
+}
+
+.pa-profile-permission-text {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.9375rem;
+  color: var(--pa-text);
+  line-height: 1.4;
+}
+
+.pa-profile-permission-iphone,
+.pa-profile-permission-pwa {
+  margin: 0.5rem 0 0.75rem 0;
+  font-size: 0.875rem;
+  color: var(--pa-text-muted);
+  line-height: 1.4;
+}
+
+.pa-profile-permission-box .pa-profile-test-btn {
+  margin-top: 1rem;
+}
+
+/* Calls card: label + pill switch (matches location row layout) */
+.pa-profile-calls-push-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--pa-border);
+  min-height: var(--pa-touch-min);
+}
+
+.pa-profile-toggle--calls {
+  margin-top: 2px;
+}
+
+.pa-profile-calls-push-status {
+  margin: 0.5rem 0 0;
+  font-size: 0.875rem;
+}
+
+/* Segmented pill control (location pause) — plain labels for cognitive accessibility */
+.pa-profile-location-pause-legend {
+  margin: 0.75rem 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--pa-text);
+  line-height: 1.45;
+}
+
+.pa-profile-location-pause-intro {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+
+.pa-profile-location-pause-choose {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--pa-text);
+}
+
+.pa-pill-segment {
+  display: flex;
+  width: 100%;
+  padding: 4px;
+  box-sizing: border-box;
+  background: color-mix(in srgb, var(--pa-border) 45%, var(--pa-bg, #f1f5f9));
+  border-radius: 999px;
+  gap: 4px;
+  border: 1px solid var(--pa-border);
+}
+
+.pa-pill-segment__btn {
+  flex: 1;
+  min-width: 0;
+  min-height: 52px;
+  padding: 8px 6px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--pa-text);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.pa-pill-segment__main {
+  display: block;
+}
+
+.pa-pill-segment__hint {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--pa-text);
+  opacity: 0.72;
+  line-height: 1.25;
+  max-width: 100%;
+}
+
+.pa-pill-segment__btn.is-active .pa-pill-segment__hint {
+  color: var(--pa-primary);
+  opacity: 0.9;
+}
+
+.pa-pill-segment__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pa-pill-segment__btn.is-active {
+  background: var(--pa-surface);
+  color: var(--pa-primary);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+.pa-pill-segment__btn:focus-visible {
+  outline: 2px solid var(--pa-primary);
+  outline-offset: 2px;
+}
+
+@supports not (background: color-mix(in srgb, white 50%, black)) {
+  .pa-pill-segment {
+    background: #e2e8f0;
+  }
+}
+
+@media (min-width: 380px) {
+  .pa-pill-segment__btn {
+    font-size: 0.875rem;
+    padding: 10px 8px;
+  }
+  .pa-pill-segment__hint {
+    font-size: 0.75rem;
+  }
+}

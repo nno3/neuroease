@@ -16,6 +16,7 @@ Please choose the structure of the contents of this repository that suits the ne
 - **Caregiver Dashboard**: [`/caregiver-dashboard`](./caregiver-dashboard) - React web application
 - **Patient Application**: [`/patient-app`](./patient-app) - React PWA for elderly users
 - **Documentation**: [`/docs`](./docs) - Architecture diagrams, API docs, testing plans
+- **Sprints**: [`/docs/sprints`](./docs/sprints) - Sprint plans and issues (e.g. Geolocation Sharing)
 
 ### Key Files
 - [`DoD.md`](./DoD.md) - Definition of Done criteria
@@ -26,7 +27,7 @@ Please choose the structure of the contents of this repository that suits the ne
 
 ### Getting Started
 1. **Backend Setup**: See [`docs/BackendSetUp.md`](./docs/BackendSetUp.md)
-2. **Caregiver Dashboard**: See [`docs/caregiverDashboard.md`](./docs/caregiverDashboard.md)
+2. **Caregiver Dashboard**: See [`docs/caregiverDashboard.md`](./docs/CaregiverDashboard.md)
 3. **Patient App**: See [`docs/PatientApp.md`](./docs/PatientApp.md)
 
 ---
@@ -172,6 +173,7 @@ main (production)
 git clone <repository-url>
 cd na429
 
+
 # Backend setup
 cd backend
 npm install
@@ -181,15 +183,13 @@ npm start
 # Caregiver dashboard (new terminal)
 cd ../caregiver-dashboard
 npm install
-npm start
+npm run dev
 
 # Patient app (new terminal)
 cd ../patient-app
 npm install
-npm start
+npm run dev
 ```
 
-**Detailed instructions**: See individual documentation files in `docs/` which I will implement once done with each part of this project
-
----
+**Detailed instructions**: See individual documentation files in `docs/`
 

@@ -1,0 +1,13 @@
+{
+  "appId": "com.neuroease.patient",
+  "appName": "NeuroEase",
+  "webDir": "dist",
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  },
+  "android": {
+    "useLegacyBridge": true
+  }
+}
