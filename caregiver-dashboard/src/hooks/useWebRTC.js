@@ -251,6 +251,9 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
     }, [callType]);
     /** User-facing (front) vs environment (back) — updated by switchCamera and reset. */
     const facingUserRef = useRef(true);
+    /** Set while acceptCall is building the peer (blocks late incoming-preview getUserMedia from clobbering). */
+    const acceptingCallRef = useRef(false);
+    const [localMediaRevision, setLocalMediaRevision] = useState(0);
     const [incomingCallType, setIncomingCallType] = useState('video');
     const [incomingFrom, setIncomingFrom] = useState(null);
     const [callDuration, setCallDuration] = useState(0);
@@ -450,6 +453,7 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
         setCallType('video');
         callTypeRef.current = 'video';
         facingUserRef.current = true;
+        acceptingCallRef.current = false;
     }, [clearCallTimeout, stopTimer, stopLocalStream, closePeer, setCallStateSynced]);
 
     const flushPendingIce = useCallback(async (pc) => {
@@ -658,6 +662,7 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
             localVideoRef.current.play().catch(() => {});
         }
         attachLocalTrackEndedHandlers(stream);
+        setLocalMediaRevision((n) => n + 1);
         return stream;
     }, [attachLocalTrackEndedHandlers]);
 
@@ -745,12 +750,46 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
 
         setRemoteUserIdSynced(from);
         setCallType(mediaKind);
+        acceptingCallRef.current = true;
 
         try {
             const sock = socketRef.current ?? socket;
             await waitForSocket(sock);
 
-            const stream = await getMedia(mediaKind);
+            let stream = localStreamRef.current;
+            const hasVideoPreviewOnly =
+                stream &&
+                mediaKind === 'video' &&
+                stream.getVideoTracks().length > 0 &&
+                stream.getAudioTracks().length === 0;
+            if (hasVideoPreviewOnly) {
+                try {
+                    const audioStream = await navigator.mediaDevices.getUserMedia({
+                        audio: true,
+                        video: false,
+                    });
+                    audioStream.getAudioTracks().forEach((t) => stream.addTrack(t));
+                    if (localVideoRef.current) {
+                        localVideoRef.current.srcObject = stream;
+                        void localVideoRef.current.play().catch(() => {});
+                    }
+                    attachLocalTrackEndedHandlers(stream);
+                    setLocalMediaRevision((n) => n + 1);
+                } catch (e) {
+                    throw explainGetUserMediaError(e);
+                }
+            } else {
+                if (stream) {
+                    try {
+                        stream.getTracks().forEach((t) => t.stop());
+                    } catch {
+                        /* ignore */
+                    }
+                    localStreamRef.current = null;
+                    if (localVideoRef.current) localVideoRef.current.srcObject = null;
+                }
+                stream = await getMedia(mediaKind);
+            }
             const pc = createPeer(mediaKind);
             const offerInit = normalizeSessionDescription(incomingOfferRef.current, 'offer');
             if (!offerInit) {
@@ -783,6 +822,8 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
             }
             reset();
             if (b) setCallBanner(b);
+        } finally {
+            acceptingCallRef.current = false;
         }
     }, [
         getMedia,
@@ -900,6 +941,51 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
             setCallType(incomingCallTypeRef.current);
             callTypeRef.current = incomingCallTypeRef.current;
             setCallStateSynced('incoming');
+
+            if (incomingCallTypeRef.current === 'video') {
+                void (async () => {
+                    if (acceptingCallRef.current) return;
+                    const videoConstraints = facingUserRef.current
+                        ? { facingMode: 'user' }
+                        : { facingMode: { ideal: 'environment' } };
+                    let s;
+                    try {
+                        s = await navigator.mediaDevices.getUserMedia({
+                            audio: false,
+                            video: videoConstraints,
+                        });
+                    } catch (e) {
+                        if (import.meta.env.DEV) console.warn('[call] incoming video preview getUserMedia', e);
+                        return;
+                    }
+                    if (acceptingCallRef.current) {
+                        s.getTracks().forEach((t) => t.stop());
+                        return;
+                    }
+                    if (callStateRef.current !== 'incoming') {
+                        s.getTracks().forEach((t) => t.stop());
+                        return;
+                    }
+                    const current = localStreamRef.current;
+                    if (current && current.getAudioTracks().length > 0) {
+                        s.getTracks().forEach((t) => t.stop());
+                        return;
+                    }
+                    if (current) {
+                        current.getTracks().forEach((t) => t.stop());
+                    }
+                    localStreamRef.current = s;
+                    attachLocalTrackEndedHandlers(s);
+                    const el = localVideoRef.current;
+                    if (el) {
+                        el.srcObject = s;
+                        el.muted = true;
+                        el.playsInline = true;
+                        void el.play().catch(() => {});
+                    }
+                    setLocalMediaRevision((n) => n + 1);
+                })();
+            }
         };
 
         const onAnswer = async ({ answer }) => {
@@ -972,7 +1058,18 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
             socket.off('call:reject', onReject);
             socket.off('call:cancel', onCancel);
         };
-    }, [socket, setCallStateSynced, clearCallTimeout, startTimer, stopTimer, stopLocalStream, closePeer, reset, flushPendingIce]);
+    }, [
+        socket,
+        setCallStateSynced,
+        clearCallTimeout,
+        startTimer,
+        stopTimer,
+        stopLocalStream,
+        closePeer,
+        reset,
+        flushPendingIce,
+        attachLocalTrackEndedHandlers,
+    ]);
 
     useEffect(() => {
         if (!socket) return;
@@ -1022,7 +1119,7 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
             el.playsInline = true;
             void el.play().catch(() => {});
         }
-    }, [callState, callType, incomingCallType]);
+    }, [callState, callType, incomingCallType, localMediaRevision]);
 
     const unlockRemoteAudio = useCallback(() => {
         const nodes = [remoteAudioRef.current, remoteVideoRef.current];
