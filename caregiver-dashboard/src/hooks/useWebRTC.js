@@ -245,6 +245,12 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
     const [callState, setCallState] = useState('idle');
     const [remoteUserId, setRemoteUserId] = useState(null);
     const [callType, setCallType] = useState('video');
+    const callTypeRef = useRef('video');
+    useEffect(() => {
+        callTypeRef.current = callType;
+    }, [callType]);
+    /** User-facing (front) vs environment (back) — updated by switchCamera and reset. */
+    const facingUserRef = useRef(true);
     const [incomingCallType, setIncomingCallType] = useState('video');
     const [incomingFrom, setIncomingFrom] = useState(null);
     const [callDuration, setCallDuration] = useState(0);
@@ -441,6 +447,9 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
         incomingFromRef.current = null;
         setRemoteUserId(null);
         setIncomingFrom(null);
+        setCallType('video');
+        callTypeRef.current = 'video';
+        facingUserRef.current = true;
     }, [clearCallTimeout, stopTimer, stopLocalStream, closePeer, setCallStateSynced]);
 
     const flushPendingIce = useCallback(async (pc) => {
@@ -630,10 +639,13 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
     );
 
     const getMedia = useCallback(async (mediaKind) => {
+        const videoConstraints = facingUserRef.current
+            ? { facingMode: 'user' }
+            : { facingMode: { ideal: 'environment' } };
         const constraints =
             mediaKind === 'audio'
                 ? { audio: true, video: false }
-                : { audio: true, video: { facingMode: 'user' } };
+                : { audio: true, video: videoConstraints };
         let stream;
         try {
             stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -816,6 +828,59 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
         });
     }, []);
 
+    /**
+     * Swap front (user) and back (environment) camera on an active video call.
+     */
+    const switchCamera = useCallback(async () => {
+        const pc = pcRef.current;
+        const stream = localStreamRef.current;
+        if (!pc || !stream) return;
+        if (callStateRef.current !== 'active' || callTypeRef.current !== 'video') return;
+        const videoSender = pc.getSenders().find((s) => s.track && s.track.kind === 'video');
+        if (!videoSender?.track) return;
+        const oldVt = videoSender.track;
+        const nextUser = !facingUserRef.current;
+        const constraints = {
+            audio: false,
+            video: nextUser
+                ? { facingMode: 'user' }
+                : { facingMode: { ideal: 'environment' } },
+        };
+        let newStream;
+        try {
+            newStream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (e) {
+            console.warn('[call] switchCamera getUserMedia', e);
+            return;
+        }
+        const newVt = newStream.getVideoTracks()[0];
+        if (!newVt) {
+            newStream.getTracks().forEach((t) => t.stop());
+            return;
+        }
+        try {
+            await videoSender.replaceTrack(newVt);
+        } catch (e) {
+            newVt.stop();
+            console.warn('[call] switchCamera replaceTrack', e);
+            return;
+        }
+        facingUserRef.current = nextUser;
+        try {
+            stream.removeTrack(oldVt);
+        } catch {
+            /* ignore */
+        }
+        oldVt.stop();
+        stream.addTrack(newVt);
+        newStream.getAudioTracks().forEach((t) => t.stop());
+        const el = localVideoRef.current;
+        if (el) {
+            el.srcObject = stream;
+            el.play().catch(() => {});
+        }
+    }, []);
+
     useEffect(() => {
         if (!socket) return;
 
@@ -832,6 +897,8 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
             incomingCallTypeRef.current = ct === 'audio' ? 'audio' : 'video';
             setIncomingFrom(fromId);
             setIncomingCallType(incomingCallTypeRef.current);
+            setCallType(incomingCallTypeRef.current);
+            callTypeRef.current = incomingCallTypeRef.current;
             setCallStateSynced('incoming');
         };
 
@@ -943,7 +1010,9 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
     /** Local preview must attach whenever the <video> exists; getUserMedia often runs before refs mount (calling/incoming). */
     useLayoutEffect(() => {
         const stream = localStreamRef.current;
-        if (!stream || callType !== 'video') return;
+        const isVideoCall =
+            callState === 'incoming' ? incomingCallType === 'video' : callType === 'video';
+        if (!stream || !isVideoCall) return;
         if (!['calling', 'incoming', 'active'].includes(callState)) return;
         const el = localVideoRef.current;
         if (!el) return;
@@ -953,7 +1022,7 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
             el.playsInline = true;
             void el.play().catch(() => {});
         }
-    }, [callState, callType]);
+    }, [callState, callType, incomingCallType]);
 
     const unlockRemoteAudio = useCallback(() => {
         const nodes = [remoteAudioRef.current, remoteVideoRef.current];
@@ -1013,6 +1082,7 @@ export function useWebRTC({ socketRef, socket, onCallerTimeout }) {
         cancelCall,
         toggleMute,
         toggleVideo,
+        switchCamera,
         speakerOutputOn,
         toggleSpeakerOutput,
         speakerOutputAvailable: remoteSpeakerOutputAvailable(),

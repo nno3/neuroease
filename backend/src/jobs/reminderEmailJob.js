@@ -166,7 +166,8 @@ async function runReminderEmailJob() {
             const due = isDueAndUnsent(reminder, now);
             if (isDev) {
                 const scheduled = new Date(reminder.scheduledTime);
-                console.log(`Reminder job: reminder ${reminder.id} scheduled=${scheduled.toISOString()} now=${now.toISOString()} due=${due} channel=${channel}`);
+                console.log(`Reminder job: reminder ${reminder.id} scheduled=${scheduled.toISOString()}
+                now=${now.toISOString()} due=${due} channel=${channel}`);
             }
             if (!due) continue;
 
@@ -197,11 +198,14 @@ async function runReminderEmailJob() {
             } else if (channelLower === 'push') {
                 const subs = await PushSubscription.findAll({ where: { userId: patientUser.id } });
                 if (subs.length === 0) {
-                    console.warn(`Reminder job: reminder ${reminder.id} – user ${patientUser.id} has push selected but no push subscription. Re-select In-app push in the app Profile.`);
+                    console.warn(`Reminder job: reminder ${reminder.id} – user ${patientUser.id} has push selected but no push subscription.
+                     Re-select In-app push in the app Profile.`);
+
                     continue;
                 }
                 if (!configureVapid()) {
-                    console.warn(`Reminder job: reminder ${reminder.id} – VAPID keys not configured. Set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY.`);
+                    console.warn(`Reminder job: reminder ${reminder.id} – VAPID keys not configured. Set VAPID_PUBLIC_KEY and 
+                    VAPID_PRIVATE_KEY.`);
                     continue;
                 }
                 let anySent = false;

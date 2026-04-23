@@ -210,6 +210,12 @@
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
+/* Cosmetic mirror of self-view only (not sent to peer). */
+.call-local-pip--mirror {
+    transform: scaleX(-1);
+    transform-origin: center center;
+}
+
 .call-controls {
     display: flex;
     gap: 1.15rem;

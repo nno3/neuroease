@@ -37,7 +37,7 @@ function LayoutInner() {
         needsAudioUnlock, unlockRemoteAudio,
         callBanner, clearCallBanner,
         acceptCall, rejectCall, endCall, cancelCall,
-        toggleMute, toggleVideo,
+        toggleMute, toggleVideo, switchCamera,
         speakerOutputOn, toggleSpeakerOutput, speakerOutputAvailable,
     } = useCall();
 
@@ -91,6 +91,7 @@ function LayoutInner() {
                 onCancel={cancelCall}
                 onToggleMute={toggleMute}
                 onToggleVideo={toggleVideo}
+                onSwitchCamera={switchCamera}
                 speakerOutputOn={speakerOutputOn}
                 onToggleSpeakerOutput={toggleSpeakerOutput}
                 speakerOutputAvailable={speakerOutputAvailable}

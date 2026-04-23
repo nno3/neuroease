@@ -89,11 +89,13 @@ const validate = (schema) => {
             });
             next();
         } catch (error) {
-            console.log('Yup validation error details:', {
-                message: error.message,
-                errors: error.errors,
-                inner: error.inner
-            });
+            if (process.env.NODE_ENV !== 'test') {
+                console.log('Yup validation error details:', {
+                    message: error.message,
+                    errors: error.errors,
+                    inner: error.inner
+                });
+            }
 
             let errorMessages = [];
 

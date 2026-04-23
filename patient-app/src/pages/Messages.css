@@ -146,6 +146,23 @@
     gap: 10px;
 }
 
+.pa-msg-date-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin: 4px 0 6px;
+}
+
+.pa-msg-date-divider-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    background: #e2e8f0;
+    padding: 4px 12px;
+    border-radius: 999px;
+}
+
 .pa-msg-bubble-row { display: flex; }
 .pa-msg-bubble-row--mine { justify-content: flex-end; }
 
@@ -256,6 +273,12 @@
     gap: 5px;
     font-size: 13px;
     color: #64748b;
+    margin: 0 0 8px 0;
+}
+
+.pa-msg-meeting-sent {
+    font-size: 11px;
+    color: #94a3b8;
     margin: 0 0 12px 0;
 }
 

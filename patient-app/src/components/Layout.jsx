@@ -1,5 +1,5 @@
 /**
- * Logged-in shell: header (app name + logout), main content area, bottom nav.
+ * Logged-in shell: header (app name), main content area, bottom nav.
  * Wraps the whole app in CallProvider so incoming calls are detected on every page.
  */
 import React, { useEffect } from 'react';
@@ -13,7 +13,7 @@ import { Gamepad2, Bell, MessageSquare, UserRound } from "lucide-react";
 import "./Layout.css";
 
 function LayoutInner() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const {
@@ -22,7 +22,7 @@ function LayoutInner() {
     needsAudioUnlock, unlockRemoteAudio,
     callBanner, clearCallBanner,
     acceptCall, rejectCall, endCall, cancelCall,
-    toggleMute, toggleVideo,
+    toggleMute, toggleVideo, switchCamera,
     speakerOutputOn, toggleSpeakerOutput, speakerOutputAvailable,
   } = useCall();
 
@@ -35,11 +35,6 @@ function LayoutInner() {
     navigator.serviceWorker?.addEventListener("message", onMsg);
     return () => navigator.serviceWorker?.removeEventListener("message", onMsg);
   }, [navigate]);
-
-  const handleLogout = () => {
-    logout();
-    navigate("/login", { replace: true });
-  };
 
   return (
     <div className="pa-layout">
@@ -60,6 +55,7 @@ function LayoutInner() {
         onCancel={cancelCall}
         onToggleMute={toggleMute}
         onToggleVideo={toggleVideo}
+        onSwitchCamera={switchCamera}
         speakerOutputOn={speakerOutputOn}
         onToggleSpeakerOutput={toggleSpeakerOutput}
         speakerOutputAvailable={speakerOutputAvailable}
@@ -78,16 +74,6 @@ function LayoutInner() {
       )}
       <header className="pa-header" role="banner">
         <h1 className="pa-header-title">NeuroEase</h1>
-        {user && (
-          <button
-            type="button"
-            className="pa-header-logout"
-            onClick={handleLogout}
-            aria-label="Log out"
-          >
-            Log out
-          </button>
-        )}
       </header>
       <main id="pa-main" className="pa-main" role="main">
         <Outlet />

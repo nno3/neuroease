@@ -5,6 +5,7 @@
  */
 import React from 'react';
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLocationSharing } from "../context/LocationSharingContext";
 import { apiRequest } from "../services/apiClient";
@@ -61,7 +62,8 @@ function getLocationPauseSegment(pauseActive, pausedUntilIso) {
 }
 
 export default function Profile() {
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const {
     locationConsent,
     setLocationConsent,
@@ -681,7 +683,9 @@ export default function Profile() {
                 />
                 <span>In-app push</span>
               </label>
-              <p id="pa-channel-push-desc" className="pa-profile-radio-desc">Get a notification on this device (works with Add to Home Screen). iOS 16.4+ for iPhone/iPad.</p>
+              <p id="pa-channel-push-desc" className="pa-profile-radio-desc">
+                Get a notification on this device. Install the app from your browser (Add to Home Screen or Install app). On iPhone or iPad, Safari supports this from iOS 16.4. On Android phones and tablets, use Chrome and allow notifications.
+              </p>
               <label className="pa-profile-radio">
                 <input
                   type="radio"
@@ -898,9 +902,6 @@ export default function Profile() {
           <p className="pa-profile-row-desc pa-profile-location-desc">
             Share your location with your caregiver so they can see where you are and get alerts if you leave a safe zone.
           </p>
-          <p className="pa-profile-location-note">
-            <strong>For caregivers:</strong> Location is sent automatically. No need for the patient to do anything. When using the app in a browser, tracking works while the app is open. For <strong>24/7 tracking</strong> (even when the app is closed), install the native iOS/Android app – see setup guide in the project docs.
-          </p>
           <div className="pa-profile-toggle-row">
             <div className="pa-profile-toggle-text">
               <span className="pa-profile-row-label">Location sharing</span>
@@ -1067,6 +1068,20 @@ export default function Profile() {
           </button>
         </div>
       )}
+
+      <div className="pa-profile-logout-wrap">
+        <button
+          type="button"
+          className="pa-btn pa-btn--danger pa-profile-logout-btn"
+          onClick={() => {
+            logout();
+            navigate("/login", { replace: true });
+          }}
+          aria-label="Log out"
+        >
+          Log out
+        </button>
+      </div>
     </div>
   );
 }

@@ -80,7 +80,7 @@ export default function Login() {
     return (
       <div className="pa-page pa-page--center">
         <div className="pa-card">
-          <h1 className="pa-title">Log in</h1>
+          <h1 className="pa-title">Login</h1>
           <p className="pa-muted">{status === "link-error" ? message : "Opening your account…"}</p>
           {status === "link-error" && (
             <Link to="/login" className="pa-btn pa-btn--primary">
@@ -95,7 +95,7 @@ export default function Login() {
   return (
     <div className="pa-page pa-page--center">
       <div className="pa-card">
-        <h1 className="pa-title">Log in</h1>
+        <h1 className="pa-title">Login</h1>
         <p className="pa-muted">We'll send you a link to open the app. No password needed.</p>
         <form onSubmit={handleSubmit} className="pa-form">
           <label htmlFor="pa-email" className="pa-label">
@@ -121,7 +121,11 @@ export default function Login() {
           </button>
         </form>
         {message && (
-          <p className={status === "error" ? "pa-error" : "pa-muted"} style={{ marginTop: "1rem" }}>
+          <p
+            className={status === "error" ? "pa-error" : "pa-success"}
+            style={{ marginTop: "1rem" }}
+            role={status === "error" ? "alert" : "status"}
+          >
             {message}
           </p>
         )}

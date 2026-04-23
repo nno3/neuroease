@@ -39,15 +39,15 @@
   margin-bottom: 0.5rem;
 }
 
-.pa-profile-location-note {
-  font-size: 0.8125rem;
-  color: var(--pa-text-muted);
-  line-height: 1.4;
-  margin: 0.75rem 0 0;
-  padding: 0.75rem;
-  background: var(--pa-bg, #f8fafc);
-  border-radius: 8px;
-  border-left: 3px solid var(--pa-primary);
+.pa-profile-logout-wrap {
+  margin-top: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.pa-profile-logout-btn {
+  width: 100%;
+  min-height: var(--pa-touch-min, 44px);
+  font-weight: 600;
 }
 
 .pa-profile-simulated-banner {
@@ -348,8 +348,13 @@
 
 .pa-profile-success {
   margin-top: 0.75rem;
+  padding: 12px 14px;
   color: var(--pa-reminder-completed-accent);
-  font-weight: 500;
+  font-weight: 600;
+  background: var(--pa-reminder-completed-bg);
+  border: 1px solid var(--pa-reminder-completed-border);
+  border-radius: 8px;
+  line-height: 1.45;
 }
 
 .pa-profile-error {

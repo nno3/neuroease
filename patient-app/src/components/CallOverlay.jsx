@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     Phone, PhoneOff, PhoneIncoming, Video, VideoOff,
-    Mic, MicOff, PhoneMissed, Volume2,
+    Mic, MicOff, PhoneMissed, Volume2, FlipHorizontal, RefreshCw,
 } from 'lucide-react';
 import './CallOverlay.css';
 
@@ -34,12 +34,14 @@ export default function CallOverlay({
     onCancel,
     onToggleMute,
     onToggleVideo,
+    onSwitchCamera,
     speakerOutputOn = false,
     onToggleSpeakerOutput,
     speakerOutputAvailable = false,
 }) {
     const [muted, setMuted] = useState(false);
     const [videoOff, setVideoOff] = useState(false);
+    const [mirrorLocalPreview, setMirrorLocalPreview] = useState(false);
     /** Stop Web Audio ring before getUserMedia — iOS often breaks mic/remote play if oscillator is still running. */
     const [suppressRingtone, setSuppressRingtone] = useState(false);
 
@@ -51,7 +53,10 @@ export default function CallOverlay({
     }, [callState]);
 
     useEffect(() => {
-        if (callState === 'idle') setSuppressRingtone(false);
+        if (callState === 'idle') {
+            setSuppressRingtone(false);
+            setMirrorLocalPreview(false);
+        }
     }, [callState]);
 
     // Ringtone: synthesise two-tone ring on incoming
@@ -183,7 +188,7 @@ export default function CallOverlay({
                     (callState === 'calling' || callState === 'incoming' || callState === 'active') && (
                         <video
                             ref={localVideoRef}
-                            className="call-local-pip"
+                            className={`call-local-pip${mirrorLocalPreview ? ' call-local-pip--mirror' : ''}`}
                             autoPlay
                             playsInline
                             muted
@@ -246,6 +251,26 @@ export default function CallOverlay({
                                     title={videoOff ? 'Turn on camera' : 'Turn off camera'}
                                 >
                                     {videoOff ? <VideoOff size={22} /> : <Video size={22} />}
+                                </button>
+                            )}
+                            {callType === 'video' && !videoOff && (
+                                <button
+                                    type="button"
+                                    className={`call-btn call-btn-toggle${mirrorLocalPreview ? ' call-btn-active' : ''}`}
+                                    onClick={() => setMirrorLocalPreview((m) => !m)}
+                                    title="Mirror my preview"
+                                >
+                                    <FlipHorizontal size={22} />
+                                </button>
+                            )}
+                            {callType === 'video' && !videoOff && typeof onSwitchCamera === 'function' && (
+                                <button
+                                    type="button"
+                                    className="call-btn call-btn-toggle"
+                                    onClick={() => onSwitchCamera()}
+                                    title="Switch camera (front / back)"
+                                >
+                                    <RefreshCw size={22} />
                                 </button>
                             )}
                             <button className="call-btn call-btn-end" onClick={onEnd} title="End call">

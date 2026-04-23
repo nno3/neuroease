@@ -25,6 +25,45 @@ function formatTime(iso) {
     return d.toLocaleDateString([], { day: 'numeric', month: 'short' });
 }
 
+function formatMessageDetailTime(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
+
+function isSameCalendarDay(isoA, isoB) {
+    if (!isoA || !isoB) return false;
+    const a = new Date(isoA);
+    const b = new Date(isoB);
+    if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return false;
+    return (
+        a.getFullYear() === b.getFullYear() &&
+        a.getMonth() === b.getMonth() &&
+        a.getDate() === b.getDate()
+    );
+}
+
+function formatDateDividerLabel(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const now = new Date();
+    if (d.toDateString() === now.toDateString()) return 'Today';
+    const y = new Date(now);
+    y.setDate(y.getDate() - 1);
+    if (d.toDateString() === y.toDateString()) return 'Yesterday';
+    const opts = { weekday: 'long', day: 'numeric', month: 'long' };
+    if (d.getFullYear() !== now.getFullYear()) opts.year = 'numeric';
+    return d.toLocaleDateString('en-GB', opts);
+}
+
 function MeetingBadge({ message, myId, onRespond, onCancel }) {
     const isReceiver = message.receiverId === myId;
     const isSender = message.senderId === myId;
@@ -50,6 +89,7 @@ function MeetingBadge({ message, myId, onRespond, onCancel }) {
                     })}
                 </p>
             )}
+            <p className="pa-msg-meeting-sent">Sent {formatMessageDetailTime(message.createdAt)}</p>
             {isReceiver && message.meetingStatus === 'pending' && (
                 <div className="pa-msg-meeting-actions">
                     <button className="pa-msg-meeting-btn pa-msg-meeting-btn--accept" onClick={() => onRespond(message.id, 'accepted')}>
@@ -295,15 +335,23 @@ export default function Messages() {
                         return messages.map((msg, idx) => {
                             const isMine = msg.senderId === myId;
                             const isLastMine = idx === lastMineIdx;
+                            const showDateDivider =
+                                idx === 0 || !isSameCalendarDay(msg.createdAt, messages[idx - 1].createdAt);
                             return (
-                                <div key={msg.id} className={`pa-msg-bubble-row ${isMine ? 'pa-msg-bubble-row--mine' : ''}`}>
+                                <React.Fragment key={msg.id}>
+                                    {showDateDivider && (
+                                        <div className="pa-msg-date-divider" role="presentation">
+                                            <span className="pa-msg-date-divider-label">{formatDateDividerLabel(msg.createdAt)}</span>
+                                        </div>
+                                    )}
+                                <div className={`pa-msg-bubble-row ${isMine ? 'pa-msg-bubble-row--mine' : ''}`}>
                                     {msg.type === 'meeting_request' ? (
                                         <MeetingBadge message={msg} myId={myId} onRespond={respondToMeeting} onCancel={cancelMeeting} />
                                     ) : (
                                         <div className="pa-msg-bubble-wrap">
                                             <div className={`pa-msg-bubble ${isMine ? 'pa-msg-bubble--mine' : 'pa-msg-bubble--theirs'}`}>
                                                 <p className="pa-msg-bubble-text">{msg.content}</p>
-                                                <span className="pa-msg-bubble-time">{formatTime(msg.createdAt)}</span>
+                                                <span className="pa-msg-bubble-time">{formatMessageDetailTime(msg.createdAt)}</span>
                                             </div>
                                             {isMissedCallContent(msg.content) && (
                                                 <button
@@ -323,6 +371,7 @@ export default function Messages() {
                                         </div>
                                     )}
                                 </div>
+                                </React.Fragment>
                             );
                         });
                     })()

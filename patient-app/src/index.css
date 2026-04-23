@@ -160,6 +160,15 @@ button {
   background: #cbd5e1;
 }
 
+.pa-btn--danger {
+  background: #b91c1c;
+  color: #fff;
+}
+
+.pa-btn--danger:hover {
+  background: #991b1b;
+}
+
 .pa-form {
   display: flex;
   flex-direction: column;
@@ -207,6 +216,18 @@ a.pa-btn:focus-visible,
   color: #b91c1c;
   font-size: 1rem;
   margin: 0;
+}
+
+.pa-success {
+  color: var(--pa-reminder-completed-accent);
+  font-size: 1rem;
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--pa-reminder-completed-bg);
+  border: 1px solid var(--pa-reminder-completed-border);
+  border-radius: 8px;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
 /* ── Profile-driven accessibility (see utils/accessibilityPrefs.js) ───────── */
@@ -276,6 +297,16 @@ html[data-pa-contrast="high"] .pa-btn--secondary:hover {
   background: #d6d3d1;
 }
 
+html[data-pa-contrast="high"] .pa-btn--danger {
+  background: #7f1d1d;
+  color: #fff;
+  border: 2px solid #450a0a;
+}
+
+html[data-pa-contrast="high"] .pa-btn--danger:hover {
+  background: #991b1b;
+}
+
 html[data-pa-contrast="high"] .pa-pill-segment {
   background: #e7e5e4;
   border: 2px solid var(--pa-border);
@@ -295,6 +326,20 @@ html[data-pa-contrast="high"] .pa-profile-card {
   border-width: 2px;
   border-color: var(--pa-border);
   box-shadow: none;
+}
+
+html[data-pa-contrast="high"] .pa-success {
+  border-width: 2px;
+  color: #0f172a;
+  background: #dcfce7;
+  border-color: #15803d;
+}
+
+html[data-pa-contrast="high"] .pa-profile-success {
+  border-width: 2px;
+  color: #0f172a;
+  background: #dcfce7;
+  border-color: #15803d;
 }
 
 html[data-pa-contrast="high"] .pa-profile-toggle-slider {
