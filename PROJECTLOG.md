@@ -1,5 +1,26 @@
 # Project Log
 
+## Dissertation / thesis — how the document was developed (overview)
+
+The dissertation was built **in parallel** with the NeuroEase artefact, not as a last-week write-up. The aim was a single **thread of evidence** from research question → requirements (Chapter 3) → implementation narrative (Chapter 4) → testing and user evaluation (Chapter 5) → critical appraisal and conclusion (Chapters 6–7), with the **code, GitLab issues, and test outputs** as the primary sources and the Word manuscript as the **synthesis**.
+
+**Structure and order of writing**
+
+- **Foundation chapters (1–2):** Introduction and background drew on the early problem definition, literature, and module ethics stance (non-clinical, coordination support, not a medical device). The introduction was revisited **whenever** the scope of the system changed (e.g. new Ext- NFRs such as calls or the usability study) so the promises in Chapter 1 still matched the artefact and Chapter 5.
+- **Chapters 3–4 (requirements, design, implementation):** Chapter 3 was kept aligned with the SRS and MoSCoW work from earlier terms; as features shipped, the text was updated with **one-line traceability** from requirement IDs to the parts of the repo that satisfy them. Chapter 4 was drafted **from the repository**: route file structure, key controllers, and representative flows, then **checked back** to the real tree so the dissertation did not claim modules or endpoints that no longer exist after refactors.
+- **Chapter 5 (testing and evaluation):** Written in **layers**: (1) test **strategy** and the test pyramid, (2) automated testing evidence (`npm test`, route manifest, Jest counts), (3) manual and integration work tied to issues, (4) the usability study **only after** the Forms export and *n* were fixed, so **tables and SUS** did not have to be redone. **Tables were drafted first** (shells, then filled cells) so the surrounding prose could stay short and exact.
+- **Chapters 6–7 (appraisal, conclusion):** Chapter 6 was drafted from a **bulleted “limits and alternatives”** list so limitations were honest and specific (load testing, full accessibility certification, *n* and study host). Chapter 7 tied claims to **only** what Chapters 4–5 could support, with explicit **future work** and scope boundaries.
+
+**Practices that reduced rework**
+
+- A running **“claims I can support”** note: every sentence in the evaluation chapters had a link to a test, a figure, a table, a commit range, or an issue, or it was rephrased.
+- **Abstract last** in substance: SUS and exact test counts were checked into the abstract only when the same numbers appeared consistently in Chapters 5 and 7, to avoid rounding or copy-paste drift.
+- **Style and presentation:** Module heading hierarchy, list of figures, TOC field refresh, spellcheck, and a full **read-through in PDF** to catch bad page breaks, orphan headings, and placeholder text.
+- **Supervisor loop:** short status updates at key points (e.g. after Sprint 10 scope, after usability data, before final hand-in) with time to act on **scope and wording** feedback before the last week.
+
+**Tools (at a glance):** main manuscript in **Word**; data collection in **Microsoft Forms**; descriptives and SUS in **Excel**; ethics and method screenshots and forms export in the **evidence** pack; **GitLab** for process and test evidence cross-references.
+
+---
 
 ## Week 1 [w/c 29/09/2025]
 - Reviewed existing memory-aid and dementia-care applications to understand current features, limitations, and user experience patterns.
@@ -174,12 +195,6 @@ All major changes were captured in commit **`3a669f54`**
   
   After multiple revisions, the archiving system now works reliably and consistently.
   Output now correctly displays archived patients or shows a meaningful message
-
-
-Here is your **Week 12 project log entry**, written professionally and matching the style of your previous weeks.
-You can copy/paste directly into your `PROJECTLOG.md`.
-
----
 
 ## Week 12 [w/c 15/12/2025] 
 
@@ -728,17 +743,19 @@ Sprint 5: Activity Monitoring & Reporting Charts (Phase 2)  largely complete, wi
 - Updated patient profile UI and fixed a port conflict issue. Commit: `16b11a0a`
 - Added a "Go to location" button on the dashboard map for quicker navigation. Commit: `10d82547`
 
-*Usability Testing*
+*Usability testing (study run and thesis logistics)*
 
-- Began distributing the usability study survey to collect participant responses. Data collection ran in parallel with continued development throughout this period.
-- Prepared the `usability-testing` branch with a dedicated testing environment including test accounts, simulated location support, and login bypass for participants unfamiliar with the onboarding flow. Commits: `947da089`, `f85ded2b`, `4d76860d`
+- Began distributing the **Microsoft Forms** questionnaire to participants; tracked completions toward the target **n = 25** for the **evaluation** chapter. Data collection ran **in parallel** with development (evening/weekend sessions where needed to avoid overlap with development merges).
+- Prepared the `usability-testing` branch with a **governed** hosted build: **test** **caregiver** account, **simulated** location points, in-app **notices**, and **Settings** **protection** on the evaluation account. Commits: `947da089`, `f85ded2b`, `4d76860d`
+- **Ethics and method (dissertation):** Re-read **consent** tick-box text (age, voluntary participation, anonymised **reporting**, simulated patient data, **not** recruiting **vulnerable** users as the **sole** **cohort**). **Exported** a **snapshot** of the form structure and saved **screens** for the **ethics** / **methods** evidence set. Wrote a **step-by-step** **task** **script** (caregiver path → patient path) so **Likert** items referred to real actions participants had just performed.
+- **Chapter 5 draft (early):** Outlined **§5.5** (**design,** *n*, **instrument,** **descriptive** **analysis** only). Built an empty **Table 5.2** shell in the thesis Word file (**Mdn,** **IQR,** **M,** **SD,** **min,** **max**) ready for the Forms **CSV** export. Noted the **SUS** would be **two** **10-item** **blocks** (caregiver-worded and patient-worded) and recorded **reference** for **Brooke** scoring to cite later.
 - Fixed bugs identified during live testing sessions:
   - Bug in patient creation flow during testing. Commit: `3c556682`
   - Issues with safe zones, patient profile, and reminders identified during testing. Commit: `df66a3d9`
   - Additional fixes from testing feedback. Commit: `b812ad56`
-- Added project documentation. Commit: `9bb579f7`
+- **Repository** maintenance (non-feature). Commit: `9bb579f7`
 
-*Email and Deployment Infrastructure*
+*Email and deployment infrastructure*
 
 - Signed up for Resend and configured the `noreply@neuroease.info` domain for transactional email, replacing the previous Gmail SMTP setup.
 - Investigated and resolved SMTP delivery issues on Render (IPv4 DNS resolution, non-blocking email sends). Commits: `2f0ddda6`, `37fd020a`, `4d5a5f14`, `d8d2538d`, `fa403631`, `8428d33c`
@@ -803,3 +820,123 @@ Sprint 5: Activity Monitoring & Reporting Charts (Phase 2)  largely complete, wi
   - `messageNotifications` boolean added to `Patient` model and controller.
 
 *Supporting commits:* `96cd72aa` (caregiver dashboard messaging flow), `96f0bee9` (patient app messaging flow)
+
+*Dissertation work (parallel — late March)*
+
+- **Chapters 3 & 4 — alignment pass:** Tightened **traceability** so each **Ext-** requirement (messaging, calls, **Web** **Push,** usability study) had a one-line **mapping** in the main body. Drafted **§4.10** “implementation challenges” as a table first, then expanded rows (PWA/magic link, **WebRTC,** **Render** **/ SMTP,** **daily** **reminder** **job** **bug**) into subsections the examiner can open in the repo.
+- **Abstract / introduction (draft):** Swapped generic “app” phrasing for **non-clinical** **coordination** / **not** a **medical** **device**; left **SUS** and *n* = 25 in the **abstract** as **placeholders** until the Forms export was **frozen** (so numbers could not get out of sync with Chapter 5).
+- **Time split:** Tracked most days as **(a)** **implementation** and **(b)** **thesis** blocks; kept a “**claims I can support in Chapter 5**” list next to `npm test` and issue closures so the write-up and the **code** did not **drift**.
+- **Voice and consistency:** **Single pass** on Chapters 2–4 for tense and terminology (e.g. “the system”, “NeuroEase”, “caregiver dashboard”, “patient PWA”) so the document reads as one author, not a patchwork of week-by-week notes.
+- **Figure and callout discipline:** For any new **UI** shot, decided early whether it was a **main-chapter** figure or **appendix** material to **protect the word count**; stubbed **captions** with temporary labels until anonymisation was final.
+- **Chapter 5 forward planning:** Reserved **sub-section numbers** for automated tests, manual/issue-led testing, and the usability block so **§5.3**–**§5.5** could be filled in order without renumbering the whole chapter later.
+
+---
+
+## Week 25 [w/c 30/03/2026]
+
+*Sprint 10 (extended features) — product*
+
+- **Sprint 10 (extended features):** Continued on `develop` and feature branches for **WebRTC-based voice and video calls**, **Socket.IO** signalling, and deployment hardening after the messaging milestone.
+
+*Calls — First implementation and audio*
+
+- Began end-to-end **WebRTC** integration (signalling over existing **Socket.IO** connection, `useWebRTC` client hook, offer/answer/ICE, STUN/TURN from environment variables). Initial commits: `93875a1a` (first call implementation), `a1f39099` / `097e1f69` / `860ab7a2` (audio capture and routing fixes, including mobile **Safari** / autoplay and output device handling where supported).
+
+*Calls — UI, layout, and network robustness*
+
+- Refined in-call **layout** and spacing (call controls, video tiles). Commits: `b22584d7`, `e3b1cb7a`.
+- Addressed **ICE** / **SDP** and cross-network call setup issues (iterative fixes for candidate handling and renegotiation). Commits: `4edcead8`, `3de0d179`.
+- **Deployment and hosting:** Fixed **Render**-specific build/runtime issues (including a small deployment-breaking error and follow-up **debug** passes on production). Commits: `4ed2ac94`, `d1003d18`, `b239ef87`.
+
+*App shell and install affordances (caregiver client)*
+
+- Refined **caregiver** **favicon** and **PWA** **icon** set: **SVG** for the browser tab, **PNG** 192/512 for the web manifest, **180×180** for **iOS** “Add to Home Screen”, so icons stay sharp on high-DPI screens. Commit: `9a8efd10` (replaces a blurry rasterised icon issue when SVG alone was used for all surfaces). Follow-up: `d7791071`.
+
+*Sprint 10 — GitLab*
+
+- Opened/tracked issues (examples): **#43** messaging delivery, **#44** calls (WebRTC, UI, teardown), **#45** Web Push for calls/messages, **#46** accessibility pass, **#47** automated API testing. Closed out **Sprint 1–9** milestones and opened **Sprint 10: Extended features**; moved issues through **In Progress → Testing → Review → Done** with commit references and test evidence on the issue tracker.
+
+*Branch hygiene*
+
+- Non-functional **repository** cleanup. Commit: `88fe94ae`.
+
+*Dissertation work (Week 25 — in detail, alongside Sprint 10)*
+
+- **Chapter 4 vs repository audit:** Re-walked `httpApp.js` route mounts and compared to **§4.3.1** so every major feature group in the text exists in the tree (e.g. **messages,** **push,** **games**); **flagged** any **mismatch** before freeze.
+- **Figure hygiene:** Second **anonymisation** pass for all **UI** figures; re-exported low-DPI screenshots; shortened caption text in the body; moved long paths to the appendix if the word limit was tight.
+- **Chapter 5 — testing narrative (draft):** Wrote **§5.2** test pyramid to match how work was actually done; one explicit paragraph on why E2E was not full Playwright (realtime, PWA, time). Started **Table 5.1** with a citation in each cell to Jest, a GitLab issue, or the usability study.
+- **Usability (prep, no premature numbers):** Mapped each Forms column to a **Table 5.2** row; wrote the Brooke / SUS method in full; kept Abstract SUS numbers out until the export and Chapter 5 locked (avoids Abstract vs results mismatch).
+- **Chapter 6 (prep):** Bullet list of limits in a separate scratch section before turning into prose.
+- **References:** Tightened Socket.IO, WebRTC, Jest, W3C Push bibliography lines; checked punctuation against the module style guide.
+- **Headings and cross-references:** Confirmed **Word heading styles** (H1–H3) and automatic **caption numbering** so internal references (e.g. “see Table 5.1”) would survive edits without manual renumbering.
+- **From code comments to chapter text:** For WebRTC, push, and related **Env** variables, **mirrored** the same labels as in the deployment notes so Chapter 4 and the hand-in build instructions did not use different names for the same setting.
+- **Print-style read:** **One** full **on-screen** read of Chapters 2–4 in order, noting **repeated phrases** and **jargon** to trim; fixed **forward references** (text that said “described below” when the order had since changed).
+- **Supervisor check-in:** one-page status (Sprint 10 + chapter % complete); applied feedback to restate **non-clinical** scope in the intro and **Chapter 3**.
+- **Time:** aimed for about 2 h/day thesis on top of call/deploy work; logged editing time vs new words (tables were slower than narrative).
+
+---
+
+## Week 26 [w/c 06/04/2026]
+
+*Product (implementation)*
+
+- **Messages:** In-thread **“view** **patient** **details**” for **faster** **triage** (`df837334`).
+- **Patient** **PWA** **—** **accessibility** (Issue #46): **Text** **scale,** **contrast,** **motion,** **focus;** **device** test (`bb5f16bf`). **Token/session** for **long** PWA use (`d3f6d293`). **develop** had **messaging** + **accessibility** **ready** for **merge** **week**.
+
+*Dissertation work (Week 26 — in detail, heavy on analysis)*
+
+- **Forms → Excel pipeline:** Imported the **Microsoft Forms** export to **CSV**; checked encoding (UTF-8), delimiters, and column names against the live form so a refreshed export would not silently shift a column. Logged the **export date** in the methods / footnote for reproducibility.
+- **Task-scale descriptives (*n* = 25):** For eight task-related **Likert** items, calculated **Mdn, IQR, M, SD, min, max** in Excel. Spot-checked two **random** participant rows against the form export to catch row mis-alignment or paste errors.
+- **SUS (two 10-item blocks, caregiver- and patient-worded):** Per participant, 0–100 from 1–5 + **Brooke**; then group **M, SD,** range. Re-ran the spreadsheet after a formula slip on **SD** (sample standard deviation, *n* − 1 in denominator). Kept reporting **descriptive** (e.g. Bangor band **>68** where you use it), not **inferential** generalisation beyond *n* = 25.
+- **Categorical item (cluttered / just right / missing):** Frequencies; added a short footnote where **IQR = 0** reflected a ceiling or tight clustering, not a “perfect” user experience.
+- **Qualitative analysis (§5.5.3):** Themed open-text responses in a **scratch** table; picked three **verbatim** quotes with P-id anonymised; spread themes (e.g. navigation vs trust vs information density) rather than repeating the same point three times.
+- **Triangulation:** Aligned the narrative so task descriptives, SUS, and quotes **pulled the same way** where possible; where they did not, added one candid sentence (e.g. high usability scores alongside comments about **busy** screens) to avoid a one-sided read.
+- **Findings → implementation (§5.5.4 + Ch4):** Finalised the **finding → code/UI** table (on-time vs late labels, reminder type wording, daily recurrence issue) and linked rows to an **issue** or **merge** when available for a clear audit trail.
+- **§5.6 — limitations (first full prose pass):** Full sentences on no load test, no formal accessibility **certification** claim, *n* = 25, governed test host, self-report, device/browser mix. Cross-checked with the upcoming **Chapter 6** so limitations were not duplicated verbatim without a “see Chapter 6” style cross-reference.
+- **Figures in Chapter 5:** Refreshed the terminal / **Jest** test-count screenshot; checked **figure number ↔ caption ↔ list of figures** after inserts.
+- **Narrative under tables:** Two short “so what” paragraphs below the main quantitative results — one connecting task scores to the **scripted** tasks, one connecting **SUS** to the **System Usability Scale** / coordination burden language used in Chapter 1.
+- **Word count:** If a block of raw questionnaire text blew the section budget, moved it to the **appendix** with a one-line pointer in the main body.
+- **Instrument ↔ results check:** **Likert** label text in the results (e.g. 1 = … 5 = …) matches the **Forms** wording quoted in the method, so a marker cannot say results contradict the instrument.
+- **Document pass:** **TOC** field update, spellcheck, worst **widow/orphan** line breaks.
+- **Time:** about **12–18 h** on thesis; kept git activity on **#46** / messages work so the history matched the product story in the same week.
+
+---
+
+## Week 27 [w/c 13/04/2026]
+
+*Product (Issue #47 + main merge)*
+
+- **Jest** **+** **route** **manifest** = **91** **cases,** **one** `npm` `test` (`f5f2f118`, `d983e6a4`); **evidence** for **#47.**
+- **develop** **→** **main** **(`5ef6c6b`)**; **small** `main` **tidy** **`be22aa4a`**.
+
+*Dissertation work (Week 27 — in detail, integration and critical chapters)*
+
+- **§5.3.2 vs real `npm test` output:** Aligned the written description with a live run: the **79 + 12 + illustrative** (or your submitted) split, route file names, and any quoted failure/success line must match the terminal. Added a **scope** paragraph: what the **Jest** + **route** **manifest** suite covers (HTTP contracts, auth on protected routes) and what it does **not** (full **Playwright** E2E, real SMS, device push in CI).
+- **#47 → thesis traceability:** Wrote the **single-command** test workflow in Chapter 5; made **"91 tests"** identical across **GitLab** **#47,** the Jest **screenshot,** and the **body** text.
+- **Ch5 ↔ Ch4 names:** For WebRTC, **Socket.IO,** Jest, PWA, and a11y, the **names** in the testing chapter (hook, file path, issue #) are the same as in the implementation chapter so a marker can go **straight** to the right artefact.
+- **Chapter 6 — first full draft, six blocks:** (1) artefact **vs** original **aim,** (2) how evaluation was **designed,** (3) what **usability** and **testing** **warrant** in claims, (4) **credible** **alternatives** (stack, TURN, E2E tool choice), (5) **limitations,** (6) **reflective** **learning** (solo project, time, ethics). **Rough** per-section **word** budget so one section did not **balloon**.
+- **Abstract — second pass, numbers live:** Pinned **91,** *n* = 25, and **SUS** after test count was stable; searched **Abstract,** Ch5, and Ch7 in Word for the same numerals; **one** **rounding** rule for **SUS** across the document.
+- **Chapter 7 — skeleton in Week 27 only:** **Headings** + one-line **purpose** per section so the conclusion would not out-claim Chapter 6; final prose **Week 28.**
+- **After pasting Ch6:** Updated **list** of figures/tables, **TOC,** and removed any **TBD** figure or obsolete **§** references in the **prelims.**
+- **Hostile read (Ch3–4):** Read as a sceptical examiner; replaced overclaims (“fully tested,” “all NFRs met”) with **evidence**-based wording. **Fixed** at least one gap that only showed on this pass (often **NFR** depth or **deployment** **security**).
+- **References — audit:** A–Z list vs every **(Author, Year)** in the body; removed duplicates, fixed **et al.** and years on **Jest,** **WebRTC,** W3C entries.
+- **Reflection:** Replaced **scratch** **bullets** with formal **first-person** prose tied to real events (merge to **main,** #44, usability-driven fixes) — not a list of **modules.**
+- **Time:** 2–3 **focused** days on **Ch6,** **half** a day on Ch7 **outline** + abstract.
+ 
+---
+
+## Week 28 [w/c 20/04/2026] — to 27/04/2026 (submission due)
+
+*Product (close Issue #44, Sprint 10, video)*
+
+- **Camera** **flip,** **less** **debug** **log** **noise,** **local** **video** **preview** fix (`9a1d8225`, `b2425c42`, `eb5e34ac`). **#44** and **Sprint 10** **closed.**
+
+*Dissertation work (Week 28 — hand-in; light tidy-up)*
+
+- **Milestone (27/04/2026):** Dissertation and supporting pack **finished**; in-scope **artefact** work **closed**; ready to **submit**.
+- **Chapter 7:** Final pass on the **conclusion** (§7.1–7.7) so it **closes** the story: what was **achieved,** what the **evidence** supports, **limits,** and **future** work, without re-writing **Ch6.**
+- **Manuscript clean-up (surface level):** Light pass on Ch5–7 — line up key numbers (SUS, *n* = 25, Jest count) with the abstract, fix obvious repetition, and run through the standard tidy: template and front matter, figures presentable, clean PDF (no track changes or floating comments), word count, declaration, done.
+
+*Process evidence (brief)*
+
+- **GitLab** **#44–#47** and **Sprint 10** **closed** with **test** + **evidence** **threads.**
