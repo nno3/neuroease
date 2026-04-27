@@ -110,6 +110,19 @@ npm test
 
 ---
 
+## Hosted deployment (Render)
+
+When the project is deployed on [Render](https://render.com), you can open the public frontends without running anything locally:
+
+| App | URL |
+|-----|-----|
+| Caregiver dashboard | [neuroease-dashboard.onrender.com](https://neuroease-dashboard.onrender.com/) |
+| Patient PWA | [neuroease-patient.onrender.com](https://neuroease-patient.onrender.com/) |
+
+The API runs as its own service; the built apps are configured at build time to call that backend. Environment variables (database, `JWT_SECRET`, Resend, CORS, etc.) are set in the Render dashboard; see `docs/BackendSetUp.md` and `docs/Email-and-Resend.md` for details.
+
+---
+
 ## API surface (summary)
 
 The Express app mounts routes such as (non-exhaustive): `/api/auth`, `/api/patients`, `/api/reminders`, `/api/activity`, `/api/location`, `/api/safe-zones`, `/api/push`, `/api/games`, `/api/messages`, plus a **health** route. For full details, use `backend/src/httpApp.js` and the `routes/` and `controllers/` directories, and the extended API notes in `docs/BackendSetUp.md` and `docs/Backend.md`.
