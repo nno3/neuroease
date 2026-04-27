@@ -231,7 +231,7 @@ const patientController = {
       const PATIENT_APP_URL = process.env.PATIENT_APP_URL || 'http://localhost:5175';
       const inviteLink = `${PATIENT_APP_URL}/activate?token=${encodeURIComponent(inviteToken)}`;
 
-      // Send email in background – don't block the response (SMTP can be slow or hang)
+      // Send email in background – don't block the response (Resend is async HTTP)
       sendPatientInviteEmail(patientUser.email, patientUser.name, inviteToken)
         .then((emailResult) => {
           if (!emailResult.sent && emailResult.error) {
@@ -368,7 +368,7 @@ const patientController = {
           success: false,
           message: process.env.NODE_ENV === 'development'
             ? `Failed to send invite email: ${emailResult.error}`
-            : 'Failed to send invite email. Gmail SMTP often cannot connect from cloud hosts (blocked ports / timeouts).',
+            : 'Failed to send invite email. Check RESEND_API_KEY and MAIL_FROM on the server (see docs/Email-and-Resend.md).',
         });
       }
       res.json({
@@ -722,23 +722,17 @@ const patientController = {
 
   archivePatient: async (req, res) => {
     try {
-      console.log(' ARCHIVE REQUEST - Patient ID:', req.params.id);
-      console.log(' Request body:', req.body);
-
       const patientId = parseInt(req.params.id, 10);
       const { archiveReason, notes } = req.body;
 
       const patient = await User.findByPk(patientId);
 
       if (!patient) {
-        console.log(' Patient not found');
         return res.status(404).json({
           success: false,
           message: 'Patient not found',
         });
       }
-
-      console.log(' Patient found - Current is_archived:', patient.isArchived);
 
       if (patient.isArchived) {
         return res.status(400).json({
@@ -748,7 +742,6 @@ const patientController = {
       }
 
       if (req.user.userType !== 'caregiver') {
-        console.log(' Not a caregiver');
         return res.status(403).json({
           success: false,
           message: 'Only caregivers can archive patients',
@@ -759,10 +752,7 @@ const patientController = {
       const assignedPatients = await caregiver.getPatients();
       const patientIds = assignedPatients.map((p) => p.id);
 
-      console.log(' Caregiver assigned patients:', patientIds);
-
       if (!patientIds.includes(patientId)) {
-        console.log(' Patient not assigned to caregiver');
         return res.status(403).json({
           success: false,
           message: 'Access denied. Patient not assigned to you.',
@@ -778,8 +768,6 @@ const patientController = {
         });
       }
 
-      console.log(' Archiving patient with reason:', archiveReason);
-
       const updateData = {
         isArchived: true,
         archivedAt: new Date(),
@@ -789,13 +777,7 @@ const patientController = {
         updatedAt: new Date(),
       };
 
-      console.log(' Update data:', updateData);
-
       const updatedPatient = await patient.update(updateData);
-
-      console.log(' After update - is_archived:', updatedPatient.isArchived);
-      console.log(' After update - archivedAt:', updatedPatient.archivedAt);
-      console.log(' After update - archive_reason:', updatedPatient.archiveReason);
 
       res.json({
         success: true,
@@ -821,8 +803,6 @@ const patientController = {
   // Enhanced Unarchive function
   unarchivePatient: async (req, res) => {
     try {
-      console.log(' UNARCHIVE REQUEST - Patient ID:', req.params.id);
-
       const patientId = parseInt(req.params.id, 10);
       const { notes } = req.body;
 
@@ -855,8 +835,6 @@ const patientController = {
         archivedBy: patient.archivedBy,
       };
 
-      console.log(' Unarchiving patient...');
-
       const updateData = {
         isArchived: false,
         archivedAt: null,
@@ -873,8 +851,6 @@ const patientController = {
 
       const caregiver = await User.findByPk(req.user.userId);
       await caregiver.addPatient(patient);
-
-      console.log(' Patient unarchived and reassigned');
 
       res.json({
         success: true,

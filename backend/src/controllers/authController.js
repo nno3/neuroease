@@ -20,7 +20,7 @@ const MAGIC_LINK_EXPIRY_MS = 15 * 60 * 1000;         // 15 minutes
 const PATIENT_JWT_EXPIRES = process.env.PATIENT_JWT_EXPIRES || '30d';
 
 const authController = {
-    /** Caregiver sign-up: create user, set verification token, send email (or log link if no SMTP) */
+    /** Caregiver sign-up: create user, set verification token, send via Resend (or log link if no RESEND_API_KEY) */
     register: async (req, res) => {
         try {
             const { email, password, name, userType } = req.body;
@@ -50,12 +50,14 @@ const authController = {
             const emailResult = await sendVerificationEmail(user.email, user.name, verificationToken);
             if (!emailResult.sent && emailResult.error) {
                 console.error('Verification email failed:', emailResult.error);
-                // Still return success; they can use resend
             }
 
+            const emailSent = !!emailResult.sent;
             res.status(201).json({
                 success: true,
-                message: 'Registration successful. Please check your email to verify your account before logging in.',
+                message: emailSent
+                    ? 'Registration successful. Please check your email to verify your account before logging in.'
+                    : 'Account created, but the verification email could not be sent. Use “Resend verification” on the login page or see your server log for a one-time link.',
                 data: {
                     user: {
                         id: user.id,
@@ -63,7 +65,9 @@ const authController = {
                         name: user.name,
                         userType: user.userType,
                         isEmailVerified: false
-                    }
+                    },
+                    emailSent,
+                    noResendKey: !!emailResult.noKey
                 }
             });
         } catch (error) {
@@ -104,6 +108,9 @@ const authController = {
 
             const user = await User.findOne({ where: { emailHash: hashEmail(normalizedEmail) } });
             if (!user) {
+                if (process.env.NODE_ENV === 'development') {
+                    console.warn('[auth/login] 401: no user for this email (check spelling or register first).');
+                }
                 return res.status(401).json({
                     success: false,
                     message: 'Invalid email or password'
@@ -112,6 +119,9 @@ const authController = {
 
             const isValidPassword = await user.validatePassword(password);
             if (!isValidPassword) {
+                if (process.env.NODE_ENV === 'development') {
+                    console.warn('[auth/login] 401: wrong password for user id', user.id);
+                }
                 return res.status(401).json({
                     success: false,
                     message: 'Invalid email or password'
@@ -323,17 +333,29 @@ const authController = {
                 return res.status(400).json({ success: false, message: 'Verification token is required' });
             }
 
+            const now = new Date();
             const user = await User.findOne({
                 where: {
                     emailVerificationToken: token,
-                    emailVerificationTokenExpires: { [Op.gt]: new Date() }
+                    emailVerificationTokenExpires: { [Op.gt]: now }
                 }
             });
 
             if (!user) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Invalid or expired verification link. You can request a new one from the login page. If you can already log in, your email may already be verified—you can ignore this message.'
+                // Same token may still be on file but past expiry; otherwise the link was
+                // already used (token cleared) or was never valid — treat the latter as "done" UX.
+                const withToken = await User.findOne({ where: { emailVerificationToken: token } });
+                if (withToken) {
+                    return res.status(400).json({
+                        success: false,
+                        code: 'EXPIRED',
+                        message: 'This verification link has expired. Request a new one from the login page.'
+                    });
+                }
+                return res.json({
+                    success: true,
+                    code: 'LINK_INACTIVE',
+                    message: 'This link is no longer active. If you can log in, your email is already verified. Otherwise use “Resend verification” on the login page.'
                 });
             }
 
@@ -386,7 +408,7 @@ const authController = {
             if (!emailResult.sent && emailResult.error) {
                 console.error('Resend verification: email send failed:', emailResult.error);
                 const msg = process.env.NODE_ENV === 'development'
-                    ? `Failed to send verification email: ${emailResult.error}. Check backend/.env SMTP settings and backend terminal for details.`
+                    ? `Failed to send verification email: ${emailResult.error}. Check RESEND_API_KEY and MAIL_FROM in backend/.env (docs/Email-and-Resend.md). The server may have printed a verify link in the terminal.`
                     : 'Failed to send verification email. Please try again later.';
                 return res.status(500).json({ success: false, message: msg });
             }

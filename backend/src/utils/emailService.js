@@ -1,39 +1,9 @@
 /**
- * Sends email via Resend (preferred on Render) or SMTP.
- * Resend works reliably from cloud; Gmail SMTP often fails (IPv6, blocks).
- *
- * Env: RESEND_API_KEY (use Resend) OR SMTP_HOST, SMTP_USER, SMTP_PASS
- *      MAIL_FROM, FRONTEND_URL, PATIENT_APP_URL
+ * All transactional email uses the Resend HTTP API (HTTPS / 443).
+ * Configure RESEND_API_KEY and MAIL_FROM (verified domain or onboarding@resend.dev).
+ * See docs/Email-and-Resend.md
  */
-const dns = require('dns');
-const net = require('net');
-const nodemailer = require('nodemailer');
 const { Resend } = require('resend');
-
-/**
- * Nodemailer 8+ resolves IPv4+IPv6 and randomly picks one — Render has no IPv6 outbound.
- * Fix: connect to an IPv4 literal; tls.servername stays the real hostname (Gmail cert/SNI).
- */
-let smtpResolvedIpv4 = null;
-let smtpResolvedForHost = null;
-let cachedTransporter = null;
-let cachedTransporterKey = null;
-
-/** Resolve hostname to one IPv4 — avoids nodemailer's random IPv6 choice on cloud hosts */
-async function resolveSmtpIPv4(hostname) {
-    try {
-        const addrs = await dns.promises.resolve4(hostname);
-        if (addrs && addrs.length) return addrs[0];
-    } catch (_) {
-        /* fall through */
-    }
-    try {
-        const r = await dns.promises.lookup(hostname, { family: 4 });
-        return typeof r === 'string' ? r : r.address;
-    } catch (_) {
-        return null;
-    }
-}
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const PATIENT_APP_URL = process.env.PATIENT_APP_URL || 'http://localhost:5175';
@@ -48,69 +18,38 @@ function getResendClient() {
     return new Resend(process.env.RESEND_API_KEY);
 }
 
-/** Set by Render — used to log SMTP limitations on free tier */
-function isRunningOnRender() {
-    return process.env.RENDER === 'true' || process.env.RENDER === '1';
-}
-
-async function getTransporter() {
-    const host = process.env.SMTP_HOST;
-    const user = process.env.SMTP_USER;
-    const pass = process.env.SMTP_PASS;
-    const port = String(process.env.SMTP_PORT || '587');
-    if (!host || !user || !pass) return null;
-
-    const cacheKey = `${host}:${user}:${port}:${process.env.SMTP_SECURE || ''}`;
-    if (cachedTransporter && cachedTransporterKey === cacheKey) {
-        return cachedTransporter;
+/**
+ * @returns {Promise<{ ok: true } | { ok: false, noKey?: boolean, error?: string }>}
+ */
+async function resendOnlySend({ from, to, subject, html, text }) {
+    const resend = getResendClient();
+    if (!resend) {
+        return { ok: false, noKey: true };
     }
-
-    let connectHost = host;
-    const tlsServername = host;
-
-    if (!net.isIP(host)) {
-        if (smtpResolvedForHost !== host) {
-            smtpResolvedIpv4 = await resolveSmtpIPv4(host);
-            smtpResolvedForHost = host;
-            if (smtpResolvedIpv4) {
-                console.log(`SMTP connect via IPv4 ${smtpResolvedIpv4} → ${host} (TLS servername unchanged)`);
-            } else {
-                console.warn('SMTP could not resolve IPv4 for', host, '— delivery may fail on hosts without IPv6 (e.g. Render)');
-            }
+    try {
+        const { data, error } = await resend.emails.send({
+            from,
+            to,
+            subject,
+            html,
+            text: text || undefined,
+        });
+        if (error) {
+            return { ok: false, error: error.message || String(error) };
         }
-        if (smtpResolvedIpv4) {
-            connectHost = smtpResolvedIpv4;
-        }
+        return { ok: true, id: data?.id };
+    } catch (e) {
+        return { ok: false, error: e.message || String(e) };
     }
-
-    cachedTransporter = nodemailer.createTransport({
-        host: connectHost,
-        port: parseInt(port, 10),
-        secure: process.env.SMTP_SECURE === 'true',
-        auth: { user, pass },
-        connectionTimeout: 45000,
-        greetingTimeout: 30000,
-        socketTimeout: 60000,
-        tls: {
-            servername: tlsServername,
-        },
-    });
-    cachedTransporterKey = cacheKey;
-    return cachedTransporter;
 }
 
 /**
- * Send verification email. Returns { sent: true } only when email was sent via SMTP.
- * When SMTP is not configured, logs the link and returns { sent: true } so registration
- * still succeeds; user must set up SMTP to receive actual emails.
- *
- * @param {string} email - Recipient email
- * @param {string} name - Recipient name (for greeting)
- * @param {string} token - Verification token
- * @returns {Promise<{ sent: boolean, error?: string }>}
+ * Caregiver sign-up: verify-email link. Resend only (same `MAIL_FROM` / domain as patient mail).
+ * Without RESEND_API_KEY, logs the link to the server console for local testing.
  */
 async function sendVerificationEmail(email, name, token) {
     const verifyUrl = `${FRONTEND_URL}/verify-email?token=${encodeURIComponent(token)}`;
+    const textBody = `Hi ${name || 'there'},\n\nPlease verify your email by visiting: ${verifyUrl}\n\nThis link expires in 24 hours.\n\n— NeuroEase`;
     const html = `
 <!DOCTYPE html>
 <html>
@@ -127,29 +66,36 @@ async function sendVerificationEmail(email, name, token) {
 </body>
 </html>`;
 
-    const transporter = await getTransporter();
-    if (transporter) {
-        try {
-            await transporter.sendMail({
-                from: MAIL_FROM,
-                to: email,
-                subject: 'Verify your NeuroEase account',
-                html,
-                text: `Hi ${name || 'there'},\n\nPlease verify your email by visiting: ${verifyUrl}\n\nThis link expires in 24 hours.\n\n— NeuroEase`,
-            });
-            return { sent: true };
-        } catch (err) {
-            console.error('Send verification email error:', err);
-            return { sent: false, error: err.message };
-        }
-    }
+    const mailPayload = {
+        from: MAIL_FROM,
+        to: email,
+        subject: 'Verify your NeuroEase account',
+        html,
+        text: textBody,
+    };
 
-    console.warn('SMTP not configured. Users will NOT receive verification emails. Set SMTP_* and MAIL_FROM in .env — see docs/BackendSetUp.md');
-    console.log('--- Verification link (no email sent) ---');
+    const result = await resendOnlySend(mailPayload);
+    if (result.ok) {
+        console.log(
+            '[EMAIL] Verification email sent via Resend to:',
+            email,
+            result.id ? `(id: ${result.id})` : ''
+        );
+        return { sent: true };
+    }
+    if (result.noKey) {
+        console.warn('[EMAIL] Set RESEND_API_KEY and MAIL_FROM (verified in Resend) — see docs/Email-and-Resend.md');
+    } else {
+        console.error('[EMAIL] Resend verification failed:', result.error);
+    }
+    console.log('--- Caregiver verification link (use if email not received) ---');
     console.log('To:', email);
     console.log('Verify link:', verifyUrl);
     console.log('---');
-    return { sent: true };
+    if (result.noKey) {
+        return { sent: false, noKey: true };
+    }
+    return { sent: false, error: result.error };
 }
 
 /**
@@ -174,58 +120,23 @@ async function sendPatientInviteEmail(email, name, token) {
     const text = `Hi ${name || 'there'},\n\nOpen this link to activate your account: ${activateUrl}\n\nThis link expires in 7 days.\n\n— NeuroEase`;
 
     const mailPayload = {
-                from: MAIL_FROM,
-                to: email,
-                subject: 'Activate your NeuroEase account',
-                html,
+        from: MAIL_FROM,
+        to: email,
+        subject: 'Activate your NeuroEase account',
+        html,
         text,
     };
 
-    const resend = getResendClient();
-    const transporter = await getTransporter();
-
-    // Render free tier blocks outbound SMTP (ports 25/465/587) — ETIMEDOUT. Resend uses HTTPS (443).
-    // Try Resend first when set so we do not wait ~45s on a blocked SMTP socket.
-    if (resend) {
-        try {
-            const { error } = await resend.emails.send(mailPayload);
-            if (!error) {
-                return { sent: true };
-            }
-            console.warn('Resend invite failed, trying SMTP:', error.message);
-        } catch (err) {
-            console.warn('Resend invite threw, trying SMTP:', err.message);
-        }
+    const result = await resendOnlySend(mailPayload);
+    if (result.ok) {
+        return { sent: true };
     }
-
-    if (transporter) {
-        try {
-            await transporter.sendMail(mailPayload);
-            return { sent: true };
-        } catch (err) {
-            console.error('Send patient invite email error (SMTP):', err);
-            if (
-                isRunningOnRender()
-                && (err.code === 'ETIMEDOUT' || String(err.message || '').includes('timeout'))
-            ) {
-                console.error(
-                    'RENDER: Free-tier web services block outbound SMTP.'
-                );
-            }
-            return { sent: false, error: err.message };
-        }
+    if (result.noKey) {
+        console.warn('[EMAIL] Set RESEND_API_KEY and MAIL_FROM — see docs/Email-and-Resend.md. Patient invite (no email sent):');
+        console.log('To:', email, '| Activate link:', activateUrl);
+        return { sent: true };
     }
-
-    if (resend) {
-        return {
-            sent: false,
-            error: 'Resend failed and SMTP is not configured',
-        };
-    }
-
-    console.warn('Neither Resend nor SMTP configured. Patient invite (no email sent):');
-    console.log('To:', email, '| Activate link:', activateUrl);
-    return { sent: true };
+    return { sent: false, error: result.error };
 }
 
 /**
@@ -256,58 +167,24 @@ async function sendPatientMagicLinkEmail(email, name, token, shortCode) {
     const textBody = `Hi ${name || 'there'},\n\nLog in here: ${loginUrl}${textCode}\n\nLink and code expire in 15 minutes.\n\n— NeuroEase`;
 
     const mailPayload = {
-                from: MAIL_FROM,
-                to: email,
-                subject: 'Log in to NeuroEase',
-                html,
+        from: MAIL_FROM,
+        to: email,
+        subject: 'Log in to NeuroEase',
+        html,
         text: textBody,
     };
 
-    const resend = getResendClient();
-    const transporter = await getTransporter();
-
-    // Same as invite: Resend first (HTTPS) — Render blocks SMTP.
-    if (resend) {
-        try {
-            const { error } = await resend.emails.send(mailPayload);
-            if (!error) {
-                return { sent: true };
-            }
-            console.warn('Resend magic link failed, trying SMTP:', error.message);
-        } catch (err) {
-            console.warn('Resend magic link threw, trying SMTP:', err.message);
-        }
+    const result = await resendOnlySend(mailPayload);
+    if (result.ok) {
+        return { sent: true };
     }
-
-    if (transporter) {
-        try {
-            await transporter.sendMail(mailPayload);
-            return { sent: true };
-        } catch (err) {
-            console.error('Send magic link email error (SMTP):', err);
-            if (
-                isRunningOnRender()
-                && (err.code === 'ETIMEDOUT' || String(err.message || '').includes('timeout'))
-            ) {
-                console.error(
-                    'RENDER: Free-tier web services block outbound SMTP.'
-                );
-            }
-            return { sent: false, error: err.message };
-        }
+    if (result.noKey) {
+        console.warn('[EMAIL] Set RESEND_API_KEY and MAIL_FROM. Magic link (no email sent):');
+        console.log('To:', email, '| Login link:', loginUrl);
+        if (shortCode) console.log('Short code:', shortCode);
+        return { sent: true };
     }
-
-    if (resend) {
-        return { sent: false, error: 'Resend failed and SMTP is not configured' };
-    }
-
-    console.warn('Neither Resend nor SMTP configured. Magic link (no email sent):');
-    console.log('--- Magic link (login) ---');
-    console.log('To:', email);
-    console.log('Login link:', loginUrl);
-    if (shortCode) console.log('Short code:', shortCode);
-    console.log('---');
-    return { sent: true };
+    return { sent: false, error: result.error };
 }
 
 /**
@@ -336,24 +213,23 @@ async function sendReminderEmail(email, name, reminderTitle, reminderMessage, sc
   <p>— NeuroEase</p>
 </body>
 </html>`;
-    const transporter = await getTransporter();
-    if (transporter) {
-        try {
-            await transporter.sendMail({
-                from: MAIL_FROM,
-                to: email,
-                subject: `Reminder: ${(reminderTitle || 'Reminder').slice(0, 50)}`,
-                html,
-                text: `Hi ${name || 'there'},\n\nReminder: ${reminderTitle || 'Reminder'}\n${reminderMessage ? reminderMessage + '\n' : ''}\nScheduled for ${timeStr}. Open the NeuroEase app to mark it done.\n\n— NeuroEase`,
-            });
-            return { sent: true };
-        } catch (err) {
-            console.error('Send reminder email error:', err);
-            return { sent: false, error: err.message };
-        }
+    const text = `Hi ${name || 'there'},\n\nReminder: ${reminderTitle || 'Reminder'}\n${reminderMessage ? reminderMessage + '\n' : ''}\nScheduled for ${timeStr}. Open the NeuroEase app to mark it done.\n\n— NeuroEase`;
+    const r = await resendOnlySend({
+        from: MAIL_FROM,
+        to: email,
+        subject: `Reminder: ${(reminderTitle || 'Reminder').slice(0, 50)}`,
+        html,
+        text,
+    });
+    if (r.ok) {
+        return { sent: true };
     }
-    console.warn('SMTP not configured. Reminder email (not sent):', { to: email, title: reminderTitle });
-    return { sent: true };
+    if (r.noKey) {
+        console.warn('[EMAIL] Reminder email not sent (no RESEND_API_KEY):', { to: email, title: reminderTitle });
+        return { sent: true };
+    }
+    console.error('Resend reminder email error:', r.error);
+    return { sent: false, error: r.error };
 }
 
 /**
@@ -391,24 +267,20 @@ async function sendCaregiverLocationAlertEmail(caregiverEmail, caregiverName, pa
   <p>— NeuroEase</p>
 </body>
 </html>`;
-    const transporter = await getTransporter();
-    if (transporter) {
-        try {
-            await transporter.sendMail({
-                from: MAIL_FROM,
-                to: caregiverEmail,
-                subject: `URGENT: ${patientName || 'Patient'} left safe zone`,
-                html,
-                text: `URGENT\n\nHi ${caregiverName || 'there'},\n\n${patientName || 'Your patient'} has left their safe zone at ${timeStr}.\n\n${linksText}— NeuroEase`,
-            });
-            return { sent: true };
-        } catch (err) {
-            console.error('Send caregiver location alert email error:', err);
-            return { sent: false, error: err.message };
-        }
+    const text = `URGENT\n\nHi ${caregiverName || 'there'},\n\n${patientName || 'Your patient'} has left their safe zone at ${timeStr}.\n\n${linksText}— NeuroEase`;
+    const r = await resendOnlySend({
+        from: MAIL_FROM,
+        to: caregiverEmail,
+        subject: `URGENT: ${patientName || 'Patient'} left safe zone`,
+        html,
+        text,
+    });
+    if (r.ok) return { sent: true };
+    if (r.noKey) {
+        console.warn('[EMAIL] Location alert not sent (no RESEND_API_KEY):', { to: caregiverEmail });
+        return { sent: true };
     }
-    console.warn('SMTP not configured. Caregiver location alert (not sent):', { to: caregiverEmail });
-    return { sent: true };
+    return { sent: false, error: r.error };
 }
 
 /**
@@ -445,24 +317,20 @@ async function sendCaregiverReturnedToZoneEmail(caregiverEmail, caregiverName, p
   <p>— NeuroEase</p>
 </body>
 </html>`;
-    const transporter = await getTransporter();
-    if (transporter) {
-        try {
-            await transporter.sendMail({
-                from: MAIL_FROM,
-                to: caregiverEmail,
-                subject: `${patientName || 'Patient'} returned to safe zone`,
-                html,
-                text: `Hi ${caregiverName || 'there'},\n\n${patientName || 'Your patient'} has returned to their safe zone at ${timeStr}.\n\n${linksText}— NeuroEase`,
-            });
-            return { sent: true };
-        } catch (err) {
-            console.error('Send caregiver returned to zone email error:', err);
-            return { sent: false, error: err.message };
-        }
+    const textR = `Hi ${caregiverName || 'there'},\n\n${patientName || 'Your patient'} has returned to their safe zone at ${timeStr}.\n\n${linksText}— NeuroEase`;
+    const r2 = await resendOnlySend({
+        from: MAIL_FROM,
+        to: caregiverEmail,
+        subject: `${patientName || 'Patient'} returned to safe zone`,
+        html,
+        text: textR,
+    });
+    if (r2.ok) return { sent: true };
+    if (r2.noKey) {
+        console.warn('[EMAIL] Returned-to-zone email not sent (no RESEND_API_KEY):', { to: caregiverEmail });
+        return { sent: true };
     }
-    console.warn('SMTP not configured. Caregiver returned to zone (not sent):', { to: caregiverEmail });
-    return { sent: true };
+    return { sent: false, error: r2.error };
 }
 
 /**
@@ -485,24 +353,19 @@ async function sendCaregiverMissedReminderEmail(caregiverEmail, caregiverName, p
   <p>— NeuroEase</p>
 </body>
 </html>`;
-    const transporter = await getTransporter();
-    if (transporter) {
-        try {
-            await transporter.sendMail({
-                from: MAIL_FROM,
-                to: caregiverEmail,
-                subject: `NeuroEase: ${patientName || 'Patient'} missed reminder`,
-                html,
-                text: `Hi ${caregiverName || 'there'},\n\n${patientName || 'Your patient'} missed the reminder "${reminderTitle || 'Reminder'}" (due ${timeStr}).\n\nLog in to the NeuroEase dashboard.\n\n— NeuroEase`,
-            });
-            return { sent: true };
-        } catch (err) {
-            console.error('Send caregiver missed reminder email error:', err);
-            return { sent: false, error: err.message };
-        }
+    const r3 = await resendOnlySend({
+        from: MAIL_FROM,
+        to: caregiverEmail,
+        subject: `NeuroEase: ${patientName || 'Patient'} missed reminder`,
+        html,
+        text: `Hi ${caregiverName || 'there'},\n\n${patientName || 'Your patient'} missed the reminder "${reminderTitle || 'Reminder'}" (due ${timeStr}).\n\nLog in to the NeuroEase dashboard.\n\n— NeuroEase`,
+    });
+    if (r3.ok) return { sent: true };
+    if (r3.noKey) {
+        console.warn('[EMAIL] Missed-reminder email not sent (no RESEND_API_KEY):', { to: caregiverEmail });
+        return { sent: true };
     }
-    console.warn('SMTP not configured. Caregiver missed reminder (not sent):', { to: caregiverEmail });
-    return { sent: true };
+    return { sent: false, error: r3.error };
 }
 
 /**
@@ -544,24 +407,19 @@ async function sendCaregiverGameCompletionEmail(caregiverEmail, caregiverName, p
   <p>— NeuroEase</p>
 </body>
 </html>`;
-    const transporter = await getTransporter();
-    if (transporter) {
-        try {
-            await transporter.sendMail({
-                from: MAIL_FROM,
-                to: caregiverEmail,
-                subject: `NeuroEase: ${patientName || 'Patient'} completed ${gameLabel}`,
-                html,
-                text: `Hi ${caregiverName || 'there'},\n\n${patientName || 'Your patient'} completed ${gameLabel} (${scoreStr}, Duration: ${durationStr}).\n\nLog in to the NeuroEase dashboard.\n\n— NeuroEase`,
-            });
-            return { sent: true };
-        } catch (err) {
-            console.error('Send caregiver game completion email error:', err);
-            return { sent: false, error: err.message };
-        }
+    const r4 = await resendOnlySend({
+        from: MAIL_FROM,
+        to: caregiverEmail,
+        subject: `NeuroEase: ${patientName || 'Patient'} completed ${gameLabel}`,
+        html,
+        text: `Hi ${caregiverName || 'there'},\n\n${patientName || 'Your patient'} completed ${gameLabel} (${scoreStr}, Duration: ${durationStr}).\n\nLog in to the NeuroEase dashboard.\n\n— NeuroEase`,
+    });
+    if (r4.ok) return { sent: true };
+    if (r4.noKey) {
+        console.warn('[EMAIL] Game completion email not sent (no RESEND_API_KEY):', { to: caregiverEmail });
+        return { sent: true };
     }
-    console.warn('SMTP not configured. Caregiver game completion (not sent):', { to: caregiverEmail });
-    return { sent: true };
+    return { sent: false, error: r4.error };
 }
 
 /**
@@ -603,31 +461,17 @@ async function sendMeetingAcceptedEmails({ caregiverEmail, caregiverName, patien
   <p>— NeuroEase</p>
 </body></html>`;
 
-    const resend = getResendClient();
-    const transporter = await getTransporter();
-
     const sendOne = async (to, subject, html, text) => {
-        const payload = { from: MAIL_FROM, to, subject, html, text };
-        if (resend) {
-            try {
-                const { error } = await resend.emails.send(payload);
-                if (!error) return { sent: true };
-                console.warn('Resend meeting email failed, trying SMTP:', error.message);
-            } catch (err) {
-                console.warn('Resend meeting email threw, trying SMTP:', err.message);
-            }
+        const r = await resendOnlySend({ from: MAIL_FROM, to, subject, html, text });
+        if (r.ok) {
+            return { sent: true };
         }
-        if (transporter) {
-            try {
-                await transporter.sendMail(payload);
-                return { sent: true };
-            } catch (err) {
-                console.error('SMTP meeting email error:', err.message);
-                return { sent: false, error: err.message };
-            }
+        if (r.noKey) {
+            console.warn('[EMAIL] Meeting email not sent (no RESEND_API_KEY):', to);
+            return { sent: false };
         }
-        console.warn('No email transport configured. Meeting email not sent to:', to);
-        return { sent: false };
+        console.error('Resend meeting email error:', r.error, to);
+        return { sent: false, error: r.error };
     };
 
     await Promise.allSettled([
@@ -673,30 +517,16 @@ async function sendNewMessageEmail(toEmail, toName, senderName, isMeetingRequest
 
     const text = `Hi ${toName || 'there'},\n\n${senderName || 'Your patient'} ${isMeetingRequest ? 'sent you a meeting request' : 'sent you a new message'}.\n\nLog in to NeuroEase to respond.${link ? `\n${link}` : ''}\n\n— NeuroEase`;
 
-    const resend = getResendClient();
-    const transporter = await getTransporter();
-    const payload = { from: MAIL_FROM, to: toEmail, subject, html, text };
-
-    if (resend) {
-        try {
-            const { error } = await resend.emails.send(payload);
-            if (!error) return { sent: true };
-            console.warn('Resend new-message email failed, trying SMTP:', error.message);
-        } catch (err) {
-            console.warn('Resend new-message email threw, trying SMTP:', err.message);
-        }
+    const r = await resendOnlySend({ from: MAIL_FROM, to: toEmail, subject, html, text });
+    if (r.ok) {
+        return { sent: true };
     }
-    if (transporter) {
-        try {
-            await transporter.sendMail(payload);
-            return { sent: true };
-        } catch (err) {
-            console.error('SMTP new-message email error:', err.message);
-            return { sent: false, error: err.message };
-        }
+    if (r.noKey) {
+        console.warn('[EMAIL] New-message email not sent (no RESEND_API_KEY):', toEmail);
+        return { sent: false };
     }
-    console.warn('No email transport configured. New-message email not sent to:', toEmail);
-    return { sent: false };
+    console.error('Resend new-message email error:', r.error, toEmail);
+    return { sent: false, error: r.error };
 }
 
 module.exports = {

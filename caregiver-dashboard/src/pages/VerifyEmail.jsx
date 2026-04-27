@@ -6,7 +6,7 @@ import { API_BASE } from '../services/apiClient';
 export default function VerifyEmail() {
     const [searchParams] = useSearchParams();
     const token = searchParams.get('token');
-    const [status, setStatus] = useState('loading'); // 'loading' | 'success' | 'error'
+    const [status, setStatus] = useState('loading'); // 'loading' | 'success' | 'warning' | 'error'
     const [message, setMessage] = useState('');
 
     useEffect(() => {
@@ -27,10 +27,18 @@ export default function VerifyEmail() {
                 if (cancelled) return;
                 if (res.ok && data.success) {
                     setStatus('success');
-                    setMessage(data.message || 'Your email has been verified. You can now log in.');
+                    setMessage(
+                        data.message
+                        || (data.code === 'LINK_INACTIVE'
+                            ? 'This link is no longer active. If you can log in, your email is already verified.'
+                            : 'Your email has been verified. You can now log in.')
+                    );
+                } else if (res.status === 400 && data.code === 'EXPIRED') {
+                    setStatus('warning');
+                    setMessage(data.message || 'This verification link has expired. Request a new one from the login page.');
                 } else {
                     setStatus('error');
-                    setMessage(data.message || 'Invalid or expired verification link. You can request a new one from the login page. If you can already log in, your email may already be verified.');
+                    setMessage(data.message || 'We could not verify that link. Request a new one from the login page if you still need to verify.');
                 }
             } catch (err) {
                 if (!cancelled) {
@@ -86,6 +94,27 @@ export default function VerifyEmail() {
                             }}
                         >
                             Log in
+                        </Link>
+                    </>
+                )}
+
+                {status === 'warning' && (
+                    <>
+                        <p style={{ color: '#9a3412', fontSize: '14px', marginBottom: '20px' }}>{message}</p>
+                        <Link
+                            to="/login"
+                            style={{
+                                display: 'inline-block',
+                                padding: '10px 24px',
+                                background: '#4A90E2',
+                                color: 'white',
+                                borderRadius: '6px',
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                textDecoration: 'none'
+                            }}
+                        >
+                            Back to login
                         </Link>
                     </>
                 )}

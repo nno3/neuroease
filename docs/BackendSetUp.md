@@ -85,29 +85,31 @@ Create a `.env` file in `backend/` (example):
 ```env
 PORT=5001
 NODE_ENV=development
-JWT_SECRET=replace_this_in_production
+# Long random string; generate e.g. with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+JWT_SECRET=
+
 # PATIENT_JWT_EXPIRES=30d
 
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=neuroease_db
 DB_USER=neuroease_user
-DB_PASSWORD=neuroease_password
+DB_PASSWORD=
 
 FRONTEND_URL=http://localhost:5173
 PATIENT_APP_URL=http://localhost:5175
-# SMTP – required to send real emails. If unset, the link is only printed in the backend console (for local dev).
-MAIL_FROM=your-email@gmail.com
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-gmail-app-password
+
+# Transactional email (Resend only — all caregiver + patient mail uses HTTPS, works on PaaS that block SMTP)
+RESEND_API_KEY=
+# From-address must be allowed in the Resend dashboard: onboarding@resend.dev for tests, or your verified domain, e.g. NeuroEase <hi@yourdomain.com>
+MAIL_FROM=NeuroEase <onboarding@resend.dev>
 
 # Optional: encrypt sensitive patient data at rest (see docs/DataEncryption.md)
-# ENCRYPTION_KEY=<64-char hex from: openssl rand -hex 32>
+# ENCRYPTION_KEY=  (64-char hex, e.g. from: openssl rand -hex 32)
 
 ```
+
+Set `DB_PASSWORD` and `JWT_SECRET` to real values. For email, add **`RESEND_API_KEY`** from [resend.com](https://resend.com) and set **`MAIL_FROM`** to a sender Resend allows (start with `NeuroEase <onboarding@resend.dev>`, or verify your own domain in Resend and use e.g. `NeuroEase <notifications@yourdomain.com>`). Full setup: `docs/Email-and-Resend.md`. If **`RESEND_API_KEY`** is missing, the server still runs; caregiver verification and resend may print links in the **backend** console for local testing.
 
 ### Email verification
 
@@ -115,7 +117,7 @@ New users get a verification link by email and must open it before they can log 
 
 - **FRONTEND_URL** – Base URL of the caregiver dashboard. The link in the email is `FRONTEND_URL/verify-email?token=...`. Use `http://localhost:5173` (not https) for local dev so the link works when clicked.
 - **PATIENT_APP_URL** – Base URL of the patient app. Used in patient invite and magic-link emails (`PATIENT_APP_URL/activate?token=...` and `PATIENT_APP_URL/login?token=...`). Use `http://localhost:5175` for local dev.
-- **SMTP** – Needed to actually send emails. If you don’t set it, the app still runs and the verification link is logged in the backend console on each signup (you can copy and open it). For real inbox delivery you must set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`.
+- **Resend** – Outbound email uses the Resend API only (no SMTP). With **`RESEND_API_KEY`** and **`MAIL_FROM`** set, verification, invites, and notifications are delivered in production and locally. If the key is unset, the backend may log links to the console instead.
 - Links expire after 24 hours; users can request a new one from the login page.
 
 For implementation details on email verification and sending email with Node and React, see [7], [8].

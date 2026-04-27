@@ -1,13 +1,9 @@
 /**
  * NeuroEase Backend – Express server entry point.
  * Mounts API routes, connects to PostgreSQL via Sequelize, and handles 404/500.
- * Environment: .env (PORT, DB_*, JWT_SECRET, SMTP_*, PATIENT_APP_URL, FRONTEND_URL).
+ * Environment: .env (PORT, DB_*, JWT_SECRET, RESEND_API_KEY, MAIL_FROM, PATIENT_APP_URL, FRONTEND_URL).
  */
 require('dotenv').config();
-
-// Force IPv4 for SMTP – Render free tier has no IPv6 outbound; Gmail resolves to both
-const dns = require('dns');
-dns.setDefaultResultOrder('ipv4first');
 
 const http = require('http');
 const { Server: SocketIOServer } = require('socket.io');
@@ -27,19 +23,11 @@ const app = createHttpApp();
 const httpServer = http.createServer(app);
 const PORT = process.env.PORT || 5001;
 
-/** Warn when Render has SMTP but no Resend — otherwise invite email waits ~45s and times out */
 function logEmailDeliveryHint() {
-    const onRender = process.env.RENDER === 'true' || process.env.RENDER === '1';
-    const hasResend = !!process.env.RESEND_API_KEY;
-    const hasSmtp = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
-    if (hasResend) {
-        console.log('[EMAIL] Resend enabled (RESEND_API_KEY) — HTTPS delivery.');
-        return;
-    }
-    if (onRender && hasSmtp) {
-        console.warn('[EMAIL] RESEND_API_KEY is not set but SMTP_* is.');
-    } else if (hasSmtp) {
-        console.log('[EMAIL] Using SMTP only (no RESEND_API_KEY).');
+    if (process.env.RESEND_API_KEY) {
+        console.log('[EMAIL] Resend enabled (RESEND_API_KEY). Set MAIL_FROM to a verified sender or use onboarding@resend.dev.');
+    } else {
+        console.warn('[EMAIL] RESEND_API_KEY is not set — transactional email is disabled until you add it (see docs/Email-and-Resend.md).');
     }
 }
 

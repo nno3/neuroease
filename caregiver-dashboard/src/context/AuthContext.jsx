@@ -43,13 +43,14 @@ export const AuthProvider = ({ children }) => {
                 };
             }
 
+            const normalized = (email || '').trim().toLowerCase();
             const response = await fetch(`${API_BASE}/auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    email: email.trim(),
+                    email: normalized,
                     password: password
                 })
             });

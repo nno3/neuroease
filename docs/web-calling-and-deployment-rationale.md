@@ -91,7 +91,7 @@ Web pages **cannot assume continuous execution** when the tab is backgrounded or
 
 The **patient** client was already structured around **installable web** patterns. The **caregiver dashboard** included a **service worker** for push but initially lacked a **Web App Manifest** and associated **metadata** (icons, `theme-color`, Apple mobile web app tags). Those elements were added so that **install prompts**, **Add to Home Screen**, and **consistent installed-web behaviour**—particularly on iOS, where declarations strongly influence how web applications are treated—are **comparable** for both roles in the dyad.
 
-**Positioning for thesis purposes:** The work should be described as **PWA-oriented deployment** or **progressive installability** for the caregiver surface—not as an assertion that two **feature-equivalent native-grade** applications were delivered. The design goal is **equitable mobile usability** and **reduced sampling bias** in user studies (e.g. only one cohort installing or pinning the client).
+**Framing the caregiver client:** The caregiver app is best described as **PWA-oriented deployment** and **progressive installability**—a web client that can be **installed** and used like an app, not a claim that a **fully native, feature-equivalent** iOS or Android app was shipped for that role. The design intent is **equitable mobile usability** and comparable install/pin options across the caregiver and patient **web** clients, including for studies where it matters that both sides can add the app to the home screen.
 
 ---
 
@@ -103,7 +103,7 @@ Where the user agent exposes **`HTMLMediaElement.setSinkId`**, the interface off
 
 ## 10. User-visible diagnostic messaging
 
-The client surfaces **explicit messages** for common failure classes: **microphone permission denial**, **signalling disconnection**, **ICE or media connection failure**, **invalid or expired call invitations**, and **user action** to enable remote audio after autoplay blocking. For caregiver- and patient-facing health informatics tools, **actionable feedback** supports trust, usability, and **cleaner qualitative data** when issues arise in study settings.
+The client surfaces **explicit messages** for common failure classes: **microphone permission denial**, **signalling disconnection**, **ICE or media connection failure**, **invalid or expired call invitations**, and **user action** to enable remote audio after autoplay blocking. For caregiver- and patient-facing health informatics tools, **actionable feedback** supports trust, usability, and **clearer diagnostics** when issues arise in real use or in structured evaluation sessions.
 
 ---
 

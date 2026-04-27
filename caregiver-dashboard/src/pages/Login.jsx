@@ -17,6 +17,7 @@ const Login = () => {
 
     const handleLogin = async (e) => {
         e.preventDefault();
+        if (loading) return;
         setLoading(true);
         setError('');
         setEmailNotVerified(false);

@@ -185,6 +185,12 @@ async function applyRemoteAudioOutput(el, useSpeaker) {
     }
 }
 
+/**
+ * Whether the in-call “loudspeaker” toggle can work. Uses `HTMLMediaElement.setSinkId`
+ * (see MDN: “HTMLMediaElement: setSinkId()”). **Not role-specific** — same for caregiver and patient UIs.
+ * Safari (macOS/iOS) and some other browsers omit this API, so the button is hidden and audio follows
+ * the system default output (earpiece vs speaker is not controllable from web code on those platforms).
+ */
 export function remoteSpeakerOutputAvailable() {
     if (typeof document === 'undefined') return false;
     return typeof HTMLAudioElement !== 'undefined' && 'setSinkId' in HTMLAudioElement.prototype;

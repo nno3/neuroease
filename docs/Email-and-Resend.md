@@ -11,7 +11,7 @@ NeuroEase sends emails for things like:
 - **Caregiver → patient “invite to app”** (magic link / onboarding)
 - Optionally: verification and other transactional mail
 
-The backend uses **Nodemailer** for SMTP (e.g. Gmail) **or** the **Resend** HTTP API when `RESEND_API_KEY` is set (see `backend/src/utils/emailService.js`).
+The backend sends mail **only via the Resend HTTP API** (`RESEND_API_KEY` + `MAIL_FROM` in `backend/src/utils/emailService.js`). SMTP is not used.
 
 ---
 
@@ -45,7 +45,7 @@ The backend uses **Nodemailer** for SMTP (e.g. Gmail) **or** the **Resend** HTTP
 | **Gmail SMTP from cloud** | Familiar; no new vendor | Often **blocked or times out** on free PaaS; app passwords and security settings are fiddly |
 | **Resend (HTTP API)** | Uses **HTTPS (443)** — usually **allowed**; simple API key; free tier for development | Need a Resend account; sender domain is **`onboarding@resend.dev`** until you verify your own domain |
 
-**Decision:** Use **Resend in production** (`RESEND_API_KEY` + `MAIL_FROM`) so email is sent over **HTTPS**, which cloud hosts treat like normal outbound web traffic. Keep **optional SMTP** in `.env` for **local development** if you want.
+**Decision:** Use **Resend** for all environments (`RESEND_API_KEY` + `MAIL_FROM`). You can use **`onboarding@resend.dev`** for quick tests, then verify a custom domain in Resend and set `MAIL_FROM` to e.g. `NeuroEase <hi@yoursite.com>`.
 
 ---
 
@@ -59,6 +59,6 @@ The backend uses **Nodemailer** for SMTP (e.g. Gmail) **or** the **Resend** HTTP
 
 ## 5. To summarise
 
-> *We originally used Gmail SMTP from the deployed API, but the hosting environment blocked or timed out outbound SMTP connections, so emails never left the server. That’s a known limitation of many free cloud platforms, not a logic error in our invite code. We switched to **Resend**, which sends email over **HTTPS** using an API key, so delivery works reliably. We documented the env vars and kept optional SMTP for local development.*
+> *We previously relied on Gmail SMTP from the deployed API, but the hosting environment often blocked outbound SMTP. The backend now sends all transactional email through **Resend** over **HTTPS** using `RESEND_API_KEY` and `MAIL_FROM`.*
 
 ---

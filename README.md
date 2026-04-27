@@ -1,195 +1,156 @@
+# NeuroEase
 
-# NeuroEase: Smart Memory Aid for Elderly with Cognitive Impairment
+NeuroEase is a web-based system that helps people living with **mild cognitive impairment or dementia** and their **caregivers** stay coordinated in daily life. It combines a **caregiver dashboard** (web), a **patient-facing progressive web app** (PWA), and a **shared API** and database. The software supports reminders, **activity** visibility, **location** and **safe zone** awareness, **cognitive games**, **messaging** and **meeting** requests, **push** notifications, and **WebRTC** voice and video **calls**—all behind **role-based access** and **caregiver–patient assignment**.
 
-## Information about this repository
+**Scope:** NeuroEase is a **care coordination** tool, not a medical device and not a substitute for professional clinical care or emergency services.
 
-This is the repository that you are going to use **individually** for developing your project. Please use the resources provided in the module to learn about **plagiarism** and how plagiarism awareness can foster your learning.
-
-Regarding the use of this repository, once a feature (or part of it) is developed and **working** or parts of your system are integrated and **working**, define a commit and push it to the remote repository. You may find yourself making a commit after a productive hour of work (or even after 20 minutes!), for example. Choose commit message wisely and be concise.
-
-Please choose the structure of the contents of this repository that suits the needs of your project but do indicate in this file where the main software artefacts are located.
-
-## Quick Navigation
-
-### Main Software Artifacts
-- **Backend API**: [`/backend`](./backend) - Node.js/Express server, PostgreSQL database
-- **Caregiver Dashboard**: [`/caregiver-dashboard`](./caregiver-dashboard) - React web application
-- **Patient Application**: [`/patient-app`](./patient-app) - React PWA for elderly users
-- **Documentation**: [`/docs`](./docs) - Architecture diagrams, API docs, testing plans
-- **Sprints**: [`/docs/sprints`](./docs/sprints) - Sprint plans and issues (e.g. Geolocation Sharing)
-
-### Key Files
-- [`DoD.md`](./DoD.md) - Definition of Done criteria
-- [`PROJECTLOG.md`](./PROJECTLOG.md) - Weekly development log
-- [`FAQ.md`](./FAQ.md) - Frequently asked questions
-- [`README.md`](./README.md) - Quick Project overview and navigation
-
-
-### Getting Started
-1. **Backend Setup**: See [`docs/BackendSetUp.md`](./docs/BackendSetUp.md)
-2. **Caregiver Dashboard**: See [`docs/caregiverDashboard.md`](./docs/CaregiverDashboard.md)
-3. **Patient App**: See [`docs/PatientApp.md`](./docs/PatientApp.md)
+This repository is a **monorepo** with three deployable applications and extensive documentation under `docs/`.
 
 ---
 
-## 1. Project Overview
-NeuroEase is a dementia care platform designed to support elderly users with cognitive impairment and their caregivers. The system provides:
+## Repository layout
 
-- A **backend API** built with Node.js, Express.js, PostgreSQL, and Sequelize ORM
-- A **caregiver dashboard** (React web app) for managing patients and reminders
-- A **patient-facing PWA** (React) focusing on accessibility and cognitive support
-
----
-
-## 2. Repository Structure
-
-```
-/
-│
-├── backend/                    # Express.js API Server
-│   ├── src/
-│   │   ├── controllers/        # Business logic
-│   │   ├── models/            # Database schemas (Sequelize)
-│   │   ├── routes/            # API endpoints
-│   │   ├── middleware/        # Auth & validation
-│   │   └── config/            # Database configuration
-│   └── package.json
-│
-├── caregiver-dashboard/        # Caregiver Web App
-│   ├── src/
-│   │   ├── components/        # Reusable UI components
-│   │   ├── pages/            # Dashboard, Patients, Reminders
-│   │   ├── services/         # API calls
-│   │   └── hooks/            # Custom React hooks
-│   └── package.json
-│
-├── patient-app/               # Patient PWA
-│   ├── src/
-│   │   ├── components/       # Accessible UI components
-│   │   ├── pages/           # Home, Reminders, Profile
-│   │   ├── games/           # Cognitive exercises
-│   │   └── services/        # API communication
-│   └── package.json
-│
-└── docs/                      # Project Documentation
-    
-```
+| Path | Description |
+|------|-------------|
+| `backend/` | Node.js **Express** API, **Socket.IO** for realtime events, **PostgreSQL** via **Sequelize**, **JWT** auth, **Jest** integration tests |
+| `caregiver-dashboard/` | **React** + **Vite** SPA for caregivers (patients, reminders, activity, maps, messages, settings, **calls**) |
+| `patient-app/` | **React** + **Vite** PWA for patients (reminders, profile, **games**, **messages**, **calls**, **accessibility** options); optional **Capacitor** targets for native builds |
+| `docs/` | Technical documentation: setup, architecture, and feature design notes |
+| `DoD.md` | Definition of Done used for project governance |
+| `PROJECTLOG.md` | Development and activity log |
 
 ---
 
-## 3. Technology Stack
+## Technology overview
 
-### Backend
-- **Runtime:** Node.js | **Framework:** Express.js
-- **Database:** PostgreSQL | **ORM:** Sequelize
-- **Auth:** JWT + bcrypt | **Config:** dotenv
-
-### Frontend
-- **Caregiver Dashboard:** React.js web application
-- **Patient App:** React PWA (Progressive Web App)
-- **State Management:** React Context API / Hooks
-
-### Tools
-- **Version Control:** Git (GitFlow branching)
-- **Package Manager:** npm
-- **Testing:** curl / Postman
-- **Database GUI:** pgAdmin
-- **IDE:** IntelliJ IDEA
-
+- **Runtime:** Node.js 18 or newer (see `engines` in the root `package.json`)
+- **API:** Express, REST JSON under `/api`, health check at `GET /api/health`
+- **Realtime:** Socket.IO (e.g. messaging, call signalling)
+- **Data:** PostgreSQL, Sequelize ORM, encrypted fields for sensitive content where implemented
+- **Auth:** JWT, bcrypt, role separation (`caregiver` / `patient`)
+- **Validation:** Yup
+- **Email / transactional mail:** Resend API (`RESEND_API_KEY`, `MAIL_FROM`); see `docs/Email-and-Resend.md`
+- **Push:** Web Push (VAPID) for supported browsers
+- **Frontends:** React 19, Vite, React Router, shared patterns for API access via **dev proxies** to the backend
+- **Maps:** Leaflet (caregiver location views where enabled)
+- **Tests:** Jest + Supertest in `backend/` (`npm test`)
 
 ---
 
-## 4. System Architecture
-
-### High-Level Overview
-```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Caregiver     │    │   Backend API    │    │   PostgreSQL    │
-│   Dashboard     │◄──►│   (Node.js/      │◄──►│   Database      │
-│   (React)       │    │   Express.js)    │    │                 │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-                              ▲
-┌─────────────────┐           │
-│   Patient App   │           │
-│   (React PWA)   │───────────┘
-└─────────────────┘
-```
-
-### Architecture Layers
-1. **Presentation Layer**: React dashboards and PWA with RESTful JSON APIs
-2. **Application Layer**: Express.js server with JWT auth, validation, and business logic
-3. **Data Layer**: PostgreSQL with Sequelize ORM, connection pooling, and ACID compliance
-
-### Key Design Decisions
-- **Security**: JWT authentication (7-day expiration), bcrypt password hashing, role-based access
-- **Scalability**: Stateless API design, database connection pooling, modular services
-- **Separation**: Three independent apps for different user needs and security isolation
-
----
-
-## 5. Development Workflow
-
-### Branching Strategy (GitFlow)
-```
-main (production)
-└── develop (integration)
-    ├── feature/authentication
-    ├── feature/backend-database
-    ├── feature/caregiver-patient-management
-    └── feature/patient-reminder-interface
-```
-
-**Branch Usage:**
-- `main`: Production-ready code only (final submission)
-- `develop`: Integration branch for completed features
-- `feature/*`: Individual feature development in isolation
-
-
----
-
-## 6. Technical Justifications
-
-**PostgreSQL**: Structured relational data, ACID compliance for medical data, complex query support
-
-**React (Both Frontends)**: Code reuse, rich accessibility libraries, efficient Virtual DOM
-
-**PWA for Patients**: Works on any device, offline functionality, no app store requirements
-
-**Separate Applications**: Clear boundaries between system parts, independent deployment, focused development, easier API and UI testing
-
-
----
-
-## 7. Getting Started
+## Local development
 
 ### Prerequisites
-- Node.js (v14+)
-- PostgreSQL (v12+)
-- npm
 
-### Quick Setup
+- **Node.js** 18+ and **npm**
+- **PostgreSQL** (local or remote instance) and a database user with rights to create/use a dedicated database
+- (Optional) **`RESEND_API_KEY`** and **`MAIL_FROM`** for transactional email; without them, verification links may be printed to the **backend** console in development
+
+### 1. Database
+
+Create a PostgreSQL database and user matching the values you will set in the backend `.env` file. The **BackendSetUp** guide describes the expected schema and migration flow.
+
+### 2. Backend environment
+
+In `backend/`, add a `.env` file. At minimum, set the database host, name, user, and password to match the PostgreSQL instance you created, set `PORT` to `5001` (or another port, consistently across all three apps), and set `JWT_SECRET` to a long, random, non-default string. Point `FRONTEND_URL` and `PATIENT_APP_URL` at the Vite dev URLs in the table below when running locally. The full variable list, optional encryption keys, and **Resend** email settings are specified in `docs/BackendSetUp.md` and `docs/Email-and-Resend.md`. If **`RESEND_API_KEY`** is not set, the API still runs and verification links may be printed in the **backend** console for local use.
+
+### 3. Install and run
+
+From the **repository root**:
+
 ```bash
-# Clone repository
-git clone <repository-url>
-cd na429
+npm install
+cd backend && npm install && cd ..
+cd caregiver-dashboard && npm install && cd ..
+cd patient-app && npm install && cd ..
+```
 
+**Backend (terminal 1):**
 
-# Backend setup
+```bash
 cd backend
-npm install
-# Configure .env file (see docs/BackendSetUp.md)
-npm start
-
-# Caregiver dashboard (new terminal)
-cd ../caregiver-dashboard
-npm install
-npm run dev
-
-# Patient app (new terminal)
-cd ../patient-app
-npm install
 npm run dev
 ```
 
-**Detailed instructions**: See individual documentation files in `docs/`
+**Caregiver dashboard (terminal 2):**
 
+```bash
+cd caregiver-dashboard
+npm run dev
+```
+
+**Patient PWA (terminal 3):**
+
+```bash
+cd patient-app
+npm run dev
+```
+
+**Run all three at once (from the repository root, after `npm install` at root for `concurrently` ):**
+
+```bash
+npm run dev:all
+```
+
+**Default local URLs**
+
+| Service | URL |
+|---------|-----|
+| API | `http://localhost:5001` (for example `http://localhost:5001/api/health`) |
+| Caregiver app (Vite) | `http://localhost:5173` — proxies `/api` and `/socket.io` to port **5001** |
+| Patient app (Vite) | `http://localhost:5175` — same proxy pattern |
+
+**HTTPS in development** (useful for mobile camera, microphone, or PWA features that require a secure context): for each frontend, use the `dev:https` script and set `VITE_DEV_HTTPS=1` as defined in the respective `package.json` and Vite config.
+
+### 4. Automated API tests
+
+```bash
+cd backend
+npm test
+```
+
+---
+
+## API surface (summary)
+
+The Express app mounts routes such as (non-exhaustive): `/api/auth`, `/api/patients`, `/api/reminders`, `/api/activity`, `/api/location`, `/api/safe-zones`, `/api/push`, `/api/games`, `/api/messages`, plus a **health** route. For full details, use `backend/src/httpApp.js` and the `routes/` and `controllers/` directories, and the extended API notes in `docs/BackendSetUp.md` and `docs/Backend.md`.
+
+---
+
+## Security and quality
+
+- **Role and ownership checks** on patient-scoped data
+- **Dependency audits** at the monorepo level: `npm run audit:all` (root `package.json` )
+- **Security** considerations and test notes in `docs/BackendSetUp.md` and related documentation
+- **Data encryption** at rest for selected fields: `docs/DataEncryption.md`
+
+---
+
+## Further documentation
+
+| Document | Content |
+|----------|---------|
+| `docs/BackendSetUp.md` | Environment variables, email, database, running the API |
+| `docs/Backend.md` | Backend architecture and API notes |
+| `docs/CaregiverDashboard.md` | Caregiver client |
+| `docs/PatientApp.md` | Patient PWA and flows |
+| `docs/LocationMap.md` & `docs/GeolocationSharing.md` | Location and map behaviour |
+| `docs/Email-and-Resend.md` | Transactional email and Resend |
+| `docs/DataEncryption.md` | Field-level encryption |
+| `docs/CognitiveGames_Dementia.md` | Games design and rationale |
+| `docs/patient-app-accessibility-rationale.md` | Accessibility approach on the patient app |
+| `docs/web-calling-and-deployment-rationale.md` | WebRTC, hosting, and deployment considerations |
+
+---
+
+## Project governance
+
+- **DoD** and weekly log: see `DoD.md` and `PROJECTLOG.md`
+- Milestone and process evidence (including GitLab issues and sprints) are recorded in `PROJECTLOG.md` and the linked tracker history
+
+---
+
+## Author
+
+MSc project work by **Noreen** — **University of Leicester** (2025–2026).
+
+All rights reserved unless otherwise required by the degree programme. This code and documentation are provided for **assessment, education, and demonstration**; they are not offered as a commercial product or a regulated health application.

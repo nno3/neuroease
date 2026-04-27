@@ -1,27 +1,5 @@
 # Project Log
 
-## Dissertation / thesis — how the document was developed (overview)
-
-The dissertation was built **in parallel** with the NeuroEase artefact, not as a last-week write-up. The aim was a single **thread of evidence** from research question → requirements (Chapter 3) → implementation narrative (Chapter 4) → testing and user evaluation (Chapter 5) → critical appraisal and conclusion (Chapters 6–7), with the **code, GitLab issues, and test outputs** as the primary sources and the Word manuscript as the **synthesis**.
-
-**Structure and order of writing**
-
-- **Foundation chapters (1–2):** Introduction and background drew on the early problem definition, literature, and module ethics stance (non-clinical, coordination support, not a medical device). The introduction was revisited **whenever** the scope of the system changed (e.g. new Ext- NFRs such as calls or the usability study) so the promises in Chapter 1 still matched the artefact and Chapter 5.
-- **Chapters 3–4 (requirements, design, implementation):** Chapter 3 was kept aligned with the SRS and MoSCoW work from earlier terms; as features shipped, the text was updated with **one-line traceability** from requirement IDs to the parts of the repo that satisfy them. Chapter 4 was drafted **from the repository**: route file structure, key controllers, and representative flows, then **checked back** to the real tree so the dissertation did not claim modules or endpoints that no longer exist after refactors.
-- **Chapter 5 (testing and evaluation):** Written in **layers**: (1) test **strategy** and the test pyramid, (2) automated testing evidence (`npm test`, route manifest, Jest counts), (3) manual and integration work tied to issues, (4) the usability study **only after** the Forms export and *n* were fixed, so **tables and SUS** did not have to be redone. **Tables were drafted first** (shells, then filled cells) so the surrounding prose could stay short and exact.
-- **Chapters 6–7 (appraisal, conclusion):** Chapter 6 was drafted from a **bulleted “limits and alternatives”** list so limitations were honest and specific (load testing, full accessibility certification, *n* and study host). Chapter 7 tied claims to **only** what Chapters 4–5 could support, with explicit **future work** and scope boundaries.
-
-**Practices that reduced rework**
-
-- A running **“claims I can support”** note: every sentence in the evaluation chapters had a link to a test, a figure, a table, a commit range, or an issue, or it was rephrased.
-- **Abstract last** in substance: SUS and exact test counts were checked into the abstract only when the same numbers appeared consistently in Chapters 5 and 7, to avoid rounding or copy-paste drift.
-- **Style and presentation:** Module heading hierarchy, list of figures, TOC field refresh, spellcheck, and a full **read-through in PDF** to catch bad page breaks, orphan headings, and placeholder text.
-- **Supervisor loop:** short status updates at key points (e.g. after Sprint 10 scope, after usability data, before final hand-in) with time to act on **scope and wording** feedback before the last week.
-
-**Tools (at a glance):** main manuscript in **Word**; data collection in **Microsoft Forms**; descriptives and SUS in **Excel**; ethics and method screenshots and forms export in the **evidence** pack; **GitLab** for process and test evidence cross-references.
-
----
-
 ## Week 1 [w/c 29/09/2025]
 - Reviewed existing memory-aid and dementia-care applications to understand current features, limitations, and user experience patterns.
 - Took notes on common functionality (reminders, tracking, caregiver views) and identified gaps to be addressed by NeuroEase (e.g. integration of cognitive games, location, reminders).

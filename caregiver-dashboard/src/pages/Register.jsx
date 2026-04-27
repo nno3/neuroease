@@ -12,6 +12,8 @@ const Register = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    /** True when account created but verification email was not sent (API `emailSent: false`). */
+    const [successIsWarning, setSuccessIsWarning] = useState(false);
 
     const handleRegister = async (e) => {
         e.preventDefault();
@@ -25,6 +27,7 @@ const Register = () => {
         setLoading(true);
         setError('');
         setSuccess('');
+        setSuccessIsWarning(false);
 
         try {
             const normalizedEmail = (email || '').trim().toLowerCase();
@@ -44,7 +47,22 @@ const Register = () => {
             const data = await response.json();
 
             if (response.ok && data.success) {
-                setSuccess(`Registration successful! We sent a verification link to ${normalizedEmail}. Please check your email and click the link to verify your account, then you can log in.`);
+                const sent = data.data?.emailSent !== false;
+                setSuccessIsWarning(!sent);
+                if (sent) {
+                    setSuccess(
+                        `Registration successful! We sent a verification link to ${normalizedEmail}. ` +
+                        'Please check your email (and spam) and click the link to verify your account, then you can log in.'
+                    );
+                } else {
+                    setSuccess(
+                        'Your account was created, but the server could not send the verification email. ' +
+                        (data.data?.noResendKey
+                            ? 'Set RESEND_API_KEY (and a valid MAIL_FROM) in the API environment, or look at the server terminal: the dev link is printed there. '
+                            : 'Check the API terminal for a printed verification link, fix MAIL_FROM/Resend, or use “Resend verification” on the login page. ') +
+                        `We used ${normalizedEmail} as your address.`
+                    );
+                }
                 setPassword('');
                 setConfirmPassword('');
                 setName('');
@@ -104,15 +122,22 @@ const Register = () => {
 
                 {success && (
                     <div style={{
-                        background: '#dcfce7',
-                        color: '#166534',
+                        background: successIsWarning ? '#fef3c7' : '#dcfce7',
+                        color: successIsWarning ? '#92400e' : '#166534',
                         padding: '12px',
                         borderRadius: '6px',
                         marginBottom: '20px',
                         fontSize: '14px'
                     }}>
                         <p style={{ margin: '0 0 10px 0' }}>{success}</p>
-                        <Link to="/login" style={{ color: '#166534', fontWeight: '600', textDecoration: 'underline' }}>
+                        <Link
+                            to="/login"
+                            style={{
+                                color: successIsWarning ? '#92400e' : '#166534',
+                                fontWeight: '600',
+                                textDecoration: 'underline'
+                            }}
+                        >
                             Go to login →
                         </Link>
                     </div>

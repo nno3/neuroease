@@ -100,13 +100,7 @@ The patient app targets **older adults and people living with cognitive impairme
 
 ---
 
-## 4. Relation to dissertation argument
-
-You can honestly frame this as: **requirements-informed**, **mobile-oriented** accessibility measures grounded in W3C WCAG guidance [2], [14] and web-platform documentation [6], [12], implemented as a **prototype** to support **older adults**, with **user settings** persisting locally (`localStorage`). Claims should stay at **“aligned with”** or **“informed by”** specific criteria unless you report **formal evaluation** (automated tools + expert review + user testing).
-
----
-
-## 5. Limitations (recommended disclosure)
+## 4. Limitations (recommended disclosure)
 
 1. **No full WCAG audit** (automated or manual) is asserted for the patient app.  
 2. **Third-party content** (maps, embedded widgets) may introduce gaps.  
@@ -115,7 +109,7 @@ You can honestly frame this as: **requirements-informed**, **mobile-oriented** a
 
 ---
 
-## 6. References (IEEE style)
+## 5. References (IEEE style)
 
 Numbered citations refer to the following list [1]–[15]. Format follows common IEEE practice for online technical reports and documentation: bracketed number, author or organization, title, source, [Online]. Available: URL.
 
